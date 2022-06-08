@@ -1,0 +1,26 @@
+opam-version: "2.0"
+maintainer: "johnw@newartisans.com"
+version: "dev"
+
+homepage: "https://github.com/jwiegley/pact-model"
+dev-repo: "git+https://github.com/jwiegley/pact-model.git"
+bug-reports: "https://github.com/jwiegley/pact-model/issues"
+license: "BSD-3-Clause"
+
+synopsis: "Formal model of Pact"
+description: """
+Formal model of Pact
+"""
+
+build: [make "JOBS=%{jobs}%" ]
+install: [make "install"]
+depends: [
+  "coq" {(>= "8.10" & < "8.16~") | (= "dev")}
+  "coq-equations" {(>= "1.2" & < "1.4~") | (= "dev")}
+]
+
+tags: [
+]
+authors: [
+  "John Wiegley"
+]

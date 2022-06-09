@@ -9,6 +9,10 @@ Require Import
   Coq.Sets.Ensembles
   Coq.Logic.EqdepFacts.
 
+From Equations Require Import Equations.
+Require Import Equations.Type.EqDec.
+Set Equations With UIP.
+
 Generalizable All Variables.
 
 Import VectorNotations.
@@ -36,15 +40,10 @@ Notation "Γ ⸴ A ： τ" := (@Cons τ A _ _ Γ) (at level 80, right associativ
 
 Import EqNotations.
 
-Definition get {n} {ts : Vector.t type n} (Γ : Env ts) (i : Fin.t n) :
-  tdenote ts[@i].
-Proof.
-  induction Γ.
-  - now inversion i.
-  - dependent destruction i.
-    + exact t.
-    + exact (IHΓ i).
-Defined.
+Equations get {n} {ts : Vector.t type n} (Γ : Env ts) (i : Fin.t n) :
+  tdenote ts[@i] :=
+  get (Γ ⸴ A ： _) Fin.F1     := A;
+  get (Γ ⸴ _ ： _) (Fin.FS i) := get Γ i.
 
 Inductive Lookup :
   ∀ {n} {ts : Vector.t type n}, Env ts → ∀ {τ : type}, tdenote τ → Type :=
@@ -69,14 +68,11 @@ Inductive exp : ∀ {n}, Vector.t type n → type → Set :=
   | App {n} {ts : Vector.t type n} {dom cod} :
     exp ts (dom ⟶ cod) → exp ts dom → exp ts cod.
 
-Fixpoint denote {n} {ts : Vector.t type n} (Γ : Env ts)
-         {τ} (e : exp ts τ) : tdenote τ.
-Proof.
-  induction e.
-  - exact (get Γ i).
-  - exact (λ x : tdenote dom, denote _ _ (Γ ⸴ x ： dom) _ e).
-  - exact (IHe1 Γ (IHe2 Γ)).
-Defined.
+Equations denote {n} {ts : Vector.t type n} (Γ : Env ts)
+          {τ} (e : exp ts τ) : tdenote τ :=
+  denote Γ (Var i)     := get Γ i;
+  denote Γ (Abs dom e) := λ x : tdenote dom, denote (Γ ⸴ x ： dom) e;
+  denote Γ (App f x)   := denote Γ f (denote Γ x).
 
 Inductive Judgment :
   ∀ {n} {ts : Vector.t type n}, Env ts → ∀ τ : type, exp ts τ → Type :=
@@ -97,7 +93,7 @@ Inductive Judgment :
 
 Notation "Γ ⊢ e ： τ" := (Judgment Γ τ e) (at level 80, no associativity).
 
-Definition Exp t := ∀ n (ts : Vector.t type n), exp ts t.
+Definition Exp t := ∀ {n} {ts : Vector.t type n}, exp ts t.
 
 Definition identity τ : Exp (τ ⟶ τ) := λ _ _, Abs τ (Var Fin.F1).
 
@@ -115,31 +111,21 @@ Proof.
   - eapply App; eauto.
 *)
 
-Fixpoint swap {n} {ts : Vector.t type n} {τ τ' τ''}
-         (e : exp (τ :: τ' :: ts) τ'') : exp (τ' :: τ :: ts) τ''.
-Proof.
-  inversion e; subst.
-  - apply inj_pairT2 in H1; subst.
-    dependent destruction i.
-    + exact (Var (Fin.FS Fin.F1)).
-    + dependent destruction i.
-      * exact (Var Fin.F1).
-      * exact (Var (Fin.FS (Fin.FS i))).
-  - apply inj_pairT2 in H; subst.
-    apply Abs.
-    admit.
-  - apply inj_pairT2 in H; subst.
-    now eapply App; eauto.
-Abort.
+(* Equations swap {n} {ts : Vector.t type n} {τ τ' τ''} *)
+(*           (e : exp (τ :: τ' :: ts) τ'') : exp (τ' :: τ :: ts) τ'' := *)
+(*   swap (Var Fin.F1)          := Var (Fin.FS Fin.F1); *)
+(*   swap (Var (Fin.FS Fin.F1)) := Var Fin.F1; *)
+(*   swap (Var i)               := Var i; *)
+(*   swap (Abs dom body)        := Abs dom (swap body); *)
+(*   swap (App f x)             := App (swap f) (swap x). *)
 
-Definition weaken {n} {ts : Vector.t type n} {τ τ'}
-           (e : exp ts τ) : exp (τ' :: ts) τ.
-Proof.
-  induction e.
-  - exact (Var (Fin.FS i)).
-  - admit.
-  - exact (App IHe1 IHe2).
-Abort.
+(* Equations weaken {n} {ts : Vector.t type n} {τ τ'} *)
+(*           (e : exp ts τ) : exp (τ' :: ts) τ := *)
+(*   weaken (Var i)        := Var (Fin.FS i); *)
+(*   weaken (Abs dom body) := Abs dom _; *)
+(*   weaken (App f x)      := App (weaken f) (weaken x). *)
+(* Next Obligation. *)
+(* Admitted. *)
 
 Definition compose {τ τ' τ''}
            (f : Exp (τ' ⟶ τ''))
@@ -150,13 +136,24 @@ Lemma denote_identity {n} {ts : Vector.t type n} (Γ : Env ts) τ :
   denote Γ (identity τ n ts) = id.
 Proof.
   extensionality t.
-Admitted.
+  unfold identity, id.
+  rewrite denote_equation_2.
+  rewrite denote_equation_1.
+  now rewrite get_equation_2.
+Qed.
 
 Lemma denote_compose {n} {ts : Vector.t type n} (Γ : Env ts)
       {τ τ' τ''} (f : Exp (τ' ⟶ τ'')) (g : Exp (τ ⟶ τ')) :
   denote Γ (compose f g n ts) = denote Γ (f n ts) ∘ denote Γ (g n ts).
 Proof.
   extensionality t.
+  unfold compose, Basics.compose.
+  rewrite denote_equation_2.
+  rewrite !denote_equation_3.
+  pose proof (denote_equation_1 (S n) (τ :: ts) (Γ ⸴ t ： τ) Fin.F1).
+  simpl in H.
+  rewrite H; clear H.
+  rewrite get_equation_2.
 Admitted.
 
 Lemma compose_left_identity

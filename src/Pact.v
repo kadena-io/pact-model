@@ -6,6 +6,7 @@ Require Import
   Coq.Relations.Relation_Definitions
   Coq.Strings.String
   Coq.Vectors.Vector
+  Coq.Lists.List
   Coq.Sets.Ensembles
   Coq.Logic.EqdepFacts.
 
@@ -15,177 +16,239 @@ Set Equations With UIP.
 
 Generalizable All Variables.
 
-Import VectorNotations.
+Import ListNotations.
 
-Inductive type :=
+Inductive Ty :=
   | TUnit
-  | TBool
-  | TFunc : type → type → type.
+  | TFunc : Ty → Ty → Ty.
 
 Infix "⟶" := TFunc (at level 30, right associativity).
 
-Fixpoint tdenote (τ : type) : Type :=
+Fixpoint tdenote (τ : Ty) : Type :=
   match τ with
   | TUnit => unit
-  | TBool => bool
   | TFunc dom cod => tdenote dom → tdenote cod
   end.
 
-Inductive Env : ∀ {n}, Vector.t type n → Type :=
-  | Empty : Env []
-  | Cons {τ} : tdenote τ → ∀ {n} {ts : Vector.t type n}, Env ts → Env (τ :: ts).
+Definition Env := list Ty.
 
-Notation "·" := Empty.
-Notation "Γ ⸴ A ： τ" := (@Cons τ A _ _ Γ) (at level 80, right associativity).
+(* Notation "·" := Empty. *)
+(* Notation "Γ ⸴ A ： τ" := (@Cons τ A _ _ Γ) (at level 80, right associativity). *)
 
-Import EqNotations.
+Inductive Var : Env → Ty → Set :=
+  | ZV Γ τ    : Var (τ :: Γ) τ
+  | SV Γ τ τ' : Var Γ τ → Var (τ' :: Γ) τ.
 
-Equations get {n} {ts : Vector.t type n} (Γ : Env ts) (i : Fin.t n) :
-  tdenote ts[@i] :=
-  get (Γ ⸴ A ： _) Fin.F1     := A;
-  get (Γ ⸴ _ ： _) (Fin.FS i) := get Γ i.
+Arguments ZV {_ _}.
+Arguments SV {_ _ _} _.
 
-Inductive Lookup :
-  ∀ {n} {ts : Vector.t type n}, Env ts → ∀ {τ : type}, tdenote τ → Type :=
-  | Here {τ} (A : tdenote τ) {n} {ts : Vector.t type n} (Γ : Env ts) :
-    Lookup (Γ ⸴ A ： τ) A
-  | There {τ} (A : tdenote τ) {n} {ts : Vector.t type n} (Γ : Env ts) :
-    Lookup Γ A → ∀ {u} {B : tdenote u}, Lookup (Γ ⸴ B ： u) A.
+(* Notation "Γ ∋ A ： τ" := (@Var _ _ Γ τ A) (at level 80, no associativity). *)
 
-Notation "Γ ∋ A ： τ" := (@Lookup _ _ Γ τ A) (at level 80, no associativity).
+Inductive Exp Γ : Ty → Set :=
+  | VAR {τ}       : Var Γ τ → Exp Γ τ
+  | ABS {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
+  | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
 
-Fixpoint Position {n} {ts : Vector.t type n} {Γ : Env ts} {τ} {A : tdenote τ}
-         (H : Γ ∋ A ： τ) : Fin.t n :=
-  match H with
-  | Here _ _     => Fin.F1
-  | There _ _ Γ' => Fin.FS (Position Γ')
-  end.
+Arguments VAR {Γ τ} _.
+Arguments ABS {Γ dom cod} _.
+Arguments APP {Γ dom cod} _ _.
 
-Inductive exp : ∀ {n}, Vector.t type n → type → Set :=
-  | Var {n} {ts : Vector.t type n} (i : Fin.t n) : exp ts ts[@i]
-  | Abs {n} {ts : Vector.t type n} dom {cod} :
-    exp (dom :: ts) cod → exp ts (dom ⟶ cod)
-  | App {n} {ts : Vector.t type n} {dom cod} :
-    exp ts (dom ⟶ cod) → exp ts dom → exp ts cod.
+Definition Sub Γ Γ' := ∀ {τ}, Var Γ τ → Exp Γ' τ.
 
-Equations denote {n} {ts : Vector.t type n} (Γ : Env ts)
-          {τ} (e : exp ts τ) : tdenote τ :=
-  denote Γ (Var i)     := get Γ i;
-  denote Γ (Abs dom e) := λ x : tdenote dom, denote (Γ ⸴ x ： dom) e;
-  denote Γ (App f x)   := denote Γ f (denote Γ x).
+Definition idSub {Γ} : Sub Γ Γ := @VAR Γ.
 
-Inductive Judgment :
-  ∀ {n} {ts : Vector.t type n}, Env ts → ∀ τ : type, exp ts τ → Type :=
-  | Emptiness τ e : Judgment · τ e
+Program Definition consSub {Γ Γ' τ} (e : Exp Γ' τ)
+        (s : Sub Γ Γ') : Sub (τ :: Γ) Γ' :=
+  λ _ v, match v with
+         | ZV    => e
+         | SV v' => s _ v'
+         end.
 
-  | Assignment {n} {ts : Vector.t type n} (Γ : Env ts) τ x i :
-    ∀ (H : Γ ∋ x ： τ), i = Position H →
-    Judgment Γ ts[@i] (Var i)
+Notation "{| e ; .. ; f |}" := (consSub e .. (consSub f idSub) ..).
 
-  | Abstraction {n} {ts : Vector.t type n} (Γ : Env ts) τ τ' x e :
-    Judgment (Γ ⸴ x ： τ) τ' e →
-    Judgment Γ (τ ⟶ τ') (Abs τ e)
+Definition tlSub {Γ Γ' τ} (s : Sub (τ :: Γ) Γ') : Sub Γ Γ' :=
+  fun τ' v => s τ' (SV v).
+Definition hdSub {Γ Γ' τ} (s : Sub (τ :: Γ) Γ') : Exp Γ' τ := s τ ZV.
 
-  | Application {n} {ts : Vector.t type n} (Γ : Env ts) τ τ' e₀ e₁ :
-    Judgment Γ (τ ⟶ τ') e₀ →
-    Judgment Γ τ e₁ →
-    Judgment Γ τ' (App e₀ e₁).
-
-Notation "Γ ⊢ e ： τ" := (Judgment Γ τ e) (at level 80, no associativity).
-
-Definition Exp t := ∀ {n} {ts : Vector.t type n}, exp ts t.
-
-Definition identity τ : Exp (τ ⟶ τ) := λ _ _, Abs τ (Var Fin.F1).
-
-(* (f : Y -> Z) (g : X -> Y) : X -> Z := λ x : X, f (g x) *)
+Definition Ren Γ Γ' := ∀ {τ}, Var Γ τ → Var Γ' τ.
 
 (*
-Definition subst {n} (f : Vector.t type n → Vector.t type n)
-           {ts : Vector.t type n} {τ} (e : exp ts τ) : exp (f ts) τ.
-Proof.
-  induction e.
-  - admit.
-  - apply Abs.
-    simpl in IHe.
-    admit.
-  - eapply App; eauto.
+Program Definition RTmL {Γ Γ' τ} (r : Ren Γ Γ') : Ren (τ :: Γ) (τ :: Γ') :=
+  λ τ' v,
+    match v with
+    | ZV    => ZV
+    | SV v' => SV (r _ v')
+    end.
 *)
 
-(* Equations swap {n} {ts : Vector.t type n} {τ τ' τ''} *)
-(*           (e : exp (τ :: τ' :: ts) τ'') : exp (τ' :: τ :: ts) τ'' := *)
-(*   swap (Var Fin.F1)          := Var (Fin.FS Fin.F1); *)
-(*   swap (Var (Fin.FS Fin.F1)) := Var Fin.F1; *)
-(*   swap (Var i)               := Var i; *)
-(*   swap (Abs dom body)        := Abs dom (swap body); *)
-(*   swap (App f x)             := App (swap f) (swap x). *)
+(* This version gives better rewriting equations. *)
+Equations RTmL {Γ Γ' τ} (r : Ren Γ Γ')
+          τ' (v : Var (τ :: Γ) τ') : Var (τ :: Γ') τ' :=
+  RTmL r τ' ZV      := ZV;
+  RTmL r τ' (SV v') := SV (r _ v').
 
-(* Equations weaken {n} {ts : Vector.t type n} {τ τ'} *)
-(*           (e : exp ts τ) : exp (τ' :: ts) τ := *)
-(*   weaken (Var i)        := Var (Fin.FS i); *)
-(*   weaken (Abs dom body) := Abs dom _; *)
-(*   weaken (App f x)      := App (weaken f) (weaken x). *)
-(* Next Obligation. *)
-(* Admitted. *)
+Fixpoint rename {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
+  match e with
+  | VAR v     => VAR (r _ v)
+  | APP e1 e2 => APP (rename r e1) (rename r e2)
+  | ABS e     => ABS (rename (RTmL r) e)
+  end.
 
-Definition compose {τ τ' τ''}
-           (f : Exp (τ' ⟶ τ''))
-           (g : Exp (τ ⟶ τ')) : Exp (τ ⟶ τ'') :=
-  λ n ts, Abs τ (App (f _ _) (App (g _ _) (@Var (S n) (τ :: ts) Fin.F1))).
+Definition weaken {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := rename (λ _, SV).
 
-Lemma denote_identity {n} {ts : Vector.t type n} (Γ : Env ts) τ :
-  denote Γ (identity τ n ts) = id.
+Program Definition STmL {Γ Γ' τ} (s : Sub Γ Γ') : Sub (τ :: Γ) (τ :: Γ') :=
+  λ _ v, match v with
+         | ZV    => VAR ZV
+         | SV v' => weaken (s _ v')
+         end.
+
+Fixpoint STmExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ τ) :=
+  match e with
+  | VAR v     => s _ v
+  | APP e1 e2 => APP (STmExp s e1) (STmExp s e2)
+  | ABS e     => ABS (STmExp (STmL s) e)
+  end.
+
+Inductive Ev : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
+  | EvAbs t1 t2 (e : Exp [t1] t2) : Ev (ABS e) (ABS e)
+  | EvApp t1 t2 e v w (e1 : Exp [] (t1 ⟶ t2)) e2 :
+    Ev e1 (ABS e) → Ev e2 w → Ev (STmExp {| w |} e) v →
+    Ev (APP e1 e2) v.
+
+(* Notation "Γ ⊢ e ： τ" := (Judgment Γ τ e) (at level 80, no associativity). *)
+
+Definition identity Γ τ : Exp Γ (τ ⟶ τ) := ABS (VAR ZV).
+
+Definition compose {Γ τ τ' τ''}
+           (f : Exp Γ (τ' ⟶ τ''))
+           (g : Exp Γ (τ ⟶ τ')) : Exp Γ (τ ⟶ τ'') :=
+  ABS (APP (weaken f) (APP (weaken g) (VAR ZV))).
+
+Inductive Args (P : Ty → Type) : Env → Type :=
+  | ANil      : Args P []
+  | ACons τ Γ : P τ → Args P Γ → Args P (τ :: Γ).
+
+Arguments ANil {P}.
+Arguments ACons {P _ _} _ _.
+
+Equations get (P : Ty → Type) {Γ : Env} (A : Args P Γ)
+          {τ} (v : Var Γ τ) : P τ :=
+  get P (ACons x _)  ZV      := x;
+  get P (ACons _ xs) (SV v') := get P xs v'.
+
+Equations denote `(A : Args tdenote Γ) `(e : Exp Γ τ) : tdenote τ :=
+  denote A (VAR v)   := get tdenote A v;
+  denote A (ABS e)   := λ x, denote (ACons x A) e;
+  denote A (APP f x) := denote A f (denote A x).
+
+Lemma denote_identity `(A : Args tdenote Γ) τ :
+  denote A (identity Γ τ) = id.
 Proof.
-  extensionality t.
+  extensionality x.
   unfold identity, id.
   rewrite denote_equation_2.
   rewrite denote_equation_1.
   now rewrite get_equation_2.
 Qed.
 
-Lemma denote_compose {n} {ts : Vector.t type n} (Γ : Env ts)
-      {τ τ' τ''} (f : Exp (τ' ⟶ τ'')) (g : Exp (τ ⟶ τ')) :
-  denote Γ (compose f g n ts) = denote Γ (f n ts) ∘ denote Γ (g n ts).
+Lemma denote_rename `(A : Args tdenote Γ)
+      `(r : Ren Γ Γ') `(A' : Args tdenote Γ') `(e : Exp Γ τ) :
+  denote A' (rename r e) = denote A e.
 Proof.
-  extensionality t.
-  unfold compose, Basics.compose.
-  rewrite denote_equation_2.
-  rewrite !denote_equation_3.
-  pose proof (denote_equation_1 (S n) (τ :: ts) (Γ ⸴ t ： τ) Fin.F1).
-  simpl in H.
-  rewrite H; clear H.
-  rewrite get_equation_2.
+  induction e; simpl.
+  - rewrite !denote_equation_1.
+    admit.
+  - rewrite !denote_equation_2.
+    extensionality x.
+    fold tdenote in x.
+    admit.
+  - rewrite !denote_equation_3.
+    now erewrite IHe1, IHe2.
 Admitted.
 
-Lemma compose_left_identity
-      {n} {ts : Vector.t type n} (Γ : Env ts)
-      {τ τ'} (f : Exp (τ ⟶ τ')) :
-  denote Γ (compose f (identity _) n ts) = denote Γ (f n ts).
+Lemma helper
+  (Γ : Env)
+  (A : Args tdenote Γ)
+  (τ τ' τ'' : Ty)
+  (x : tdenote τ'')
+  (dom cod : Ty)
+  (f : Exp (dom :: Γ) cod)
+  (x0 : tdenote dom)
+  :
+  denote (ACons x0 (ACons x A)) (rename (RTmL (λ τ0 : Ty, SV)) f) =
+  denote (ACons x (ACons x0 A)) (rename (λ τ0 : Ty, SV) f).
 Proof.
-  rewrite denote_compose.
-  rewrite denote_identity.
-  reflexivity.
+  dependent induction f; simpl.
+  - rewrite !denote_equation_1.
+    rewrite get_equation_3.
+    dependent destruction v.
+    + rewrite !get_equation_2.
+      reflexivity.
+    + rewrite RTmL_equation_2.
+      rewrite !get_equation_3.
+      reflexivity.
+  - rewrite !denote_equation_2.
+    extensionality x1.
+    fold tdenote in x1.
+    rewrite IHf; auto; clear IHf.
+    admit.
+  - rewrite !denote_equation_3.
+    now rewrite IHf1, IHf2.
+Admitted.
+
+Lemma denote_weaken `(A : Args tdenote Γ)
+      {τ τ' τ''} (x : tdenote τ'') (f : Exp Γ (τ ⟶ τ')) :
+  denote (ACons x A) (weaken f) = denote A f.
+Proof.
+  unfold weaken.
+  induction f; simpl.
+  - now rewrite !denote_equation_1.
+  - rewrite !denote_equation_2.
+    extensionality x0.
+    fold tdenote in x0.
+    rewrite <- IHf; clear IHf.
+    admit.
+  - rewrite denote_equation_3.
+    now rewrite IHf1, IHf2.
+Admitted.
+
+Lemma denote_compose `(A : Args tdenote Γ)
+      {τ τ' τ''} (f : Exp Γ (τ' ⟶ τ'')) (g : Exp Γ (τ ⟶ τ')) :
+  denote A (compose f g) = denote A f ∘ denote A g.
+Proof.
+  extensionality x.
+  fold tdenote in x.
+  unfold compose.
+  rewrite denote_equation_2.
+  rewrite !denote_equation_3.
+  rewrite denote_equation_1.
+  rewrite get_equation_2.
+  now rewrite !denote_weaken.
 Qed.
 
-Lemma compose_right_identity
-      {n} {ts : Vector.t type n} (Γ : Env ts)
-      {τ τ'} (f : Exp (τ ⟶ τ')) :
-  denote Γ (compose (identity _) f n ts) = denote Γ (f n ts).
+Lemma compose_left_identity `(A : Args tdenote Γ)
+      {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
+  denote A (compose f (identity Γ τ)) = denote A f.
 Proof.
   rewrite denote_compose.
-  rewrite denote_identity.
-  reflexivity.
+  now rewrite denote_identity.
 Qed.
 
-Lemma compose_assoc
-      {n} {ts : Vector.t type n} (Γ : Env ts)
+Lemma compose_right_identity `(A : Args tdenote Γ)
+      {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
+  denote A (compose (identity Γ τ') f) = denote A f.
+Proof.
+  rewrite denote_compose.
+  now rewrite denote_identity.
+Qed.
+
+Lemma compose_assoc `(A : Args tdenote Γ)
       {τ τ' τ'' τ'''}
-      (f : Exp (τ'' ⟶ τ'''))
-      (g : Exp (τ' ⟶ τ''))
-      (h : Exp (τ ⟶ τ')) :
-  denote Γ (compose f (compose g h) n ts) =
-  denote Γ (compose (compose f g) h n ts).
+      (f : Exp Γ (τ'' ⟶ τ'''))
+      (g : Exp Γ (τ' ⟶ τ''))
+      (h : Exp Γ (τ ⟶ τ')) :
+  denote A (compose f (compose g h)) = denote A (compose (compose f g) h).
 Proof.
   rewrite !denote_compose.
-  rewrite compose_assoc.
-  reflexivity.
+  now rewrite compose_assoc.
 Qed.

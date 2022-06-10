@@ -87,6 +87,15 @@ Equations RTmL {Γ Γ' τ} (r : Ren Γ Γ')
   RTmL r τ' ZV      := ZV;
   RTmL r τ' (SV v') := SV (r _ v').
 
+Lemma RTmL_id {Γ τ} : @RTmL Γ Γ τ (λ _, id) = λ _, id.
+Proof.
+  extensionality τ'.
+  extensionality v.
+  dependent induction v.
+  - now rewrite RTmL_equation_1.
+  - now rewrite RTmL_equation_2.
+Qed.
+
 Fixpoint rename {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
   | VAR v     => VAR (r _ v)
@@ -94,15 +103,22 @@ Fixpoint rename {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   | ABS e     => ABS (rename (RTmL r) e)
   end.
 
-Definition weaken {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := rename (λ _, SV).
+Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := rename (λ _, SV).
 
+(*
 Program Definition STmL {Γ Γ' τ} (s : Sub Γ Γ') : Sub (τ :: Γ) (τ :: Γ') :=
   λ _ v, match v with
          | ZV    => VAR ZV
-         | SV v' => weaken (s _ v')
+         | SV v' => wk (s _ v')
          end.
+*)
 
-Fixpoint STmExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ τ) :=
+Equations STmL {Γ Γ' τ} (s : Sub Γ Γ') τ' (v : Var (τ :: Γ) τ') :
+  Exp (τ :: Γ') τ' :=
+  STmL _ τ' ZV      := VAR ZV;
+  STmL _ τ' (SV v') := wk (s _ v').
+
+Fixpoint STmExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
   | VAR v     => s _ v
   | APP e1 e2 => APP (STmExp s e1) (STmExp s e2)
@@ -122,7 +138,7 @@ Definition identity Γ τ : Exp Γ (τ ⟶ τ) := ABS (VAR ZV).
 Definition compose {Γ τ τ' τ''}
            (f : Exp Γ (τ' ⟶ τ''))
            (g : Exp Γ (τ ⟶ τ')) : Exp Γ (τ ⟶ τ'') :=
-  ABS (APP (weaken f) (APP (weaken g) (VAR ZV))).
+  ABS (APP (wk f) (APP (wk g) (VAR ZV))).
 
 Inductive Args (P : Ty → Type) : Env → Type :=
   | ANil      : Args P []
@@ -141,6 +157,12 @@ Equations denote `(A : Args tdenote Γ) `(e : Exp Γ τ) : tdenote τ :=
   denote A (ABS e)   := λ x, denote (ACons x A) e;
   denote A (APP f x) := denote A f (denote A x).
 
+Equations denoteR `(A : Args tdenote Γ') `(e : Exp Γ τ) (r : Ren Γ Γ') :
+  tdenote τ :=
+  denoteR A (VAR v)   r := get tdenote A (r _ v);
+  denoteR A (ABS e)   r := λ x, denoteR (ACons x A) e (RTmL r);
+  denoteR A (APP f x) r := denoteR A f r (denoteR A x r).
+
 Lemma denote_identity `(A : Args tdenote Γ) τ :
   denote A (identity Γ τ) = id.
 Proof.
@@ -151,65 +173,59 @@ Proof.
   now rewrite get_equation_2.
 Qed.
 
-Lemma denote_rename `(A : Args tdenote Γ)
-      `(r : Ren Γ Γ') `(A' : Args tdenote Γ') `(e : Exp Γ τ) :
-  denote A' (rename r e) = denote A e.
+Lemma denote_denoteR `(A : Args tdenote Γ) {τ} (e : Exp Γ τ) :
+  denoteR A e (λ _, id) = denote A e.
 Proof.
-  induction e; simpl.
-  - rewrite !denote_equation_1.
-    admit.
-  - rewrite !denote_equation_2.
+  induction e.
+  - rewrite denote_equation_1.
+    now rewrite denoteR_equation_1.
+  - rewrite denote_equation_2.
+    rewrite denoteR_equation_2.
     extensionality x.
     fold tdenote in x.
-    admit.
-  - rewrite !denote_equation_3.
-    now erewrite IHe1, IHe2.
-Admitted.
+    rewrite RTmL_id.
+    now rewrite IHe.
+  - rewrite denote_equation_3.
+    rewrite denoteR_equation_3.
+    now rewrite IHe1, IHe2.
+Qed.
 
-Lemma helper
-  (Γ : Env)
-  (A : Args tdenote Γ)
-  (τ τ' τ'' : Ty)
-  (x : tdenote τ'')
-  (dom cod : Ty)
-  (f : Exp (dom :: Γ) cod)
-  (x0 : tdenote dom)
-  :
-  denote (ACons x0 (ACons x A)) (rename (RTmL (λ τ0 : Ty, SV)) f) =
-  denote (ACons x (ACons x0 A)) (rename (λ τ0 : Ty, SV) f).
+Lemma denoteR_rename `(A : Args tdenote Γ') `(r : Ren Γ Γ')
+      {τ} (e : Exp Γ τ) :
+  denoteR A (rename r e) (λ _, id) = denoteR A e r.
 Proof.
-  dependent induction f; simpl.
-  - rewrite !denote_equation_1.
-    rewrite get_equation_3.
-    dependent destruction v.
-    + rewrite !get_equation_2.
-      reflexivity.
-    + rewrite RTmL_equation_2.
-      rewrite !get_equation_3.
-      reflexivity.
-  - rewrite !denote_equation_2.
-    extensionality x1.
-    fold tdenote in x1.
-    rewrite IHf; auto; clear IHf.
-    admit.
-  - rewrite !denote_equation_3.
-    now rewrite IHf1, IHf2.
-Admitted.
-
-Lemma denote_weaken `(A : Args tdenote Γ)
-      {τ τ' τ''} (x : tdenote τ'') (f : Exp Γ (τ ⟶ τ')) :
-  denote (ACons x A) (weaken f) = denote A f.
-Proof.
-  unfold weaken.
-  induction f; simpl.
-  - now rewrite !denote_equation_1.
-  - rewrite !denote_equation_2.
+  generalize dependent A.
+  generalize dependent r.
+  generalize dependent Γ'.
+  induction e; simpl; intros.
+  - now rewrite !denoteR_equation_1.
+  - rewrite !denoteR_equation_2.
     extensionality x0.
     fold tdenote in x0.
-    rewrite <- IHf; clear IHf.
+    rewrite RTmL_id.
+    now rewrite IHe.
+  - rewrite denoteR_equation_3.
+    now rewrite IHe1, IHe2.
+Qed.
+
+Lemma denote_wk `(A : Args tdenote Γ)
+      {τ τ'} (x : tdenote τ') (e : Exp Γ τ) :
+  denote (ACons x A) (wk e) = denote A e.
+Proof.
+  unfold wk.
+  rewrite <- !denote_denoteR.
+  rewrite denoteR_rename.
+  generalize dependent x.
+  induction e; simpl; intros.
+  - now rewrite !denoteR_equation_1.
+  - rewrite !denoteR_equation_2.
+    extensionality x0.
+    fold tdenote in x0.
+    rewrite RTmL_id.
+    rewrite <- (IHe _ x); clear IHe.
     admit.
-  - rewrite denote_equation_3.
-    now rewrite IHf1, IHf2.
+  - rewrite denoteR_equation_3.
+    now rewrite IHe1, IHe2.
 Admitted.
 
 Lemma denote_compose `(A : Args tdenote Γ)
@@ -223,7 +239,7 @@ Proof.
   rewrite !denote_equation_3.
   rewrite denote_equation_1.
   rewrite get_equation_2.
-  now rewrite !denote_weaken.
+  now rewrite !denote_wk.
 Qed.
 
 Lemma compose_left_identity `(A : Args tdenote Γ)

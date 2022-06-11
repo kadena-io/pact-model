@@ -34,9 +34,11 @@ Definition Env := list Ty.
 
 Fixpoint SemEnv E : Type :=
   match E with
-  | nil    => unit
-  | t :: E => prodT (SemTy t) (SemEnv E)
+  | nil    => ()
+  | t :: E => SemTy t * SemEnv E
   end.
+
+(* This version also works, but is a little more difficult *)
 
 (* Inductive SemEnv : Env → Type := *)
 (*   | ANil      : SemEnv [] *)

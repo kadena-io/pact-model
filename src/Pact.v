@@ -34,7 +34,7 @@ Definition Env := list Ty.
 
 Fixpoint SemEnv E : Type :=
   match E with
-  | nil    => ()
+  | []     => ()
   | t :: E => SemTy t * SemEnv E
   end.
 
@@ -179,13 +179,13 @@ Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
 
 Fixpoint SemSub {Γ Γ'} : Sub Γ' Γ → SemEnv Γ → SemEnv Γ' :=
   match Γ' with
-  | nil    => λ s se, tt
+  | []     => λ s se, tt
   | _ :: _ => λ s se, (SemExp (hdSub s) se, SemSub (tlSub s) se)
   end.
 
 Fixpoint SemRen {Γ Γ'} : Ren Γ' Γ → SemEnv Γ → SemEnv Γ' :=
   match Γ' with
-  | nil    => λ r se, tt
+  | []     => λ r se, tt
   | _ :: _ => λ r se, (SemVar (hdRen r) se, SemRen (tlRen r) se)
   end.
 
@@ -290,7 +290,7 @@ Proof.
   - now rewrite IHe1, IHe2.
 Qed.
 
-Theorem Soundness t (e : Exp nil t) v :
+Theorem Soundness t (e : Exp [] t) v :
   Ev e v → SemExp e = SemExp v.
 Proof.
   intros.

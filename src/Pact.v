@@ -35,7 +35,7 @@ Definition Env := list Ty.
 Fixpoint SemEnv E : Type :=
   match E with
   | []     => ()
-  | t :: E => SemTy t * SemEnv E
+  | τ :: E => SemTy τ * SemEnv E
   end.
 
 (* This version also works, but is a little more difficult *)
@@ -91,9 +91,21 @@ Definition hdSub {Γ Γ' τ} (s : Sub (τ :: Γ) Γ') : Exp Γ' τ := s τ ZV.
 
 Definition Ren Γ Γ' := ∀ {τ}, Var Γ τ → Var Γ' τ.
 
+Definition idRen {Γ} : Ren Γ Γ := λ _, id.
+
 Definition tlRen {Γ Γ' τ} (r : Ren (τ :: Γ) Γ') : Ren Γ Γ' :=
   fun τ' v => r τ' (SV v).
 Definition hdRen {Γ Γ' τ} (r : Ren (τ :: Γ) Γ') : Var Γ' τ := r τ ZV.
+
+Definition skip1 {Γ τ} : Ren Γ (τ :: Γ) := λ _, SV.
+
+Equations skipn {Γ} Γ' : Ren Γ (Γ' ++ Γ) :=
+  skipn []        := λ _, id;
+  skipn (x :: xs) := λ τ v, SV (skipn xs τ v).
+
+Equations trunc {Γ} Γ' `(E : SemEnv (Γ' ++ Γ)) : SemEnv Γ :=
+  trunc []        E := E;
+  trunc (x :: xs) E := trunc xs (snd E).
 
 (*
 Program Definition RTmL {Γ Γ' τ} (r : Ren Γ Γ') :
@@ -189,7 +201,10 @@ Fixpoint SemRen {Γ Γ'} : Ren Γ' Γ → SemEnv Γ → SemEnv Γ' :=
   | _ :: _ => λ r se, (SemVar (hdRen r) se, SemRen (tlRen r) se)
   end.
 
-Lemma SemRenComm Γ t (e : Exp Γ t) Γ' (r : Ren Γ Γ') :
+Equations SemRen1 {Γ τ} (E : SemEnv (τ :: Γ)) : SemEnv Γ :=
+  SemRen1 (x, E) := E.
+
+Lemma SemRenComm Γ τ (e : Exp Γ τ) Γ' (r : Ren Γ Γ') :
   ∀ se, SemExp e (SemRen r se) = SemExp (RTmExp r e) se.
 Proof.
   intros.
@@ -214,16 +229,16 @@ Proof.
 Qed.
 
 Definition RcR {Γ Γ' Γ''} (r : Ren Γ' Γ'') (r' : Ren Γ Γ') :=
-  (λ t v, r t (r' t v)) : Ren Γ Γ''.
+  (λ τ v, r τ (r' τ v)) : Ren Γ Γ''.
 
 Definition ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') :=
-  (λ t v, s t (r t v)) : Sub Γ Γ''.
+  (λ τ v, s τ (r τ v)) : Sub Γ Γ''.
 
 Definition RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') :=
-  (λ t v, RTmExp r (s t v)) : Sub Γ Γ''.
+  (λ τ v, RTmExp r (s τ v)) : Sub Γ Γ''.
 
 Definition ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (s' : Sub Γ Γ') :=
-  (λ t v, STmExp s (s' t v)) : Sub Γ Γ''.
+  (λ τ v, STmExp s (s' τ v)) : Sub Γ Γ''.
 
 Lemma LiftRcR Γ Γ' Γ'' τ (r : Ren Γ' Γ'') (r' : Ren Γ Γ') :
   RTmL (τ := τ) (RcR r r') = RcR (RTmL r) (RTmL r').
@@ -233,27 +248,55 @@ Proof.
   now dependent induction v.
 Qed.
 
-Corollary tlRen_SV {Γ Γ' τ} (r : Ren (τ :: Γ) Γ') :
-  tlRen r = RcR r (λ _, SV).
-Proof. reflexivity. Qed.
-
-Lemma SemRen_SV_snd (Γ : Env) (τ : Ty) :
-  @SemRen (τ :: Γ) _ (λ _, SV) = snd.
+Definition SemEnv_rect (P : ∀ Γ : Env, SemEnv Γ → Type) :
+  P [] tt →
+  (∀ (τ : Ty) (x : SemTy τ) (Γ : Env) (E : SemEnv Γ),
+      P Γ E → P (τ :: Γ) (x, E)) →
+  ∀ (Γ : Env) (E : SemEnv Γ), P Γ E.
 Proof.
-  unfold SemRen.
-  extensionality A.
-  destruct A; simpl.
-  induction Γ; destruct s0; simpl; auto.
+  intros.
+  induction Γ; destruct E.
+  - exact X.
+  - now apply X0, IHΓ.
+Defined.
+
+Lemma SemRen_id Γ : SemRen idRen = @id (SemEnv Γ).
+Proof.
+  unfold id.
+  extensionality E.
+  induction E using SemEnv_rect; auto.
+  simpl.
   f_equal.
+  unfold tlRen.
 Admitted.
 
-Corollary SemRen_SV `(A : SemEnv Γ) `(x : SemTy τ) :
-  SemRen (λ _, SV) (x, A) = A.
+Lemma SemRen_skipn (Γ Γ' : Env) :
+  @SemRen (Γ ++ Γ') _ (skipn Γ) = trunc Γ.
+Proof.
+  extensionality E.
+  generalize dependent Γ'.
+  induction Γ; simpl; intros.
+  - rewrite skipn_equation_1.
+    rewrite trunc_equation_1.
+    now rewrite SemRen_id.
+  - destruct E as [x E].
+    rewrite skipn_equation_2.
+    rewrite trunc_equation_2.
+    simpl.
+    rewrite <- IHΓ.
+Admitted.
+
+Corollary SemRen_SV_snd (Γ : Env) (τ : Ty) :
+  SemRen (λ _, SV) = @snd (SemTy τ) (SemEnv Γ).
+Proof. exact (SemRen_skipn [τ] Γ). Qed.
+
+Corollary SemRen_SV `(E : SemEnv Γ) `(x : SemTy τ) :
+  SemRen (λ _, SV) (x, E) = E.
 Proof. now rewrite SemRen_SV_snd. Qed.
 
-Lemma SemExp_wk `(A : SemEnv Γ)
+Lemma SemExp_wk `(E : SemEnv Γ)
       {τ τ'} (x : SemTy τ') (e : Exp Γ τ) :
-  SemExp (wk e) (x, A) = SemExp e A.
+  SemExp (wk e) (x, E) = SemExp e E.
 Proof.
   unfold wk.
   rewrite <- SemRenComm; simpl.
@@ -261,7 +304,7 @@ Proof.
   now eapply SemRen_SV; eauto.
 Qed.
 
-Lemma SemSubComm Γ t (e : Exp Γ t) Γ' (s : Sub Γ Γ') :
+Lemma SemSubComm Γ τ (e : Exp Γ τ) Γ' (s : Sub Γ Γ') :
   ∀ se, SemExp e (SemSub s se) = SemExp (STmExp s e) se.
 Proof.
   intros.
@@ -290,7 +333,7 @@ Proof.
   - now rewrite IHe1, IHe2.
 Qed.
 
-Theorem Soundness t (e : Exp [] t) v :
+Theorem Soundness τ (e : Exp [] τ) v :
   Ev e v → SemExp e = SemExp v.
 Proof.
   intros.
@@ -308,16 +351,16 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma SemExp_identity `(A : SemEnv Γ) τ :
-  SemExp (identity Γ τ) A = id.
+Lemma SemExp_identity `(E : SemEnv Γ) τ :
+  SemExp (identity Γ τ) E = id.
 Proof.
   extensionality x.
   reflexivity.
 Qed.
 
-Lemma SemExp_compose `(A : SemEnv Γ)
+Lemma SemExp_compose `(E : SemEnv Γ)
       {τ τ' τ''} (f : Exp Γ (τ' ⟶ τ'')) (g : Exp Γ (τ ⟶ τ')) :
-  SemExp (compose f g) A = SemExp f A ∘ SemExp g A.
+  SemExp (compose f g) E = SemExp f E ∘ SemExp g E.
 Proof.
   extensionality x.
   fold SemTy in x.
@@ -325,28 +368,28 @@ Proof.
   now rewrite !SemExp_wk.
 Qed.
 
-Lemma compose_left_identity `(A : SemEnv Γ)
+Lemma compose_left_identity `(E : SemEnv Γ)
       {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
-  SemExp (compose f (identity Γ τ)) A = SemExp f A.
+  SemExp (compose f (identity Γ τ)) E = SemExp f E.
 Proof.
   rewrite SemExp_compose.
   reflexivity.
 Qed.
 
-Lemma compose_right_identity `(A : SemEnv Γ)
+Lemma compose_right_identity `(E : SemEnv Γ)
       {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
-  SemExp (compose (identity Γ τ') f) A = SemExp f A.
+  SemExp (compose (identity Γ τ') f) E = SemExp f E.
 Proof.
   rewrite SemExp_compose.
   reflexivity.
 Qed.
 
-Lemma compose_assoc `(A : SemEnv Γ)
+Lemma compose_assoc `(E : SemEnv Γ)
       {τ τ' τ'' τ'''}
       (f : Exp Γ (τ'' ⟶ τ'''))
       (g : Exp Γ (τ' ⟶ τ''))
       (h : Exp Γ (τ ⟶ τ')) :
-  SemExp (compose f (compose g h)) A = SemExp (compose (compose f g) h) A.
+  SemExp (compose f (compose g h)) E = SemExp (compose (compose f g) h) E.
 Proof.
   rewrite !SemExp_compose.
   now rewrite compose_assoc.

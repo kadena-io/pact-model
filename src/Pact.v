@@ -289,15 +289,33 @@ Proof.
     now rewrite <- IHΓ''.
 Qed.
 
-Lemma SemRen_id (Γ : Env) :
-  SemRen idRen = @id (SemEnv Γ).
-Proof.
-Admitted.
-
 Lemma SemRen_skip1 (Γ : Env) (τ : Ty) :
   SemRen skip1 = @snd (SemTy τ) (SemEnv Γ).
 Proof.
+  extensionality E.
+  generalize dependent τ.
+  induction Γ; simpl; intros; auto.
+  - now destruct E, u; simpl.
+  - destruct E, p; simpl.
+    f_equal.
+    replace (tlRen skip1)
+       with (RcR (Γ:=Γ) (skip1 (τ:=τ)) (skip1 (τ:=a)))
+         by auto.
+    rewrite SemRen_RcR.
+    unfold Basics.compose.
+    rewrite IHΓ.
 Admitted.
+
+Lemma SemRen_id (Γ : Env) :
+  SemRen idRen = @id (SemEnv Γ).
+Proof.
+  unfold id.
+  extensionality E.
+  induction E using SemEnv_rect; simpl; auto.
+  f_equal.
+  replace (tlRen idRen) with (skip1 (Γ:=Γ) (τ:=τ)) by auto.
+  now rewrite SemRen_skip1.
+Qed.
 
 Lemma SemRen_skipn (Γ Γ' : Env) :
   @SemRen (Γ ++ Γ') _ (skipn Γ) = trunc Γ.

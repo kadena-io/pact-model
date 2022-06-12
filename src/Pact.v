@@ -202,7 +202,7 @@ Fixpoint SemRen {Γ Γ'} : Ren Γ' Γ → SemEnv Γ → SemEnv Γ' :=
   end.
 
 Equations SemRen1 {Γ τ} (E : SemEnv (τ :: Γ)) : SemEnv Γ :=
-  SemRen1 (x, E) := E.
+  SemRen1 (_, E) := E.
 
 Lemma SemRenComm Γ τ (e : Exp Γ τ) Γ' (r : Ren Γ Γ') :
   ∀ se, SemExp e (SemRen r se) = SemExp (RTmExp r e) se.
@@ -248,6 +248,18 @@ Proof.
   now dependent induction v.
 Qed.
 
+Lemma SemRenVarComm Γ τ (v : Var Γ τ) Γ' (r : Ren Γ Γ') :
+  ∀ se, SemVar v (SemRen r se) = SemVar (r _ v) se.
+Proof.
+  intros.
+  generalize dependent Γ'.
+  induction v; simpl; intros; auto.
+  unfold tlRen.
+  specialize (IHv _ (RcR r skip1)).
+  unfold RcR, skip1 in IHv.
+  now rewrite <- IHv; clear IHv.
+Qed.
+
 Definition SemEnv_rect (P : ∀ Γ : Env, SemEnv Γ → Type) :
   P [] tt →
   (∀ (τ : Ty) (x : SemTy τ) (Γ : Env) (E : SemEnv Γ),
@@ -260,31 +272,53 @@ Proof.
   - now apply X0, IHΓ.
 Defined.
 
-Lemma SemRen_id Γ : SemRen idRen = @id (SemEnv Γ).
+Lemma SemRen_RcR {Γ Γ' Γ''} (f : Ren Γ'' Γ') (g : Ren Γ' Γ) :
+  SemRen (RcR g f) = SemRen f ∘ SemRen g.
 Proof.
-  unfold id.
   extensionality E.
-  induction E using SemEnv_rect; auto.
-  simpl.
+  unfold Basics.compose.
+  unfold RcR.
+  induction Γ''; simpl; auto.
   f_equal.
-  unfold tlRen.
+  - unfold hdRen.
+    clear.
+    now rewrite SemRenVarComm.
+  - unfold tlRen.
+    specialize (IHΓ'' (RcR f skip1)).
+    unfold skip1, RcR in IHΓ''.
+    now rewrite <- IHΓ''.
+Qed.
+
+Lemma SemRen_id (Γ : Env) :
+  SemRen idRen = @id (SemEnv Γ).
+Proof.
+Admitted.
+
+Lemma SemRen_skip1 (Γ : Env) (τ : Ty) :
+  SemRen skip1 = @snd (SemTy τ) (SemEnv Γ).
+Proof.
 Admitted.
 
 Lemma SemRen_skipn (Γ Γ' : Env) :
   @SemRen (Γ ++ Γ') _ (skipn Γ) = trunc Γ.
 Proof.
-  extensionality E.
   generalize dependent Γ'.
   induction Γ; simpl; intros.
   - rewrite skipn_equation_1.
+    extensionality E.
     rewrite trunc_equation_1.
     now rewrite SemRen_id.
-  - destruct E as [x E].
-    rewrite skipn_equation_2.
+  - rewrite skipn_equation_2.
+    extensionality E.
     rewrite trunc_equation_2.
-    simpl.
     rewrite <- IHΓ.
-Admitted.
+    replace (λ (τ : Ty) (v : Var Γ' τ),
+              @SV (Γ ++ Γ') τ a (@skipn Γ' Γ τ v))
+       with (RcR (Γ:=Γ') (skip1 (τ:=a)) (skipn Γ))
+         by reflexivity.
+    rewrite SemRen_RcR.
+    now rewrite SemRen_skip1.
+Qed.
 
 Corollary SemRen_SV_snd (Γ : Env) (τ : Ty) :
   SemRen (λ _, SV) = @snd (SemTy τ) (SemEnv Γ).

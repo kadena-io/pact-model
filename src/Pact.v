@@ -201,9 +201,6 @@ Fixpoint SemRen {Γ Γ'} : Ren Γ' Γ → SemEnv Γ → SemEnv Γ' :=
   | _ :: _ => λ r se, (SemVar (hdRen r) se, SemRen (tlRen r) se)
   end.
 
-Equations SemRen1 {Γ τ} (E : SemEnv (τ :: Γ)) : SemEnv Γ :=
-  SemRen1 (_, E) := E.
-
 Lemma SemRenComm Γ τ (e : Exp Γ τ) Γ' (r : Ren Γ Γ') :
   ∀ se, SemExp e (SemRen r se) = SemExp (RTmExp r e) se.
 Proof.
@@ -289,8 +286,8 @@ Proof.
     now rewrite <- IHΓ''.
 Qed.
 
-Corollary tlRen_skip1 Γ τ a :
-  @tlRen _ (τ :: a :: Γ) _ skip1 = RcR skip1 skip1.
+Corollary tlRen_skip1 Γ τ τ' :
+  @tlRen _ (τ :: τ' :: Γ) _ skip1 = RcR skip1 skip1.
 Proof. reflexivity. Qed.
 
 Lemma SemRen_skip1 (Γ : Env) (τ : Ty) :
@@ -299,10 +296,11 @@ Proof.
   extensionality E.
   generalize dependent τ.
   induction Γ; simpl; intros; auto.
-  - now destruct E, u; simpl.
-  - destruct E, p; simpl.
+  - now destruct E as [x ()].
+  - destruct E as [x [y E]]; simpl.
     f_equal.
-    rewrite tlRen_skip1, SemRen_RcR.
+    rewrite tlRen_skip1.
+    rewrite SemRen_RcR.
     unfold Basics.compose.
     rewrite IHΓ.
 Admitted.

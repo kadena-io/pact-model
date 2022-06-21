@@ -37,11 +37,11 @@ Arguments SV {_ _ _} _.
 
 Inductive Exp Γ : Ty → Set :=
   | VAR {τ}       : Var Γ τ → Exp Γ τ
-  | ABS {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
+  | LAM {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
   | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
 
 Arguments VAR {Γ τ} _.
-Arguments ABS {Γ dom cod} _.
+Arguments LAM {Γ dom cod} _.
 Arguments APP {Γ dom cod} _ _.
 
 Definition Sub Γ Γ' := ∀ τ, Var Γ τ → Exp Γ' τ.
@@ -110,7 +110,7 @@ Fixpoint RTmExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
   | VAR v     => VAR (r _ v)
   | APP e1 e2 => APP (RTmExp r e1) (RTmExp r e2)
-  | ABS e     => ABS (RTmExp (RTmL r) e)
+  | LAM e     => LAM (RTmExp (RTmL r) e)
   end.
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RTmExp (λ _, SV).
@@ -133,23 +133,23 @@ Fixpoint STmExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
   | VAR v     => s _ v
   | APP e1 e2 => APP (STmExp s e1) (STmExp s e2)
-  | ABS e     => ABS (STmExp (STmL s) e)
+  | LAM e     => LAM (STmExp (STmL s) e)
   end.
 
 Inductive Ev : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
-  | EvAbs t1 t2 (e : Exp [t1] t2) : Ev (ABS e) (ABS e)
+  | EvAbs t1 t2 (e : Exp [t1] t2) : Ev (LAM e) (LAM e)
   | EvApp t1 t2 e v w (e1 : Exp [] (t1 ⟶ t2)) e2 :
-    Ev e1 (ABS e) → Ev e2 w → Ev (STmExp {| w |} e) v →
+    Ev e1 (LAM e) → Ev e2 w → Ev (STmExp {| w |} e) v →
     Ev (APP e1 e2) v.
 
 (* Notation "Γ ⊢ e ： τ" := (Judgment Γ τ e) (at level 80, no associativity). *)
 
-Definition identity Γ τ : Exp Γ (τ ⟶ τ) := ABS (VAR ZV).
+Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (VAR ZV).
 
 Definition compose {Γ τ τ' τ''}
            (f : Exp Γ (τ' ⟶ τ''))
            (g : Exp Γ (τ ⟶ τ')) : Exp Γ (τ ⟶ τ'') :=
-  ABS (APP (wk f) (APP (wk g) (VAR ZV))).
+  LAM (APP (wk f) (APP (wk g) (VAR ZV))).
 
 Definition RcR {Γ Γ' Γ''} (r : Ren Γ' Γ'') (r' : Ren Γ Γ') :=
   (λ τ v, r τ (r' τ v)) : Ren Γ Γ''.

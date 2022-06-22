@@ -114,7 +114,7 @@ Inductive CEval (D : Defs) :
   (* with-capability *)
   | Eval_WITH cs ms ms' (C : ACap) (val : Value (valueTy (sig C))) expr :
     ∀ def, is_defined D C def →
-    ∀ avail, existT _ C avail ∈ ms →
+    ∀ avail, valueTy (sig C) = TUnit ∨ existT _ C avail ∈ ms →
     ∀ is_monoid : Monoid (Value (valueTy (sig C))),
     ∀ remainder, avail = val ⊗ remainder →
     ∀ arg, cap C = Token arg →

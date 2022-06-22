@@ -1,4 +1,10 @@
 -R src Kadena
+src/Cap.v
+src/Capabilities.v
+src/CapabilitiesOld.v
+src/Db.v
+src/EnsemblesExt.v
+src/Group.v
 src/Lam.v
 src/Sem.v
-src/Db.v
+src/SysF.v

@@ -1,18 +1,9 @@
 Require Import
-  Coq.Program.Program
   Coq.Unicode.Utf8
-  Coq.micromega.Lia
-  Coq.Classes.Morphisms
-  Coq.Relations.Relation_Definitions
   Coq.Strings.String
-  Coq.Vectors.Vector
-  Coq.Lists.List
   Coq.Sets.Ensembles
   EnsemblesExt
   Group.
-
-From Equations Require Import Equations.
-Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -25,7 +16,7 @@ Inductive Ty : Set :=
   | TUnit
   | TInt
   | TString
-  | TPair : Ty →  Ty → Ty.
+  | TPair : Ty → Ty → Ty.
 
 Inductive Value : Ty → Set :=
   | VUnit     : Value TUnit

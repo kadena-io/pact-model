@@ -73,7 +73,8 @@ Record Defs := {
 Inductive CExpr : Set :=
   | INSTALL {t} : ACap → Value t → CExpr
   | WITH    {t} : ACap → Value t → CExpr → CExpr
-  | REQUIRE     : ACap → CExpr.
+  | REQUIRE     : ACap → CExpr
+  | SEQ         : CExpr → CExpr → CExpr.
 
 Definition is_defined (D : Defs) (C : ACap) : Ensemble (Def (sig C)) :=
   capabilities D (name C) (sig C).
@@ -95,8 +96,7 @@ Inductive CEval (D : Defs) :
   Prop :=
 
   (* install-capability *)
-  | Eval_INSTALL cs ms (C : ACap) :
-    ∀ val : Value (valueTy (sig C)),
+  | Eval_INSTALL cs ms (C : ACap) (val : Value (valueTy (sig C))) :
     CEval D
       cs ms
       (INSTALL C val)
@@ -124,4 +124,18 @@ Inductive CEval (D : Defs) :
     CEval D
       ({ C } ∪ cs) ms
       (REQUIRE C)
-      ({ C } ∪ cs) ms.
+      ({ C } ∪ cs) ms
+
+  | Eval_SEQ cs cs' cs'' ms ms' ms'' expr1 expr2 :
+    CEval D
+      cs ms
+      expr1
+      cs' ms' →
+    CEval D
+      cs' ms'
+      expr2
+      cs'' ms'' →
+    CEval D
+      cs ms
+      (SEQ expr1 expr2)
+      cs'' ms''.

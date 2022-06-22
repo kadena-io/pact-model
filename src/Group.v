@@ -1,3 +1,7 @@
+Require Import
+  Coq.Program.Program
+  Coq.Unicode.Utf8.
+
 Class Magma (e : Type) := {
   op : e → e → e
 }.
@@ -24,4 +28,3 @@ Class Group (e : Type) := {
 }.
 
 Notation "a ⁻¹" := (inv a) (at level 100).
-

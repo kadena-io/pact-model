@@ -53,6 +53,7 @@
                         'TRANSFER
                         (list 'string 'string 'integer)))
            (managed (get-key :managed sig)))
+      (funcall (get-key :predicate) (list "john" "jose"))
       (when managed
         ;; this will raise an exception if it fails; it also mutates
         ;; `module-capability-resources'

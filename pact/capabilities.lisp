@@ -30,11 +30,10 @@
 ;;; EXPANDS TO
 (unless (lookup module-capability-resources
                 'TRANFER (list "john" "jose"))
-  (let ((sig (lookup-capability-signature
-              module-capability-signatures
-              'TRANSFER
-              ;; inferred types; how close much they match?
-              (list 'string 'string 'integer))))
+  (let ((sig (lookup module-capability-signatures
+                     'TRANSFER
+                     ;; inferred types; how close much they match?
+                     (list 'string 'string 'integer))))
     ;; Here the `:managed' spec is used to determine which argument is moved
     ;; to the outside.
     (insert! module-capability-resources
@@ -50,18 +49,17 @@
 (if (lookup-capabality-token-in-current-scope
      'TRANSFER (list "john" "jose"))
     expr
-  (let* ((sig (lookup-capability-signature
-               module-capability-signatures
-               'TRANSFER
-               (list 'string 'string 'integer)))
-         (managed (get-key :managed sig)))
-    (when managed
-      ;; this will raise an exception if it fails; it also mutates
-      ;; `module-capability-resources'
-      (funcall (car managed) 20))
-    (eval-with-scoped-value
-     (list 'TRANSFER "john" "jose")
-     expr)))
+    (let* ((sig (lookup module-capability-signatures
+                        'TRANSFER
+                        (list 'string 'string 'integer)))
+           (managed (get-key :managed sig)))
+      (when managed
+        ;; this will raise an exception if it fails; it also mutates
+        ;; `module-capability-resources'
+        (funcall (car managed) 20))
+      (eval-with-scoped-value
+       (list 'TRANSFER "john" "jose")
+       expr)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

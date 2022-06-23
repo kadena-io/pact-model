@@ -1,6 +1,6 @@
 args@{
-  rev    ? "c5d810f4c74c824ae0fb788103003c6c9d366a08"
-, sha256 ? "1lmizli5hbk7hlvss0ixx4zl5g4s77z493lr2xn37csph5xcl3rb"
+  rev    ? "e0a42267f73ea52adc061a64650fddc59906fc99"
+, sha256 ? "0r1dsj51x2rm016xwvdnkm94v517jb1rpn4rk63k6krc4d0n3kh9"
 , pkgs   ? import (builtins.fetchTarball {
     url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
     inherit sha256; }) {
@@ -9,31 +9,32 @@ args@{
   }
 }:
 
-let pact-model = coqPackages:
-  with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec {
-    name = "coq${coq.coq-version}-pact-model-${version}";
-    version = "1.0";
+let
 
-    src = if pkgs ? coqFilterSource
-          then pkgs.coqFilterSource [] ./.
-          else ./.;
+pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec {
+  name = "coq${coq.coq-version}-pact-model-${version}";
+  version = "1.0";
 
-    buildInputs = [
-      coq coq.ocaml coq.camlp5 coq.findlib equations # coqhammer pkgs.z3-tptp
-    ];
-    enableParallelBuilding = true;
+  src = if pkgs ? coqFilterSource
+        then pkgs.coqFilterSource [] ./.
+        else ./.;
 
-    buildFlags = [
-      "JOBS=$(NIX_BUILD_CORES)"
-    ];
+  buildInputs = [
+    coq coq.ocaml coq.camlp5 coq.findlib equations # coqhammer pkgs.z3-tptp
+  ];
+  enableParallelBuilding = true;
 
-    installFlags = "COQLIB=$(out)/lib/coq/${coq.coq-version}/";
+  buildFlags = [
+    "JOBS=$(NIX_BUILD_CORES)"
+  ];
 
-    env = pkgs.buildEnv { inherit name; paths = buildInputs; };
-    passthru = {
-      compatibleCoqVersions = v: builtins.elem v [ "8.14" "8.15" ];
-    };
+  installFlags = "COQLIB=$(out)/lib/coq/${coq.coq-version}/";
+
+  env = pkgs.buildEnv { inherit name; paths = buildInputs; };
+  passthru = {
+    compatibleCoqVersions = v: builtins.elem v [ "8.14" "8.15" ];
   };
+};
 
 in {
   pact-model_8_14 = pact-model "coqPackages_8_14";

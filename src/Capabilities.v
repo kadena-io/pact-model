@@ -145,11 +145,11 @@ Inductive CEval (D : Defs) :
 
   (* require-capability *)
   | Eval_REQUIRE (C : ACap) cs ms :
-    C ∉ cs →
+    C ∈ cs →
     CEval D
-      ({ C } ∪ cs) ms
+      cs ms
       (REQUIRE C)
-      ({ C } ∪ cs) ms
+      cs ms
 
   (* Sequencing of two capability functions. An important thing to note here
      is that the set of available capabilities cannot be changed by a

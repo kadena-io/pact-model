@@ -1,0 +1,42 @@
+name:       pact-model
+version:    0.0.1
+synopsis:   Reference implementations related to Pact and Chainweb
+github:     kadena-io/pact-model
+author:     John Wiegley
+maintainer: john@kadena-io
+category:   System, Data
+license:    BSD3
+
+description:
+  Reference implementations related to Pact and Chainweb.
+
+library:
+  source-dirs: src
+  ghc-options:
+    - -Wall
+  dependencies:
+    - base                        >= 4.9 && < 5
+    - HUnit
+    - QuickCheck
+    - arrows
+    - bytestring
+    - constraints
+    - containers
+    - deepseq
+    - fastsum
+    - free
+    - freer-simple
+    - hashable
+    - hedgehog
+    - lens
+    - monad-par
+    - mtl
+    - multiset
+    - pcre-heavy
+    - row-types
+    - tasty
+    - tasty-hedgehog
+    - tasty-hunit
+    - time
+    - transformers
+    - unordered-containers

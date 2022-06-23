@@ -14,7 +14,7 @@ Class Semigroup (e : Type) := {
 }.
 
 Class Monoid (e : Type) := {
-  is_semigroup :> Magma e;
+  is_semigroup :> Semigroup e;
   ε : e;
   ε_left  a : ε ⊗ a = a;
   ε_right a : a ⊗ ε = a

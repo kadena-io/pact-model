@@ -135,3 +135,18 @@
 (with-capability (TRANSFER "john" "jose" 100) expr)
 
 (require-capability (TRANSFER "john" "jose"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; If managed and unmanaged capabilities were separated things
+
+(defcap TRANSFER (from:string to:string)
+  (assert (!= from to)))
+
+(defmanaged TRANSFER (amount:int requested:int)
+  (assert (<= requested amount))
+  (- amount requested))
+
+(install-resource (TRANSFER "john" "jose" 100))
+
+(with-resource (TRANSFER "john" "jose" 20))

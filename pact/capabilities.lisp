@@ -1,12 +1,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; If I implement these things functionally, use data values for caps...
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; defcap
 
-(defcap TRANSFER (from:string to:string amount:integer)
-  @managed amount TRANSFER-mgr
-  (assert (!= from to))
-  (compose-capability (WITHDRAW from))
-  (compose-capability (DEPOSIT from)))
+;; (defcap TRANSFER (from:string to:string amount:integer)
+;;   @managed amount TRANSFER-mgr
+;;   (assert (!= from to))
+;;   (compose-capability (WITHDRAW from))
+;;   (compose-capability (DEPOSIT from)))
 
 ;;; EXPANDS TO
 (insert! 'module-capability-signatures
@@ -72,3 +76,62 @@
 (unless (lookup-capabality-token-in-current-scope
          'TRANSFER (list "john" "jose"))
   (error "capability X unavailable"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; If I implement these things functionally, using lambda terms for caps
+
+;; Primitives:
+;;
+;; These manage the "resources" in the evaluation environment:
+;; - allocate
+;; - allocated-p
+;; - reserve
+
+;; These manage the "capabilities" in the evaluation environment:
+;; - grant
+;; - granted-p
+;; - with-scoped-value
+
+(defmacro defcap (name args &rest body)
+  (if (eq (car body) '@managed)
+      (let* ((v (cadr body))
+             (f (caddr body))
+             (b (cdddr body))
+             (a (remove v args)))
+        `(defun ,name ,(append args (list '&optional 'install))
+           (if install
+               (unless (allocated-p (quote ,name) (list ,@a))
+                 (allocate (quote ,name) (list ,@a) ,f ,v))
+             (unless (granted-p (quote ,name) (list ,@a))
+               ,@b
+               (reserve (quote ,name) (list ,@a) ,v)
+               (grant (quote ,name) (list ,@a))))))
+    `(defun ,name ,args
+       (unless (granted-p (quote ,name) (list ,@args))
+         ,@body
+         (grant (quote ,name) (list ,@args))))))
+
+(defmacro with-capability (cap &rest body)
+  `(if (granted-p (quote ,(car cap)) (list ,@(cdr cap)))
+       (progn
+         ,@body)
+     (with-scoped-value ,cap ,@body)))
+
+(defmacro require-capability (cap)
+  `(unless (granted-p (quote ,(car cap)) (list ,@(cdr cap)))
+     (error "capability has not been granted")))
+
+(defcap ALLOW-ENTRY (user-id)
+  (assert (= user-id "jose")))
+
+(defcap TRANSFER (from to amount)
+  @managed amount TRANSFER-mgr
+  (assert (!= from to))
+  ;; (compose-capability (WITHDRAW from))
+  ;; (compose-capability (DEPOSIT from))
+  )
+
+(with-capability (TRANSFER "john" "jose" 100) expr)
+
+(require-capability (TRANSFER "john" "jose"))

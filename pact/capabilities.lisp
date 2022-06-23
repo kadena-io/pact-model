@@ -10,8 +10,8 @@
 
 ;;; EXPANDS TO
 (insert! 'module-capability-signatures
-         (list :name 'TRANSFER
-               :args (list (cons 'from 'string)
+         'TRANSFER
+         (list :args (list (cons 'from 'string)
                            (cons 'to 'string)
                            (cons 'amount 'integer))
                :managed (cons #'TRANSFER-mgr 'amount)

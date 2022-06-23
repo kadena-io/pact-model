@@ -99,10 +99,19 @@ Inductive CEval (D : Defs) :
 
   (* install-capability *)
   | Eval_INSTALL cs ms (C : ACap) (val : Value (valueTy (sig C))) :
+    ∀ avail, existT _ C avail ∉ ms →
     CEval D
       cs ms
       (INSTALL C val)
       cs (set_available ms C val)
+
+  (* install-capability noop *)
+  | Eval_INSTALL_noop cs ms (C : ACap) (val : Value (valueTy (sig C))) :
+    ∀ avail, existT _ C avail ∈ ms →
+    CEval D
+      cs ms
+      (INSTALL C val)
+      cs ms
 
   (* with-capability *)
   | Eval_WITH cs ms ms' (C : ACap) (val : Value (valueTy (sig C))) expr :
@@ -136,6 +145,7 @@ Inductive CEval (D : Defs) :
 
   (* require-capability *)
   | Eval_REQUIRE (C : ACap) cs ms :
+    C ∉ cs →
     CEval D
       ({ C } ∪ cs) ms
       (REQUIRE C)

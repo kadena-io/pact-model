@@ -34,30 +34,30 @@ functions if certain conditions have been met. Here's a quick example, where
 the functions `foo` and `bar` can only be called by `entry`, and only if
 certain conditions have been met:
 ```lisp
-  (defcap FOO_CALLABLE (value:integer)
-    (enforce (> value 0) "Value must be greater than zero"))
+(defcap FOO_CALLABLE (value:integer)
+  (enforce (> value 0) "Value must be greater than zero"))
 
-  (defcap BAR_CALLABLE (value:integer)
-    (enforce (< value 0) "Value must be less than zero"))
+(defcap BAR_CALLABLE (value:integer)
+  (enforce (< value 0) "Value must be less than zero"))
 
-  (defun entry (value:integer)
-    (if (> value 0)
-        (with-capability (FOO_CALLABLE value)
-          (foo value))
-        (if (< value 0)
-            (with-capability (BAR_CALLABLE value)
-              (bar value))
-            (print "entry ignoring a zero value"))))
+(defun entry (value:integer)
+  (if (> value 0)
+      (with-capability (FOO_CALLABLE value)
+        (foo value))
+      (if (< value 0)
+          (with-capability (BAR_CALLABLE value)
+            (bar value))
+          (print "entry ignoring a zero value"))))
 
-  (defun foo (value:integer)
-    "Foo never deals with negative numbers or zero."
-    (require-capability (FOO_CALLABLE value))
-    (print value))
+(defun foo (value:integer)
+  "Foo never deals with negative numbers or zero."
+  (require-capability (FOO_CALLABLE value))
+  (print value))
 
-  (defun bar (value:integer)
-    "Bar never deals with positive numbers or zero."
-    (require-capability (BAR_CALLABLE value))
-    (print value))
+(defun bar (value:integer)
+  "Bar never deals with positive numbers or zero."
+  (require-capability (BAR_CALLABLE value))
+  (print value))
 ```
 
 This example is a bit contrived, but note a few attributes of this code:

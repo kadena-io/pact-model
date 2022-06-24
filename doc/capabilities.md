@@ -33,8 +33,7 @@ Although basic, this simple model allows us to implement the concept of
 functions if certain conditions have been met. Here's a quick example, where
 the functions `foo` and `bar` can only be called by `entry`, and only if
 certain conditions have been met:
-
-```
+```lisp
   (defcap FOO_CALLABLE (value:integer)
     (enforce (> value 0) "Value must be greater than zero"))
 
@@ -89,8 +88,7 @@ Below is an example definition. Note how it uses both the capability argument,
 and access to the module's tables, to determine whether granting should occur.
 The use of `compose-capability` here is somewhat artificial, but is used to
 show a full definition covering all the possibilities:
-
-```
+```lisp
 (defcap ALLOW_ENTRY (user-id:string)
   "Govern entry operation."
   (with-read table user-id
@@ -106,16 +104,14 @@ The special form `compose-capability (CAP ARGS...)` can be used only within
 the body of a `defcap`, and serves to extend the set of capabilities granted
 by that capability, provided the predicates of the composed capabilities also
 pass. Consider the following definition:
-
-```
+```lisp
 (defcap FOO (user-id:string)
   (compose-capability (BAR user-id))
   (compose-capability (BAZ user-id)))
 ```
 
 With this capability defined, the following two expressions become equivalent:
-
-```
+```lisp
 (with-capability (FOO "bob")
   (call "alice"))
 

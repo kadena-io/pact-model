@@ -245,21 +245,22 @@ there is no more left.
 
 The special `with-capability (CAP ARGS...)` in the case of managed
 capabilities is very similar to unmanaged capabilities, as described above,
-except for a new bit after the predicate has successfully passed:
+except for a new set of steps after step 3 in the section on unmanaged
+`with-capability` above, after the predicate has successfully passed:
 
-3a. Lookup the current value of the resource named by `CAP ARGS...`, but where
-    `ARGS` does not contain the resource value. In our running transfer
-    example, this would be just `(TRANSFER "bob" "alice")`.
+1. Lookup the current value of the resource named by `CAP ARGS...`, but where
+   `ARGS` does not contain the resource value. In our running transfer
+   example, this would be just `(TRANSFER "bob" "alice")`.
 
-3b. Take the value given in `ARGS...` that is associated with the resource.
+2. Take the value given in `ARGS...` that is associated with the resource.
 
-3c. Pass the current amount from 3a and the requested amount from 3b both to
-    the management function associated with the capability.
+3. Pass the current amount from 3a and the requested amount from 3b both to
+   the management function associated with the capability.
 
-3d. If it passes, use the amount returned by the management function to update
-    the remaining amount available in the internal resource table. Note that
-    resource consumption is not scoped: it persists beyond the call to
-    `with-capability`.
+4. If it passes, use the amount returned by the management function to update
+   the remaining amount available in the internal resource table. Note that
+   resource consumption is not scoped: it persists beyond the call to
+   `with-capability`.
 
 Other than these additional steps related to managing the resource, all the
 others details of `with-capability` remain the same. The granted token is

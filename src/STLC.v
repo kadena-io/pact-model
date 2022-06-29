@@ -1,17 +1,8 @@
 Require Import
-  Coq.Program.Program
   Coq.Unicode.Utf8
-  Coq.micromega.Lia
-  Coq.Classes.Morphisms
-  Coq.Relations.Relation_Definitions
-  Coq.Strings.String
-  Coq.Vectors.Vector
-  Coq.Lists.List
-  Coq.Sets.Ensembles
-  Coq.Logic.EqdepFacts.
+  Coq.Lists.List.
 
 From Equations Require Import Equations.
-Require Import Equations.Type.EqDec.
 Set Equations With UIP.
 
 Generalizable All Variables.
@@ -19,10 +10,10 @@ Generalizable All Variables.
 Import ListNotations.
 
 Inductive Ty :=
-  | TUnit
-  | TFunc : Ty → Ty → Ty.
+  | TUNIT
+  | TARR : Ty → Ty → Ty.
 
-Infix "⟶" := TFunc (at level 30, right associativity).
+Infix "⟶" := TARR (at level 30, right associativity).
 
 Definition Env := list Ty.
 
@@ -32,8 +23,6 @@ Inductive Var : Env → Ty → Set :=
 
 Arguments ZV {_ _}.
 Arguments SV {_ _ _} _.
-
-(* Notation "Γ ∋ A ： τ" := (@Var _ _ Γ τ A) (at level 80, no associativity). *)
 
 Inductive Exp Γ : Ty → Set :=
   | VAR {τ}       : Var Γ τ → Exp Γ τ
@@ -48,16 +37,8 @@ Definition Sub Γ Γ' := ∀ τ, Var Γ τ → Exp Γ' τ.
 
 Definition idSub {Γ} : Sub Γ Γ := @VAR Γ.
 
-(*
-Program Definition consSub {Γ Γ' τ} (e : Exp Γ' τ)
-        (s : Sub Γ Γ') : Sub (τ :: Γ) Γ' :=
-  λ _ v, match v with
-         | ZV    => e
-         | SV v' => s _ v'
-         end.
-*)
-
 Equations consSub {Γ Γ' τ} (e : Exp Γ' τ) (s : Sub Γ Γ')
+          (* Sub (τ :: Γ) Γ' *)
           τ' (v : Var (τ :: Γ) τ') : Exp Γ' τ' :=
   consSub e s τ' ZV      := e;
   consSub e s τ' (SV v') := s _ v'.
@@ -82,17 +63,8 @@ Equations skipn {Γ} Γ' : Ren Γ (Γ' ++ Γ) :=
   skipn []        := λ _, id;
   skipn (x :: xs) := λ τ v, SV (skipn xs τ v).
 
-(*
-Program Definition RTmL {Γ Γ' τ} (r : Ren Γ Γ') :
-        Ren (τ :: Γ) (τ :: Γ') :=
-  λ _ v, match v with
-         | ZV    => ZV
-         | SV v' => SV (r _ v')
-         end.
-*)
-
-(* This version gives better rewriting equations. *)
 Equations RTmL {Γ Γ' τ} (r : Ren Γ Γ')
+          (* Ren (τ :: Γ) (τ :: Γ') *)
           τ' (v : Var (τ :: Γ) τ') : Var (τ :: Γ') τ' :=
   RTmL r τ' ZV      := ZV;
   RTmL r τ' (SV v') := SV (r _ v').
@@ -101,7 +73,7 @@ Lemma RTmL_id {Γ τ} : @RTmL Γ Γ τ (λ _, id) = λ _, id.
 Proof.
   extensionality τ'.
   extensionality v.
-  dependent induction v.
+  dependent elimination v.
   - now rewrite RTmL_equation_1.
   - now rewrite RTmL_equation_2.
 Qed.
@@ -115,17 +87,9 @@ Fixpoint RTmExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RTmExp (λ _, SV).
 
-(*
-Program Definition STmL {Γ Γ' τ} (s : Sub Γ Γ') :
-        Sub (τ :: Γ) (τ :: Γ') :=
-  λ _ v, match v with
-         | ZV    => VAR ZV
-         | SV v' => wk (s _ v')
-         end.
-*)
-
-Equations STmL {Γ Γ' τ} (s : Sub Γ Γ') τ' (v : Var (τ :: Γ) τ') :
-  Exp (τ :: Γ') τ' :=
+Equations STmL {Γ Γ' τ} (s : Sub Γ Γ')
+          (* Sub (τ :: Γ) (τ :: Γ') *)
+          τ' (v : Var (τ :: Γ) τ') : Exp (τ :: Γ') τ' :=
   STmL _ τ' ZV      := VAR ZV;
   STmL _ τ' (SV v') := wk (s _ v').
 
@@ -137,12 +101,12 @@ Fixpoint STmExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   end.
 
 Inductive Ev : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
-  | EvAbs t1 t2 (e : Exp [t1] t2) : Ev (LAM e) (LAM e)
+  | EvAbs t1 t2 (e : Exp [t1] t2) :
+    Ev (LAM e) (LAM e)
+
   | EvApp t1 t2 e v w (e1 : Exp [] (t1 ⟶ t2)) e2 :
     Ev e1 (LAM e) → Ev e2 w → Ev (STmExp {| w |} e) v →
     Ev (APP e1 e2) v.
-
-(* Notation "Γ ⊢ e ： τ" := (Judgment Γ τ e) (at level 80, no associativity). *)
 
 Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (VAR ZV).
 
@@ -168,9 +132,22 @@ Lemma LiftRcR Γ Γ' Γ'' τ (r : Ren Γ' Γ'') (r' : Ren Γ Γ') :
 Proof.
   extensionality τ'.
   extensionality v.
-  now dependent induction v.
+  now dependent elimination v.
 Qed.
 
-Corollary tlRen_skip1 Γ τ τ' :
-  @tlRen _ (τ :: τ' :: Γ) _ skip1 = RcR skip1 skip1.
+Corollary tlRen_skip1 Γ Γ' τ (f : Ren (τ :: Γ') Γ) :
+  tlRen f = RcR f skip1.
+Proof. reflexivity. Qed.
+
+Corollary RcR_idRen_left Γ Γ' (f : Ren Γ' Γ) :
+  RcR idRen f = f.
+Proof. reflexivity. Qed.
+
+Corollary RcR_idRen_right Γ Γ' (f : Ren Γ' Γ) :
+  RcR f idRen = f.
+Proof. reflexivity. Qed.
+
+Corollary RcR_compose_assoc Γ Γ' Γ'' Γ'''
+          (f : Ren Γ' Γ) (g : Ren Γ'' Γ') (h : Ren Γ''' Γ'') :
+  RcR f (RcR g h) = RcR (RcR f g) h.
 Proof. reflexivity. Qed.

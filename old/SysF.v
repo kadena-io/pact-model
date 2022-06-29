@@ -87,8 +87,8 @@ Definition idSubT {Γ} : SubT Γ Γ := @TYVAR Γ.
 
 Equations consSubT {u w} (e : Ty u) (s : SubT u w)
           (v : TyVar w) : Ty w :=
-  consSubT e s ZTYVAR      := e;
-  consSubT e s (STYVAR v') := s _ v'.
+  consSubT e s ZTYVAR      := _ e;
+  consSubT e s (STYVAR v') := s v'.
 
 Notation "{| e ; .. ; f |}" := (consSub e .. (consSub f idSub) ..).
 

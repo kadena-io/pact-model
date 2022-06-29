@@ -1,20 +1,11 @@
 Require Import
   Coq.Program.Program
   Coq.Unicode.Utf8
-  Coq.micromega.Lia
-  Coq.Classes.Morphisms
-  Coq.Relations.Relation_Definitions
-  Coq.Strings.String
-  Coq.Vectors.Vector
   Coq.Lists.List
-  Coq.Sets.Ensembles
-  Coq.Logic.EqdepFacts.
+  STLC.
 
 From Equations Require Import Equations.
-Require Import Equations.Type.EqDec.
 Set Equations With UIP.
-
-Require Import Lam.
 
 Generalizable All Variables.
 
@@ -22,24 +13,15 @@ Import ListNotations.
 
 Fixpoint SemTy (τ : Ty) : Type :=
   match τ with
-  | TUnit => unit
-  | TFunc dom cod => SemTy dom → SemTy cod
+  | TUNIT => unit
+  | TARR dom cod => SemTy dom → SemTy cod
   end.
 
 Fixpoint SemEnv E : Type :=
   match E with
-  | []     => ()
+  | []     => unit
   | τ :: E => SemTy τ * SemEnv E
   end.
-
-(* This version also works, but is a little more difficult *)
-
-(* Inductive SemEnv : Env → Type := *)
-(*   | ANil      : SemEnv [] *)
-(*   | ACons τ Γ : SemTy τ → SemEnv Γ → SemEnv (τ :: Γ). *)
-
-(* Notation "·" := Empty. *)
-(* Notation "Γ ⸴ A ： τ" := (@Cons τ A _ _ Γ) (at level 80, right associativity). *)
 
 Equations trunc {Γ} Γ' `(E : SemEnv (Γ' ++ Γ)) : SemEnv Γ :=
   trunc []        E := E;
@@ -54,7 +36,7 @@ Fixpoint SemVar `(v : Var Γ τ) : SemEnv Γ → SemTy τ :=
 Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
   | VAR v     => SemVar v
-  | ABS e     => λ se, λ x, SemExp e (x, se)
+  | LAM e     => λ se, λ x, SemExp e (x, se)
   | APP e1 e2 => λ se, SemExp e1 se (SemExp e2 se)
   end.
 
@@ -108,7 +90,7 @@ Qed.
 
 Definition SemEnv_rect (P : ∀ Γ : Env, SemEnv Γ → Type) :
   P [] tt →
-  (∀ (τ : Ty) (x : SemTy τ) (Γ : Env) (E : SemEnv Γ),
+  (∀ (τ : Ty) (Γ : Env) (x : SemTy τ) (E : SemEnv Γ),
       P Γ E → P (τ :: Γ) (x, E)) →
   ∀ (Γ : Env) (E : SemEnv Γ), P Γ E.
 Proof.
@@ -135,30 +117,51 @@ Proof.
     now rewrite <- IHΓ''.
 Qed.
 
-Lemma SemRen_skip1 (Γ : Env) (τ : Ty) :
-  SemRen skip1 = @snd (SemTy τ) (SemEnv Γ).
+Lemma SemRen_skip1_f (Γ Γ' : Env) (f : Ren Γ' Γ)
+      (τ : Ty) (x : SemTy τ) (E : SemEnv Γ) :
+  SemRen (RcR skip1 f) (x, E) = SemRen f E.
 Proof.
-  extensionality E.
   generalize dependent τ.
-  induction Γ; simpl; intros; auto.
-  - now destruct E as [x ()].
-  - destruct E as [x [y E]]; simpl.
-    f_equal.
-    rewrite tlRen_skip1.
-    rewrite SemRen_RcR.
-    unfold Basics.compose.
-    rewrite IHΓ.
-Admitted.
+  generalize dependent Γ'.
+  induction Γ'; simpl; intros; auto.
+  unfold hdRen.
+  f_equal.
+  rewrite !tlRen_skip1.
+  rewrite !SemRen_RcR.
+  rewrite <- compose_assoc.
+  rewrite <- !SemRen_RcR.
+  now rewrite IHΓ'.
+Qed.
 
 Lemma SemRen_id (Γ : Env) :
   SemRen idRen = @id (SemEnv Γ).
 Proof.
   unfold id.
   extensionality E.
-  induction E using SemEnv_rect; simpl; auto.
-  f_equal.
-  replace (tlRen idRen) with (skip1 (Γ:=Γ) (τ:=τ)) by auto.
-  now rewrite SemRen_skip1.
+  induction Γ; simpl; intros; auto.
+  - now destruct E as [x ()].
+  - destruct E as [x E]; simpl.
+    f_equal.
+    rewrite tlRen_skip1.
+    rewrite RcR_idRen_left.
+    rewrite <- (RcR_idRen_right _ _ skip1).
+    rewrite SemRen_skip1_f.
+    apply IHΓ.
+Qed.
+
+Lemma SemRen_skip1 (Γ : Env) (τ : Ty) :
+  SemRen skip1 = @snd (SemTy τ) (SemEnv Γ).
+Proof.
+  extensionality E.
+  induction Γ; simpl; intros; auto.
+  - now destruct E as [x ()].
+  - destruct E as [x [y E]]; simpl.
+    f_equal.
+    rewrite tlRen_skip1.
+    rewrite SemRen_skip1_f.
+    rewrite <- (RcR_idRen_right _ _ skip1).
+    rewrite SemRen_skip1_f.
+    now rewrite SemRen_id.
 Qed.
 
 Lemma SemRen_skipn (Γ Γ' : Env) :
@@ -264,7 +267,7 @@ Proof.
   now rewrite !SemExp_wk.
 Qed.
 
-Lemma compose_left_identity `(E : SemEnv Γ)
+Lemma compose_identity_right `(E : SemEnv Γ)
       {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
   SemExp (compose f (identity Γ τ)) E = SemExp f E.
 Proof.
@@ -272,7 +275,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma compose_right_identity `(E : SemEnv Γ)
+Lemma compose_identity_left `(E : SemEnv Γ)
       {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
   SemExp (compose (identity Γ τ') f) E = SemExp f E.
 Proof.

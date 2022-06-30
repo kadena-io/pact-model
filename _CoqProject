@@ -6,7 +6,6 @@ src/Exp.v
 src/Ren.v
 src/Sub.v
 src/Sem.v
-src/Lang.v
 src/Eval.v
 src/Pact.v
 src/Capabilities.v

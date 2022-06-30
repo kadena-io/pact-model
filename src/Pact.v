@@ -5,8 +5,7 @@ Require Import
   Exp
   Ren
   Sub
-  Sem
-  Lang.
+  Sem.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -21,26 +20,26 @@ Section Pact.
 
 Inductive PactTy : Type :=
   | TUnit : PactTy
-  | TList : Ty PactTy → PactTy.
+  | TList : PactTy → PactTy.
 
-Inductive PactExpr Γ : Ty PactTy → Type :=
-  | Unit : PactExpr Γ (TYP TUnit)
-  | Nil {τ} : PactExpr Γ (TYP (TList τ))
-  | Cons {τ} : Exp PactTy PactExpr Γ τ →
-               Exp PactTy PactExpr Γ (TYP (TList τ)) →
-               PactExpr Γ (TYP (TList τ)).
+Inductive PactExpr (Γ : Env) : PactTy → Type :=
+  | Unit : PactExpr Γ TUnit
+  | Nil {τ} : PactExpr Γ (TList τ)
+  | Cons {τ} : PactExpr Γ τ →
+               PactExpr Γ (TList τ) →
+               PactExpr Γ (TList τ).
 
 Arguments Unit {Γ}.
 Arguments Nil {Γ τ}.
 Arguments Cons {Γ τ} _ _.
 
+(*
 Fixpoint PactRen {Γ Γ' τ} (r : Ren Γ Γ') (p : PactExpr Γ τ) : PactExpr Γ' τ :=
   match p with
   | Unit => Unit
   | Nil => Nil
   | @Cons _ τ x xs =>
-    Cons (@RTmExp _ _ (@PactRen) Γ Γ' _ r x)
-         (RTmExp (ren:=@PactRen) r xs)
+    Cons (RTmExp r x) (RTmExp r xs)
   end.
 
 Fixpoint PactSub {Γ Γ' τ} (r : Sub Γ Γ') (p : PactExpr Γ τ) : PactExpr Γ' τ :=
@@ -48,13 +47,13 @@ Fixpoint PactSub {Γ Γ' τ} (r : Sub Γ Γ') (p : PactExpr Γ τ) : PactExpr Γ
   | Unit => Unit
   | Nil => Nil
   | @Cons _ τ x xs =>
-    Cons (@STmExp _ _ (@PactRen) (@PactSub) Γ Γ' _ r x)
-         (STmExp (ren:=@PactRen) (sub:=@PactSub) r xs)
+    Cons (STmExp s x) (STmExp s xs)
   end.
+*)
 
 (** Pact evaluation *)
 
-Inductive PactEval : ∀ {τ}, PactExpr [] τ → Exp PactTy PactExpr [] τ → Prop :=
+Inductive PactEval : ∀ {τ}, PactExpr [] τ → Exp [] τ → Prop :=
   | EvUnit : PactEval (@Unit []) (TERM (@Unit []))
   | EvNil {τ} : PactEval (@Nil _ τ) (TERM (@Nil _ τ))
   | EvCons {τ} (x : PactExpr [] τ) x' (xs : PactExpr [] (TYP (TList τ))) xs' :

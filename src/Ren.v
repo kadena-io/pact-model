@@ -13,15 +13,13 @@ Import ListNotations.
 
 Section Ren.
 
-Context {t : Type}.
-
-Definition Ren Γ Γ' := ∀ τ, Var t Γ τ → Var t Γ' τ.
+Definition Ren Γ Γ' := ∀ τ, Var Γ τ → Var Γ' τ.
 
 Definition idRen {Γ} : Ren Γ Γ := λ _, id.
 
 Definition tlRen {Γ Γ' τ} (r : Ren (τ :: Γ) Γ') : Ren Γ Γ' :=
   fun τ' v => r τ' (SV v).
-Definition hdRen {Γ Γ' τ} (r : Ren (τ :: Γ) Γ') : Var t Γ' τ := r τ ZV.
+Definition hdRen {Γ Γ' τ} (r : Ren (τ :: Γ) Γ') : Var Γ' τ := r τ ZV.
 
 Definition skip1 {Γ τ} : Ren Γ (τ :: Γ) := λ _, SV.
 
@@ -31,7 +29,7 @@ Equations skipn {Γ} Γ' : Ren Γ (Γ' ++ Γ) :=
 
 Equations RTmL {Γ Γ' τ} (r : Ren Γ Γ')
           (* Ren (τ :: Γ) (τ :: Γ') *)
-          τ' (v : Var t (τ :: Γ) τ') : Var t (τ :: Γ') τ' :=
+          τ' (v : Var (τ :: Γ) τ') : Var (τ :: Γ') τ' :=
   RTmL r τ' ZV      := ZV;
   RTmL r τ' (SV v') := SV (r _ v').
 
@@ -72,26 +70,22 @@ Corollary RcR_compose_assoc Γ Γ' Γ'' Γ'''
   RcR f (RcR g h) = RcR (RcR f g) h.
 Proof. reflexivity. Qed.
 
-Context {x : Env t → Ty t → Type}.
-Context {ren : ∀ Γ Γ' τ, Ren Γ Γ' → x Γ τ → x Γ' τ}.
-
-Fixpoint RTmExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp t x Γ τ) : Exp t x Γ' τ :=
+Fixpoint RTmExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
-  | TERM z    => TERM (ren _ _ _ r z)
   | VAR v     => VAR (r _ v)
   | APP e1 e2 => APP (RTmExp r e1) (RTmExp r e2)
   | LAM e     => LAM (RTmExp (RTmL r) e)
   end.
 
-Definition wk {Γ τ τ'} : Exp t x Γ τ → Exp t x (τ' :: Γ) τ := RTmExp (λ _, SV).
+Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RTmExp (λ _, SV).
 
-Definition identity Γ τ : Exp t x Γ (τ ⟶ τ) := LAM (VAR ZV).
+Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (VAR ZV).
 
 (** Now that we have renaming, we can define composition. *)
 
 Definition compose {Γ τ τ' τ''}
-           (f : Exp t x Γ (τ' ⟶ τ''))
-           (g : Exp t x Γ (τ ⟶ τ')) : Exp t x Γ (τ ⟶ τ'') :=
+           (f : Exp Γ (τ' ⟶ τ''))
+           (g : Exp Γ (τ ⟶ τ')) : Exp Γ (τ ⟶ τ'') :=
   LAM (APP (wk f) (APP (wk g) (VAR ZV))).
 
 End Ren.

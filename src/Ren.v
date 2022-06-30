@@ -72,11 +72,12 @@ Corollary RcR_compose_assoc Γ Γ' Γ'' Γ'''
   RcR f (RcR g h) = RcR (RcR f g) h.
 Proof. reflexivity. Qed.
 
-Context {x : Ty t → Type}.
+Context {x : Env t → Ty t → Type}.
+Context {ren : ∀ Γ Γ' τ, Ren Γ Γ' → x Γ τ → x Γ' τ}.
 
 Fixpoint RTmExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp t x Γ τ) : Exp t x Γ' τ :=
   match e with
-  | TERM r    => TERM r
+  | TERM z    => TERM (ren _ _ _ r z)
   | VAR v     => VAR (r _ v)
   | APP e1 e2 => APP (RTmExp r e1) (RTmExp r e2)
   | LAM e     => LAM (RTmExp (RTmL r) e)

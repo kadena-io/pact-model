@@ -152,12 +152,11 @@ Corollary SemRen_SV `(E : SemEnv Γ) `(x : SemTy τ) :
   SemRen (λ _, SV) (x, E) = E.
 Proof. now rewrite SemRen_SV_snd. Qed.
 
-Context {x : Ty t → Type}.
+Context {x : Env t → Ty t → Type}.
 
-Variable SemX : ∀ Γ (τ : Ty t), x τ → SemEnv Γ → SemTy τ.
+Variable SemX : ∀ Γ (τ : Ty t), x Γ τ → SemEnv Γ → SemTy τ.
 
-Hypothesis SemX_SemRen : ∀ Γ Γ' τ z r E,
-  SemX Γ τ z (SemRen r E) = SemX Γ' τ z E.
+Context {ren : ∀ Γ Γ' τ, Ren Γ Γ' → x Γ τ → x Γ' τ}.
 
 Fixpoint SemExp `(e : Exp t x Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
@@ -173,11 +172,13 @@ Fixpoint SemSub {Γ Γ'} : Sub Γ' Γ → SemEnv Γ → SemEnv Γ' :=
   | _ :: _ => λ s se, (SemExp (hdSub s) se, SemSub (tlSub s) se)
   end.
 
-Hypothesis SemX_SemSub : ∀ Γ Γ' τ z s E,
-  SemX Γ τ z (SemSub s E) = SemX Γ' τ z E.
+Context {sub : ∀ Γ Γ' τ, Sub (x:=x) Γ Γ' → x Γ τ → x Γ' τ}.
+
+Hypothesis SemX_SemRen : ∀ Γ Γ' τ z r E,
+  SemX Γ τ z (SemRen r E) = SemX Γ' τ (ren _ _ _ r z) E.
 
 Lemma SemRenComm Γ τ (e : Exp t x Γ τ) Γ' (r : Ren Γ Γ') :
-  ∀ se, SemExp e (SemRen r se) = SemExp (RTmExp r e) se.
+  ∀ se, SemExp e (SemRen r se) = SemExp (RTmExp (ren:=ren) r e) se.
 Proof.
   intros.
   generalize dependent Γ'.
@@ -203,7 +204,7 @@ Qed.
 
 Lemma SemExp_wk `(E : SemEnv Γ)
       {τ τ'} (y : SemTy τ') (e : Exp t x Γ τ) :
-  SemExp (wk e) (y, E) = SemExp e E.
+  SemExp (wk (ren:=ren) e) (y, E) = SemExp e E.
 Proof.
   unfold wk.
   rewrite <- SemRenComm; simpl.
@@ -211,8 +212,11 @@ Proof.
   now eapply SemRen_SV; eauto.
 Qed.
 
+Hypothesis SemX_SemSub : ∀ Γ Γ' τ z s E,
+  SemX Γ τ z (SemSub s E) = SemX Γ' τ (sub _ _ _ s z) E.
+
 Lemma SemSubComm Γ τ (e : Exp t x Γ τ) Γ' (s : Sub Γ Γ') :
-  ∀ se, SemExp e (SemSub s se) = SemExp (STmExp s e) se.
+  ∀ se, SemExp e (SemSub s se) = SemExp (STmExp (ren:=ren) (sub:=sub) s e) se.
 Proof.
   intros.
   generalize dependent Γ'.
@@ -247,7 +251,7 @@ Proof. now extensionality z. Qed.
 
 Lemma SemExp_compose `(E : SemEnv Γ)
       {τ τ' τ''} (f : Exp t x Γ (τ' ⟶ τ'')) (g : Exp t x Γ (τ ⟶ τ')) :
-  SemExp (compose f g) E = SemExp f E ∘ SemExp g E.
+  SemExp (compose (ren:=ren) f g) E = SemExp f E ∘ SemExp g E.
 Proof.
   extensionality z.
   fold SemTy in z.
@@ -257,7 +261,7 @@ Qed.
 
 Lemma SemExp_compose_identity_right `(E : SemEnv Γ)
       {τ τ'} (f : Exp t x Γ (τ ⟶ τ')) :
-  SemExp (compose f (identity Γ τ)) E = SemExp f E.
+  SemExp (compose (ren:=ren) f (identity Γ τ)) E = SemExp f E.
 Proof.
   rewrite SemExp_compose.
   reflexivity.
@@ -265,7 +269,7 @@ Qed.
 
 Lemma SemExp_compose_identity_left `(E : SemEnv Γ)
       {τ τ'} (f : Exp t x Γ (τ ⟶ τ')) :
-  SemExp (compose (identity Γ τ') f) E = SemExp f E.
+  SemExp (compose (ren:=ren) (identity Γ τ') f) E = SemExp f E.
 Proof.
   rewrite SemExp_compose.
   reflexivity.
@@ -276,20 +280,11 @@ Lemma SemExp_compose_assoc `(E : SemEnv Γ)
       (f : Exp t x Γ (τ'' ⟶ τ'''))
       (g : Exp t x Γ (τ' ⟶ τ''))
       (h : Exp t x Γ (τ ⟶ τ')) :
-  SemExp (compose f (compose g h)) E = SemExp (compose (compose f g) h) E.
+  SemExp (compose (ren:=ren) f (compose (ren:=ren) g h)) E =
+  SemExp (compose (ren:=ren) (compose (ren:=ren) f g) h) E.
 Proof.
   rewrite !SemExp_compose.
   now rewrite compose_assoc.
 Qed.
 
 End Sem.
-
-Class Sem (t : Type) (x : Ty t → Type) := {
-  SemT : t → Type;
-  SemX {Γ τ} : x τ → SemEnv SemT Γ → SemTy SemT τ;
-
-  SemX_SemRen {Γ Γ' τ z} r E :
-    SemX (Γ:=Γ) (τ:=τ) z (SemRen SemT r E) = SemX (Γ:=Γ') z E;
-  SemX_SemSub {Γ Γ' τ z} s E :
-    SemX (Γ:=Γ) (τ:=τ) z (SemSub SemT (@SemX) s E) = SemX (Γ:=Γ') z E
-}.

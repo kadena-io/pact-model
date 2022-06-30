@@ -20,10 +20,10 @@ Inductive Var : Env → Ty t → Type :=
 
 Derive Signature NoConfusion for Var.
 
-Variable x : Ty t → Type.
+Variable x : Env → Ty t → Type.
 
 Inductive Exp Γ : Ty t → Type :=
-  | TERM {τ}      : x τ → Exp Γ τ
+  | TERM {τ}      : x Γ τ → Exp Γ τ
   | VAR {τ}       : Var Γ τ → Exp Γ τ
   | LAM {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
   | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.

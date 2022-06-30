@@ -12,30 +12,34 @@ Generalizable All Variables.
 
 Import ListNotations.
 
-Definition Sub Γ Γ' := ∀ τ, Var Γ τ → Exp Γ' τ.
+Section Sub.
 
-Definition idSub {Γ} : Sub Γ Γ := @VAR Γ.
+Context {t : Type}.
+Context {x : Ty t → Type}.
 
-Equations consSub {Γ Γ' τ} (e : Exp Γ' τ) (s : Sub Γ Γ')
+Definition Sub Γ Γ' := ∀ τ, Var t Γ τ → Exp t x Γ' τ.
+
+Definition idSub {Γ} : Sub Γ Γ := @VAR t x Γ.
+
+Equations consSub {Γ Γ' τ} (e : Exp t x Γ' τ) (s : Sub Γ Γ')
           (* Sub (τ :: Γ) Γ' *)
-          τ' (v : Var (τ :: Γ) τ') : Exp Γ' τ' :=
+          τ' (v : Var t (τ :: Γ) τ') : Exp t x Γ' τ' :=
   consSub e s τ' ZV      := e;
   consSub e s τ' (SV v') := s _ v'.
 
-Notation "{| e ; .. ; f |}" := (consSub e .. (consSub f idSub) ..).
-
 Definition tlSub {Γ Γ' τ} (s : Sub (τ :: Γ) Γ') : Sub Γ Γ' :=
   fun τ' v => s τ' (SV v).
-Definition hdSub {Γ Γ' τ} (s : Sub (τ :: Γ) Γ') : Exp Γ' τ := s τ ZV.
+Definition hdSub {Γ Γ' τ} (s : Sub (τ :: Γ) Γ') : Exp t x Γ' τ := s τ ZV.
 
 Equations STmL {Γ Γ' τ} (s : Sub Γ Γ')
           (* Sub (τ :: Γ) (τ :: Γ') *)
-          τ' (v : Var (τ :: Γ) τ') : Exp (τ :: Γ') τ' :=
+          τ' (v : Var t (τ :: Γ) τ') : Exp t x (τ :: Γ') τ' :=
   STmL _ τ' ZV      := VAR ZV;
   STmL _ τ' (SV v') := wk (s _ v').
 
-Fixpoint STmExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
+Fixpoint STmExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp t x Γ τ) : Exp t x Γ' τ :=
   match e with
+  | TERM r    => TERM r
   | VAR v     => s _ v
   | APP e1 e2 => APP (STmExp s e1) (STmExp s e2)
   | LAM e     => LAM (STmExp (STmL s) e)
@@ -49,3 +53,7 @@ Definition RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') :=
 
 Definition ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (s' : Sub Γ Γ') :=
   (λ τ v, STmExp s (s' τ v)) : Sub Γ Γ''.
+
+End Sub.
+
+Notation "{| e ; .. ; f |}" := (consSub e .. (consSub f idSub) ..).

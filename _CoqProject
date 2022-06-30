@@ -1,4 +1,10 @@
 -R src Kadena
-src/Capabilities.v
 src/EnsemblesExt.v
 src/Group.v
+src/Ty.v
+src/Exp.v
+src/Ren.v
+src/Sub.v
+src/Sem.v
+src/Eval.v
+src/Capabilities.v

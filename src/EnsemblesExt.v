@@ -85,15 +85,18 @@ Class Membership (t : Type → Type) := {
 Infix "∈" := is_in (at level 68, no associativity).
 Notation "e ∉ s" := (~ (e ∈ s)) (at level 68, no associativity).
 
-Global Instance Ensemble_Membership : Membership Ensemble := {|
+#[global]
+Instance Ensemble_Membership : Membership Ensemble := {|
   is_in := λ a, flip (Ensembles.In a)
 |}.
 
-Global Instance list_Membership : Membership list := {|
+#[global]
+Instance list_Membership : Membership list := {|
   is_in := List.In
 |}.
 
-(*#[export]*) Program Instance Same_set_Equivalence {A} : Equivalence (@Same_set A).
+#[export]
+Program Instance Same_set_Equivalence {A} : Equivalence (@Same_set A).
 Next Obligation.
   intro x.
   constructor; intros y H; exact H.
@@ -123,7 +126,9 @@ Add Parametric Relation {A : Type} : (Ensemble A) (Same_set A)
   transitivity proved by (@Equivalence_Transitive _ _ Same_set_Equivalence)
   as Same_set_relation.
 
-(*#[export]*) Program Instance Same_set_equiv A :
+
+#[export]
+Program Instance Same_set_equiv A :
   Proper (Same_set A ==> Same_set A ==> Basics.impl) (Same_set A).
 Next Obligation.
   repeat intro.
@@ -133,7 +138,9 @@ Next Obligation.
   apply H, H4, H3, H5.
 Qed.
 
-(*#[export]*) Program Instance Same_set_equiv' A :
+
+#[export]
+Program Instance Same_set_equiv' A :
   Proper (Same_set A ==> Same_set A ==> Basics.flip Basics.impl) (Same_set A).
 Next Obligation.
   repeat intro.
@@ -143,18 +150,24 @@ Next Obligation.
   apply H2, H4, H0, H5.
 Qed.
 
-(*#[export]*) Program Instance Singleton_Same_set A :
+
+#[export]
+Program Instance Singleton_Same_set A :
   Proper (eq ==> Same_set A) (Singleton A).
 Next Obligation. intros; reflexivity. Qed.
 
-(*#[export]*) Program Instance In_Same_set A :
+
+#[export]
+Program Instance In_Same_set A :
   Proper (Same_set A ==> Same_set A) (In A).
 Next Obligation.
   repeat intro.
   exact H.
 Qed.
 
-(*#[export]*) Program Instance In_Same_set_eq A :
+
+#[export]
+Program Instance In_Same_set_eq A :
   Proper (Same_set A ==> eq ==> Basics.impl) (In A).
 Next Obligation.
   repeat intro; subst.
@@ -162,7 +175,9 @@ Next Obligation.
   now apply H.
 Qed.
 
-(*#[export]*) Program Instance In_Same_set_eq' A :
+
+#[export]
+Program Instance In_Same_set_eq' A :
   Proper (Same_set A ==> eq ==> Basics.flip Basics.impl) (In A).
 Next Obligation.
   repeat intro; subst.
@@ -170,7 +185,9 @@ Next Obligation.
   now apply H0.
 Qed.
 
-(*#[export]*) Program Instance In_Same_set_eq'' A :
+
+#[export]
+Program Instance In_Same_set_eq'' A :
   Proper (Same_set A --> eq ==> Basics.impl) (In A).
 Next Obligation.
   repeat intro; subst.
@@ -178,7 +195,9 @@ Next Obligation.
   now apply H0.
 Qed.
 
-(*#[export]*) Program Instance In_Same_set_eq''' A :
+
+#[export]
+Program Instance In_Same_set_eq''' A :
   Proper (Same_set A --> eq ==> Basics.flip Basics.impl) (In A).
 Next Obligation.
   repeat intro; subst.
@@ -186,7 +205,9 @@ Next Obligation.
   now apply H.
 Qed.
 
-(*#[export]*) Program Instance Union_Same_set A :
+
+#[export]
+Program Instance Union_Same_set A :
   Proper (Same_set A ==> Same_set A ==> Same_set A) (Union A).
 Next Obligation.
   repeat intro.
@@ -203,7 +224,9 @@ Next Obligation.
     apply H2, H4.
 Qed.
 
-(*#[export]*) Program Instance Add_Same_set A :
+
+#[export]
+Program Instance Add_Same_set A :
   Proper (Same_set A ==> eq ==> Same_set A) (Add A).
 Next Obligation.
   unfold Add; repeat intro.
@@ -212,7 +235,9 @@ Next Obligation.
   reflexivity.
 Qed.
 
-(*#[export]*) Program Instance Setminus_Same_set A :
+
+#[export]
+Program Instance Setminus_Same_set A :
   Proper (Same_set A ==> Same_set A ==> Same_set A) (Setminus A).
 Next Obligation.
   repeat intro.
@@ -231,7 +256,9 @@ Next Obligation.
   apply H0, H3.
 Qed.
 
-(*#[export]*) Program Instance Subtract_Same_set A :
+
+#[export]
+Program Instance Subtract_Same_set A :
   Proper (Same_set A ==> eq ==> Same_set A) (Subtract A).
 Next Obligation.
   unfold Subtract; repeat intro.
@@ -240,7 +267,9 @@ Next Obligation.
   reflexivity.
 Qed.
 
-(*#[export]*) Program Instance Included_Same_set A :
+
+#[export]
+Program Instance Included_Same_set A :
   Proper (Same_set A ==> Same_set A ==> Basics.impl) (Included A).
 Next Obligation.
   unfold Included; repeat intro.
@@ -249,11 +278,15 @@ Next Obligation.
   exact (H1 _ H2).
 Qed.
 
-(*#[export]*) Program Instance Included_Same_set_subrelation A :
+
+#[export]
+Program Instance Included_Same_set_subrelation A :
   subrelation (@Same_set A) (@Included A).
 Next Obligation. repeat intro; now apply H. Qed.
 
-(*#[export]*) Program Instance Finite_Proper A :
+
+#[export]
+Program Instance Finite_Proper A :
   Proper (Same_set A ==> impl) (Finite A).
 Next Obligation.
   intros ????.
@@ -263,7 +296,9 @@ Next Obligation.
   assumption.
 Qed.
 
-(*#[export]*) Program Instance Finite_Proper_flip A :
+
+#[export]
+Program Instance Finite_Proper_flip A :
   Proper (Same_set A --> flip impl) (Finite A).
 Next Obligation.
   intros ????.
@@ -1504,30 +1539,78 @@ Qed.
 
 End TupleEnsembleFinite.
 
-(*#[export]*) Hint Resolve Conjunction_preserves_finite_left : sets.
-(*#[export]*) Hint Resolve Conjunction_preserves_finite_right : sets.
-(*#[export]*) Hint Resolve Define_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Empty_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Filter_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Finite_Add_Subtract : sets.
-(*#[export]*) Hint Resolve Insert_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Map_value_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Modify_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Move_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Product_Add_left : sets.
-(*#[export]*) Hint Resolve Product_Add_right : sets.
-(*#[export]*) Hint Resolve Product_Empty_set_left : sets.
-(*#[export]*) Hint Resolve Product_Empty_set_right : sets.
-(*#[export]*) Hint Resolve Product_Singleton_Singleton : sets.
-(*#[export]*) Hint Resolve Product_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Relate_Add_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Relate_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Remove_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Setminus_preserves_finite : sets.
-(*#[export]*) Hint Resolve Single_is_Finite : sets.
-(*#[export]*) Hint Resolve Surjection_preserves_Finite : sets.
-(*#[export]*) Hint Resolve Surjective_Add_Subtract : sets.
-(*#[export]*) Hint Resolve Update_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Conjunction_preserves_finite_left : sets.
+
+#[export]
+Hint Resolve Conjunction_preserves_finite_right : sets.
+
+#[export]
+Hint Resolve Define_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Empty_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Filter_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Finite_Add_Subtract : sets.
+
+#[export]
+Hint Resolve Insert_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Map_value_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Modify_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Move_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Product_Add_left : sets.
+
+#[export]
+Hint Resolve Product_Add_right : sets.
+
+#[export]
+Hint Resolve Product_Empty_set_left : sets.
+
+#[export]
+Hint Resolve Product_Empty_set_right : sets.
+
+#[export]
+Hint Resolve Product_Singleton_Singleton : sets.
+
+#[export]
+Hint Resolve Product_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Relate_Add_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Relate_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Remove_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Setminus_preserves_finite : sets.
+
+#[export]
+Hint Resolve Single_is_Finite : sets.
+
+#[export]
+Hint Resolve Surjection_preserves_Finite : sets.
+
+#[export]
+Hint Resolve Surjective_Add_Subtract : sets.
+
+#[export]
+Hint Resolve Update_preserves_Finite : sets.
 
 Ltac finite_preservation :=
   repeat (
@@ -1561,27 +1644,32 @@ Notation "k ↦ v 'not' 'in' m" := (~ has_elem k v m) (at level 68, no associati
 
 Notation "m 'having' k ∷= v" := (insert_elem k v m) (at level 68, no associativity).
 
-Global Instance Ensemble_MapMembership {k} : MapMembership (λ k v, Ensemble (k * v)) k := {|
-  has_elem := λ {v} i x, flip (Ensembles.In (k * v)) (i, x);
-  insert_elem := λ {v} i x m, Ensembles.Add _ m (i, x)
+#[global]
+Instance Ensemble_MapMembership {k} : MapMembership (λ k v, Ensemble (k * v)) k := {|
+  has_elem := λ v i x, flip (Ensembles.In (k * v)) (i, x);
+  insert_elem := λ v i x m, Ensembles.Add _ m (i, x)
 |}.
 
-Global Instance list_MapMembership {k} : MapMembership (λ k v, list (k * v)) k := {|
-  has_elem := λ {v} i x, List.In (i, x);
-  insert_elem := λ {v} i x m, cons (i, x) m
+#[global]
+Instance list_MapMembership {k} : MapMembership (λ k v, list (k * v)) k := {|
+  has_elem := λ v i x, List.In (i, x);
+  insert_elem := λ v i x m, cons (i, x) m
 |}.
 
-Global Instance Map_MapMembership {k} : MapMembership Map k := {|
-  has_elem := λ {v}, @Lookup k v;
-  insert_elem := λ {v} i x m, Update i x m
+#[global]
+Instance Map_MapMembership {k} : MapMembership Map k := {|
+  has_elem := λ v, @Lookup k v;
+  insert_elem := λ v i x m, Update i x m
 |}.
 
-Global Instance FinMap_MapMembership {k} : MapMembership FinMap k := {|
-  has_elem := λ {v} i x (m : FinMap k v), @Lookup k v i x m;
-  insert_elem := λ {v} i x m, UpdateF _ _ i x m
+#[global]
+Instance FinMap_MapMembership {k} : MapMembership FinMap k := {|
+  has_elem := λ v i x (m : FinMap k v), @Lookup k v i x m;
+  insert_elem := λ v i x m, UpdateF _ _ i x m
 |}.
 
-Global Instance FunMap_MapMembership {k} `{EqDec k} : MapMembership FunMap k := {|
-  has_elem := λ {v} i x (m : FunMap k v), @LookupU k v i m = Some x;
-  insert_elem := λ {v} i x m, UpdateU _ _ i x m
+#[global]
+Instance FunMap_MapMembership {k} `{EqDec k} : MapMembership FunMap k := {|
+  has_elem := λ v i x (m : FunMap k v), @LookupU k v i m = Some x;
+  insert_elem := λ v i x m, UpdateU _ _ i x m
 |}.

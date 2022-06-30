@@ -2,7 +2,10 @@ Require Import
   Coq.Program.Program
   Coq.Unicode.Utf8
   Coq.Lists.List
-  STLC.
+  Ty
+  Exp
+  Ren
+  Sub.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -139,7 +142,7 @@ Proof.
   unfold id.
   extensionality E.
   induction Γ; simpl; intros; auto.
-  - now destruct E as [x ()].
+  - now destruct E.
   - destruct E as [x E]; simpl.
     f_equal.
     rewrite tlRen_skip1.
@@ -232,24 +235,6 @@ Proof.
   - now rewrite IHe1, IHe2.
 Qed.
 
-Theorem Soundness τ (e : Exp [] τ) v :
-  Ev e v → SemExp e = SemExp v.
-Proof.
-  intros.
-  induction H; simpl; auto.
-  extensionality se.
-  destruct se.
-  rewrite IHEv1.
-  rewrite IHEv2.
-  rewrite <- IHEv3.
-  simpl.
-  rewrite <- SemSubComm.
-  simpl.
-  unfold hdSub.
-  rewrite consSub_equation_1.
-  reflexivity.
-Qed.
-
 Lemma SemExp_identity `(E : SemEnv Γ) τ :
   SemExp (identity Γ τ) E = id.
 Proof.
@@ -267,7 +252,7 @@ Proof.
   now rewrite !SemExp_wk.
 Qed.
 
-Lemma compose_identity_right `(E : SemEnv Γ)
+Lemma SemExp_compose_identity_right `(E : SemEnv Γ)
       {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
   SemExp (compose f (identity Γ τ)) E = SemExp f E.
 Proof.
@@ -275,7 +260,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma compose_identity_left `(E : SemEnv Γ)
+Lemma SemExp_compose_identity_left `(E : SemEnv Γ)
       {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
   SemExp (compose (identity Γ τ') f) E = SemExp f E.
 Proof.
@@ -283,7 +268,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma compose_assoc `(E : SemEnv Γ)
+Lemma SemExp_compose_assoc `(E : SemEnv Γ)
       {τ τ' τ'' τ'''}
       (f : Exp Γ (τ'' ⟶ τ'''))
       (g : Exp Γ (τ' ⟶ τ''))

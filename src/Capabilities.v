@@ -1,9 +1,13 @@
 Require Import
+  Coq.Program.Equality
   Coq.Unicode.Utf8
   Coq.Strings.String
   Coq.Sets.Ensembles
   EnsemblesExt
   Group.
+
+From Equations Require Import Equations.
+Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -18,11 +22,15 @@ Inductive Ty : Set :=
   | TString
   | TPair : Ty → Ty → Ty.
 
+Derive NoConfusion Subterm for Ty.
+
 Inductive Value : Ty → Set :=
   | VUnit     : Value TUnit
   | VInt      : nat → Value TInt
   | VString   : string → Value TString
   | VPair a b : Value a → Value b → Value (TPair a b).
+
+Derive Signature NoConfusion for Value.
 
 End Pact.
 
@@ -168,17 +176,12 @@ Inductive CEval (D : Defs) :
       (SEQ expr1 expr2)
       cs ms''.
 
-Require Import Coq.Logic.EqdepFacts.
-Require Import Coq.Logic.FunctionalExtensionality.
-Require Import Coq.Program.Equality.
-
 Import EqNotations.
 
 Lemma unit_dep t (H : t = TUnit) (v : Value t) : v = rew <- H in VUnit.
 Proof.
-  dependent destruction v; inversion H.
-  simpl_eq.
-  reflexivity.
+  dependent elimination v; inversion H.
+  now simpl_eq.
 Qed.
 
 Theorem With_With_Noop D cs (ms ms' : Available) expr
@@ -248,4 +251,4 @@ Proof.
       now eapply Eval_WITH; eauto.
 Qed.
 
-Print Assumptions With_With_Noop.
+(* Print Assumptions With_With_Noop. *)

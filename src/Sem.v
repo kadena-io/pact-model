@@ -27,14 +27,8 @@ Definition SemPrim (p : PrimType) : Type :=
 Fixpoint SemTy (τ : Ty) : Type :=
   match τ with
   | TyPrim p        => SemPrim p
-  (* | TyList τ'       => list (SemTy τ') *)
+  | TyList τ'       => list (SemTy τ')
   | TyArrow dom cod => SemTy dom → SemTy cod
-  end.
-
-Fixpoint ilist {A} (B : A → Type) (l : list A) : Type :=
-  match l with
-  | []      => unit
-  | x :: xs => B x * ilist B xs
   end.
 
 Definition SemEnv Γ : Type := ilist SemTy Γ.
@@ -181,8 +175,7 @@ Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   | Constant lit  => λ _, SemLit lit
   (* jww (2022-07-01): change when exp1 has effects *)
   | Seq exp1 exp2 => λ se, SemExp exp2 se
-  (* | Nil           => λ _, nil *)
-  (* | Cons x xs     => λ se, SemExp x se :: SemExp xs se *)
+  | List l        => λ se, map (λ x, SemExp x se) l
   | Let x body    => λ se, SemExp body (SemExp x se, se)
 
   | VAR v         => SemVar v
@@ -205,7 +198,13 @@ Lemma SemRenComm Γ τ (e : Exp Γ τ) Γ' (r : Ren Γ Γ') :
 Proof.
   intros.
   generalize dependent Γ'.
-  induction e; simpl; intros; auto.
+  induction e using Exp_rect'; simpl; intros; auto.
+  - induction l; simpl in *; auto.
+    destruct X.
+    intuition.
+    rewrite H.
+    f_equal.
+    now apply e.
   - rewrite IHe1; clear IHe1.
     rewrite <- IHe2; clear IHe2.
     simpl.
@@ -245,7 +244,13 @@ Lemma SemSubComm Γ τ (e : Exp Γ τ) Γ' (s : Sub Γ Γ') :
 Proof.
   intros.
   generalize dependent Γ'.
-  induction e; simpl; intros; auto.
+  induction e using Exp_rect'; simpl; intros; auto.
+  - induction l; simpl in *; auto.
+    destruct X.
+    intuition.
+    rewrite H.
+    f_equal.
+    now apply e.
   - rewrite IHe1; clear IHe1.
     rewrite <- IHe2; clear IHe2.
     simpl.

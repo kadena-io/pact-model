@@ -17,6 +17,8 @@ Inductive PrimType : Type :=
 Derive NoConfusion for PrimType.
 
 (* TODO:
+ - Lists
+ - Builtins
  - Row-types
  - Modules
  - Schemas

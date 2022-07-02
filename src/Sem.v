@@ -1,9 +1,9 @@
 Require Export
+  Coq.Program.Program
   Ty
   Exp
   Ren
-  Sub
-  Coq.Program.Program.
+  Sub.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -87,7 +87,6 @@ Lemma SemRen_skip1_f Γ Γ' (f : Ren Γ' Γ)
   SemRen (RcR skip1 f) (x, E) = SemRen f E.
 Proof.
   generalize dependent τ.
-  generalize dependent Γ'.
   induction Γ'; simpl; intros; auto.
   unfold hdRen.
   f_equal.
@@ -154,6 +153,13 @@ Corollary SemRen_SV_snd Γ τ :
   SemRen (λ _, SV) = @snd (SemTy τ) (SemEnv Γ).
 Proof. exact (SemRen_skipn [τ] Γ). Qed.
 
+Lemma SemRen_RTmL Γ Γ' τ (x : SemTy τ) (se : SemEnv Γ') (r : Ren Γ Γ') :
+  SemRen (RTmL r) (x, se) = (x, SemRen r se).
+Proof.
+  generalize dependent τ.
+  induction Γ'; simpl; intros.
+Abort.
+
 Corollary SemRen_SV `(E : SemEnv Γ) `(x : SemTy τ) :
   SemRen (λ _, SV) (x, E) = E.
 Proof. now rewrite SemRen_SV_snd. Qed.
@@ -170,35 +176,27 @@ Definition SemLit `(l : Literal τ) : SemTy τ :=
 
 Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
-  | Constant lit    => λ _, SemLit lit
+  | Constant lit  => λ _, SemLit lit
   (* jww (2022-07-01): change when exp1 has effects *)
-  | Seq exp1 exp2   => λ se, SemExp exp2 se
-  | Nil             => λ _, nil
-  | Cons x xs       => λ se, SemExp x se :: SemExp xs se
-  | Let binder body => λ se, SemExp body (SemExp binder se, se)
+  | Seq exp1 exp2 => λ se, SemExp exp2 se
+  | Nil           => λ _, nil
+  | Cons x xs     => λ se, SemExp x se :: SemExp xs se
+  | Let x body    => λ se, SemExp body (SemExp x se, se)
 
-  | VAR v     => SemVar v
-  | LAM e     => λ se, λ x, SemExp e (x, se)
-  | APP e1 e2 => λ se, SemExp e1 se (SemExp e2 se)
+  | VAR v         => SemVar v
+  | LAM e         => λ se x, SemExp e (x, se)
+  | APP e1 e2     => λ se, SemExp e1 se (SemExp e2 se)
   end.
 
 Fixpoint SemSub {Γ Γ'} : Sub Γ' Γ → SemEnv Γ → SemEnv Γ' :=
   match Γ' with
-  | []     => λ s se, tt
+  | []     => λ s se, ()
   | _ :: _ => λ s se, (SemExp (hdSub s) se, SemSub (tlSub s) se)
   end.
 
-Lemma SemRen_RTmL Γ Γ' τ (x : SemTy τ) (se : SemEnv Γ') (r : Ren Γ Γ') :
-  SemRen (RTmL r) (x, se) = (x, SemRen r se).
-Proof.
-  induction Γ'; simpl; intros.
-  - destruct se.
-    unfold hdRen.
-    rewrite RTmL_equation_1; simpl.
-    f_equal.
-    rewrite tlRen_skip1.
-    rewrite SemRen_skip1_f.
-Admitted.
+Lemma SemExp_Let Γ τ ty (e1 : Exp Γ ty) (e2 : Exp (ty :: Γ) τ) se :
+  SemExp (Let e1 e2) se = SemExp (APP (LAM e2) e1) se.
+Proof. reflexivity. Qed.
 
 Lemma SemRenComm Γ τ (e : Exp Γ τ) Γ' (r : Ren Γ Γ') :
   ∀ se, SemExp e (SemRen r se) = SemExp (RTmExp r e) se.
@@ -207,23 +205,27 @@ Proof.
   generalize dependent Γ'.
   induction e; simpl; intros; auto.
   - now rewrite IHe1, IHe2.
-  - rewrite <- IHe2, <- IHe1.
-    now rewrite SemRen_RTmL.
-  - induction v; simpl.
+  - rewrite IHe1; clear IHe1.
+    rewrite <- IHe2; clear IHe2.
+    simpl.
+    repeat f_equal.
+    generalize (SemExp (RTmExp r e1) se); intros.
+    clear.
+    induction Γ; simpl; intros; auto.
+    f_equal.
+    now rewrite IHΓ.
+  - simpl; induction v; simpl.
     + reflexivity.
     + now rewrite IHv.
   - extensionality z.
     fold SemTy in z.
     rewrite <- IHe; clear IHe.
     simpl.
-    f_equal.
+    repeat f_equal.
     clear.
-    f_equal.
-    unfold tlRen.
     induction Γ; simpl; auto.
     f_equal.
-    rewrite IHΓ; clear IHΓ.
-    reflexivity.
+    now rewrite IHΓ.
   - now rewrite IHe1, IHe2.
 Qed.
 
@@ -242,7 +244,24 @@ Lemma SemSubComm Γ τ (e : Exp Γ τ) Γ' (s : Sub Γ Γ') :
 Proof.
   intros.
   generalize dependent Γ'.
-  induction e; simpl; intros.
+  induction e; simpl; intros; auto.
+  - now rewrite IHe1, IHe2.
+  - rewrite IHe1; clear IHe1.
+    rewrite <- IHe2; clear IHe2.
+    simpl.
+    repeat f_equal.
+    generalize (SemExp (STmExp s e1) se); intros.
+    clear.
+    unfold tlSub.
+    induction Γ; simpl; intros; auto.
+    f_equal.
+    + unfold hdSub.
+      clear.
+      rewrite STmL_equation_2.
+      now rewrite SemExp_wk.
+    + unfold tlSub.
+      rewrite IHΓ; clear IHΓ.
+      reflexivity.
   - induction v; simpl.
     + reflexivity.
     + now rewrite IHv.
@@ -250,9 +269,8 @@ Proof.
     fold SemTy in z.
     rewrite <- IHe; clear IHe.
     simpl.
-    f_equal.
+    repeat f_equal.
     clear.
-    f_equal.
     unfold tlSub.
     induction Γ; simpl; auto.
     f_equal.

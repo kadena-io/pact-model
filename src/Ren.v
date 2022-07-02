@@ -63,22 +63,22 @@ Corollary RcR_idRen_right Γ Γ' (f : Ren Γ' Γ) :
   RcR f idRen = f.
 Proof. reflexivity. Qed.
 
-Corollary RcR_compose_assoc Γ Γ' Γ'' Γ'''
+Corollary RcR_assoc Γ Γ' Γ'' Γ'''
           (f : Ren Γ' Γ) (g : Ren Γ'' Γ') (h : Ren Γ''' Γ'') :
   RcR f (RcR g h) = RcR (RcR f g) h.
 Proof. reflexivity. Qed.
 
 Fixpoint RTmExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
-  | Constant lit    => Constant lit
-  | Seq exp1 exp2   => Seq (RTmExp r exp1) (RTmExp r exp2)
-  | Nil             => Nil
-  | Cons x xs       => Cons (RTmExp r x) (RTmExp r xs)
-  | Let binder body => Let (RTmExp r binder) (RTmExp (RTmL r) body)
+  | Constant lit  => Constant lit
+  | Seq exp1 exp2 => Seq (RTmExp r exp1) (RTmExp r exp2)
+  | Nil           => Nil
+  | Cons x xs     => Cons (RTmExp r x) (RTmExp r xs)
+  | Let x body    => Let (RTmExp r x) (RTmExp (RTmL r) body)
 
-  | VAR v           => VAR (r _ v)
-  | APP e1 e2       => APP (RTmExp r e1) (RTmExp r e2)
-  | LAM e           => LAM (RTmExp (RTmL r) e)
+  | VAR v         => VAR (r _ v)
+  | APP e1 e2     => APP (RTmExp r e1) (RTmExp r e2)
+  | LAM e         => LAM (RTmExp (RTmL r) e)
   end.
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RTmExp (λ _, SV).

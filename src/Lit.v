@@ -11,13 +11,13 @@ Section Lit.
 
 Definition UTCTime : Set := nat.
 
-Inductive Literal : Ty → Set :=
-  | LString  : string → Literal (TyPrim PrimString)
-  | LInteger : Z → Literal (TyPrim PrimInteger)
-  | LDecimal : Q → Literal (TyPrim PrimDecimal)
-  | LBool    : bool → Literal (TyPrim PrimBool)
-  | LTime    : UTCTime → Literal (TyPrim PrimTime)
-  | LUnit    : Literal (TyPrim PrimUnit).
+Inductive Literal : PrimType → Set :=
+  | LString  : string → Literal PrimString
+  | LInteger : Z → Literal PrimInteger
+  | LDecimal : Q → Literal PrimDecimal
+  | LBool    : bool → Literal PrimBool
+  | LTime    : UTCTime → Literal PrimTime
+  | LUnit    : Literal PrimUnit.
 
 Derive NoConfusion for Literal.
 

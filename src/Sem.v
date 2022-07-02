@@ -14,7 +14,7 @@ Import ListNotations.
 
 Section Sem.
 
-Fixpoint SemPrim (p : PrimType) : Type :=
+Definition SemPrim (p : PrimType) : Type :=
   match p with
   | PrimInteger => Z
   | PrimDecimal => Q
@@ -31,11 +31,13 @@ Fixpoint SemTy (τ : Ty) : Type :=
   | TyArrow dom cod => SemTy dom → SemTy cod
   end.
 
-Fixpoint SemEnv E : Type :=
-  match E with
-  | []     => unit
-  | τ :: E => SemTy τ * SemEnv E
+Fixpoint ilist {A} (B : A → Type) (l : list A) : Type :=
+  match l with
+  | []      => unit
+  | x :: xs => B x * ilist B xs
   end.
+
+Definition SemEnv Γ : Type := ilist SemTy Γ.
 
 Equations trunc {Γ} Γ' `(E : SemEnv (Γ' ++ Γ)) : SemEnv Γ :=
   trunc []        E := E;
@@ -164,7 +166,7 @@ Corollary SemRen_SV `(E : SemEnv Γ) `(x : SemTy τ) :
   SemRen (λ _, SV) (x, E) = E.
 Proof. now rewrite SemRen_SV_snd. Qed.
 
-Definition SemLit `(l : Literal τ) : SemTy τ :=
+Definition SemLit `(l : Literal ty) : SemPrim ty :=
   match l with
   | LString  s => s
   | LInteger z => z

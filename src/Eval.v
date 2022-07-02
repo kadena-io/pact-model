@@ -16,10 +16,22 @@ Import ListNotations.
 Section Eval.
 
 Inductive Eval : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
-  | EvLam t1 t2 (e : Exp [t1] t2) :
-    Eval (LAM e) (LAM e)
+  | EvConstant τ (c : Literal τ) :
+    Eval (Constant c) (Constant c)
+  | EvSeq τ τ' (e1 : Exp [] τ') (e2 : Exp [] τ) v :
+    Eval e2 v → Eval (Seq e1 e2) v
+  | EvNil τ :
+    Eval (@Nil _ τ) Nil
+  | EvCons τ (x : Exp [] τ) (xs : Exp [] (TyList τ)) :
+    Eval (Cons x xs) (Cons x xs)
+  | EvLet τ ty (x : Exp [] ty) w (body : Exp [ty] τ) v :
+    Eval x w →
+    Eval (STmExp {| w |} body) v →
+    Eval (Let x body) v
 
-  | EvApp t1 t2 e v w (e1 : Exp [] (t1 ⟶ t2)) e2 :
+  | EvLam dom cod (e : Exp [dom] cod) :
+    Eval (LAM e) (LAM e)
+  | EvApp dom cod e v w (e1 : Exp [] (dom ⟶ cod)) (e2 : Exp [] dom) :
     Eval e1 (LAM e) →
     Eval e2 w →
     Eval (STmExp {| w |} e) v →
@@ -30,6 +42,14 @@ Theorem soundness τ (e : Exp [] τ) v :
 Proof.
   intros.
   induction H; simpl; auto.
+  - extensionality E.
+    destruct E.
+    rewrite IHEval1.
+    rewrite <- IHEval2.
+    rewrite <- SemSubComm.
+    simpl.
+    unfold hdSub.
+    now rewrite consSub_equation_1.
   - extensionality E.
     destruct E.
     rewrite IHEval1.

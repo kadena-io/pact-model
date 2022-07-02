@@ -1,11 +1,9 @@
-Require Import
-  Coq.Program.Program
-  Coq.Unicode.Utf8
-  Coq.Lists.List
+Require Export
   Ty
   Exp
   Ren
-  Sub.
+  Sub
+  Coq.Program.Program.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -16,9 +14,21 @@ Import ListNotations.
 
 Section Sem.
 
+Fixpoint SemPrim (p : PrimType) : Type :=
+  match p with
+  | PrimInteger => Z
+  | PrimDecimal => Q
+  | PrimTime    => UTCTime
+  | PrimBool    => bool
+  | PrimString  => string
+  | PrimUnit    => unit
+  end.
+
 Fixpoint SemTy (τ : Ty) : Type :=
   match τ with
-  | TARR dom cod => SemTy dom → SemTy cod
+  | TyPrim p        => SemPrim p
+  | TyList τ'       => list (SemTy τ')
+  | TyArrow dom cod => SemTy dom → SemTy cod
   end.
 
 Fixpoint SemEnv E : Type :=
@@ -148,8 +158,25 @@ Corollary SemRen_SV `(E : SemEnv Γ) `(x : SemTy τ) :
   SemRen (λ _, SV) (x, E) = E.
 Proof. now rewrite SemRen_SV_snd. Qed.
 
+Definition SemLit `(l : Literal τ) : SemTy τ :=
+  match l with
+  | LString  s => s
+  | LInteger z => z
+  | LDecimal q => q
+  | LBool    b => b
+  | LTime    t => t
+  | LUnit      => tt
+  end.
+
 Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
+  | Constant lit    => λ _, SemLit lit
+  (* jww (2022-07-01): change when exp1 has effects *)
+  | Seq exp1 exp2   => λ se, SemExp exp2 se
+  | Nil             => λ _, nil
+  | Cons x xs       => λ se, SemExp x se :: SemExp xs se
+  | Let binder body => λ se, SemExp body (SemExp binder se, se)
+
   | VAR v     => SemVar v
   | LAM e     => λ se, λ x, SemExp e (x, se)
   | APP e1 e2 => λ se, SemExp e1 se (SemExp e2 se)
@@ -161,12 +188,27 @@ Fixpoint SemSub {Γ Γ'} : Sub Γ' Γ → SemEnv Γ → SemEnv Γ' :=
   | _ :: _ => λ s se, (SemExp (hdSub s) se, SemSub (tlSub s) se)
   end.
 
+Lemma SemRen_RTmL Γ Γ' τ (x : SemTy τ) (se : SemEnv Γ') (r : Ren Γ Γ') :
+  SemRen (RTmL r) (x, se) = (x, SemRen r se).
+Proof.
+  induction Γ'; simpl; intros.
+  - destruct se.
+    unfold hdRen.
+    rewrite RTmL_equation_1; simpl.
+    f_equal.
+    rewrite tlRen_skip1.
+    rewrite SemRen_skip1_f.
+Admitted.
+
 Lemma SemRenComm Γ τ (e : Exp Γ τ) Γ' (r : Ren Γ Γ') :
   ∀ se, SemExp e (SemRen r se) = SemExp (RTmExp r e) se.
 Proof.
   intros.
   generalize dependent Γ'.
-  induction e; simpl; intros.
+  induction e; simpl; intros; auto.
+  - now rewrite IHe1, IHe2.
+  - rewrite <- IHe2, <- IHe1.
+    now rewrite SemRen_RTmL.
   - induction v; simpl.
     + reflexivity.
     + now rewrite IHv.

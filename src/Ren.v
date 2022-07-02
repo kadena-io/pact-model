@@ -1,6 +1,4 @@
-Require Import
-  Coq.Unicode.Utf8
-  Coq.Lists.List
+Require Export
   Ty
   Exp.
 
@@ -72,9 +70,15 @@ Proof. reflexivity. Qed.
 
 Fixpoint RTmExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
-  | VAR v     => VAR (r _ v)
-  | APP e1 e2 => APP (RTmExp r e1) (RTmExp r e2)
-  | LAM e     => LAM (RTmExp (RTmL r) e)
+  | Constant lit    => Constant lit
+  | Seq exp1 exp2   => Seq (RTmExp r exp1) (RTmExp r exp2)
+  | Nil             => Nil
+  | Cons x xs       => Cons (RTmExp r x) (RTmExp r xs)
+  | Let binder body => Let (RTmExp r binder) (RTmExp (RTmL r) body)
+
+  | VAR v           => VAR (r _ v)
+  | APP e1 e2       => APP (RTmExp r e1) (RTmExp r e2)
+  | LAM e           => LAM (RTmExp (RTmL r) e)
   end.
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RTmExp (λ _, SV).

@@ -2,6 +2,7 @@
 src/EnsemblesExt.v
 src/Group.v
 src/Ty.v
+src/Lit.v
 src/Exp.v
 src/Ren.v
 src/Sub.v

@@ -21,8 +21,8 @@ Derive Signature NoConfusion for Var.
 Inductive Exp Γ : Ty → Type :=
   | Constant {ty} : Literal ty → Exp Γ (TyPrim ty)
   | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
-  | Nil {τ}       : Exp Γ (TyList τ)
-  | Cons {τ}      : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
+  (* | Nil {τ}       : Exp Γ (TyList τ) *)
+  (* | Cons {τ}      : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ) *)
   | Let {τ ty}    : Exp Γ ty → Exp (ty :: Γ) τ → Exp Γ τ
 
   (* These are the terms of the base lambda calculus *)
@@ -39,8 +39,8 @@ Arguments SV {_ _ _} _.
 
 Arguments Constant {Γ ty} _.
 Arguments Seq {Γ τ τ'} _ _.
-Arguments Nil {Γ τ}.
-Arguments Cons {Γ τ} _ _.
+(* Arguments Nil {Γ τ}. *)
+(* Arguments Cons {Γ τ} _ _. *)
 Arguments Let {Γ τ ty} _ _.
 Arguments VAR {Γ τ} _.
 Arguments LAM {Γ dom cod} _.

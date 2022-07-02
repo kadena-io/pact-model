@@ -36,8 +36,8 @@ Fixpoint STmExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
   | Constant lit  => Constant lit
   | Seq exp1 exp2 => Seq (STmExp s exp1) (STmExp s exp2)
-  | Nil           => Nil
-  | Cons x xs     => Cons (STmExp s x) (STmExp s xs)
+  (* | Nil           => Nil *)
+  (* | Cons x xs     => Cons (STmExp s x) (STmExp s xs) *)
   | Let x body    => Let (STmExp s x) (STmExp (STmL s) body)
 
   | VAR v         => s _ v

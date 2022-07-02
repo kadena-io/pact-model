@@ -20,15 +20,14 @@ Inductive Eval : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
     Eval (Constant c) (Constant c)
   | EvSeq τ τ' (e1 : Exp [] τ') (e2 : Exp [] τ) v :
     Eval e2 v → Eval (Seq e1 e2) v
-  | EvNil τ :
-    Eval (@Nil _ τ) Nil
-  | EvCons τ (x : Exp [] τ) x' (xs : Exp [] (TyList τ)) xs' :
-    Eval x x' →
-    Eval xs xs' →
-    Eval (Cons x xs) (Cons x' xs')
-  | EvLet τ ty (x : Exp [] ty) w (body : Exp [ty] τ) v :
-    Eval x w →
-    Eval (STmExp {| w |} body) v →
+  (* | EvNil τ : *)
+  (*   Eval (@Nil _ τ) Nil *)
+  (* | EvCons τ (x : Exp [] τ) x' (xs : Exp [] (TyList τ)) xs' : *)
+  (*   Eval x x' →                 (* jww (2022-07-02): not lazy here?? *) *)
+  (*   Eval xs xs' → *)
+  (*   Eval (Cons x xs) (Cons x' xs') *)
+  | EvLet τ ty (x : Exp [] ty) (body : Exp [ty] τ) v :
+    Eval (APP (LAM body) x) v →
     Eval (Let x body) v
 
   | EvLam dom cod (e : Exp [dom] cod) :
@@ -46,25 +45,9 @@ Proof.
   induction H; simpl; auto.
   - extensionality E.
     destruct E.
-    now rewrite IHEval1, IHEval2.
-  - extensionality E.
-    destruct E.
-    rewrite IHEval1.
-    rewrite <- IHEval2.
-    rewrite <- SemSubComm.
-    simpl.
-    unfold hdSub.
-    now rewrite consSub_equation_1.
-  - extensionality E.
-    destruct E.
-    rewrite IHEval1.
-    rewrite IHEval2.
+    rewrite IHEval1, IHEval2; simpl.
     rewrite <- IHEval3.
-    simpl.
-    rewrite <- SemSubComm.
-    + simpl.
-      unfold hdSub.
-      now rewrite consSub_equation_1.
+    now rewrite <- SemSubComm.
 Qed.
 
 End Eval.

@@ -27,7 +27,7 @@ Definition SemPrim (p : PrimType) : Type :=
 Fixpoint SemTy (τ : Ty) : Type :=
   match τ with
   | TyPrim p        => SemPrim p
-  | TyList τ'       => list (SemTy τ')
+  (* | TyList τ'       => list (SemTy τ') *)
   | TyArrow dom cod => SemTy dom → SemTy cod
   end.
 
@@ -181,8 +181,8 @@ Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   | Constant lit  => λ _, SemLit lit
   (* jww (2022-07-01): change when exp1 has effects *)
   | Seq exp1 exp2 => λ se, SemExp exp2 se
-  | Nil           => λ _, nil
-  | Cons x xs     => λ se, SemExp x se :: SemExp xs se
+  (* | Nil           => λ _, nil *)
+  (* | Cons x xs     => λ se, SemExp x se :: SemExp xs se *)
   | Let x body    => λ se, SemExp body (SemExp x se, se)
 
   | VAR v         => SemVar v
@@ -206,7 +206,6 @@ Proof.
   intros.
   generalize dependent Γ'.
   induction e; simpl; intros; auto.
-  - now rewrite IHe1, IHe2.
   - rewrite IHe1; clear IHe1.
     rewrite <- IHe2; clear IHe2.
     simpl.
@@ -247,7 +246,6 @@ Proof.
   intros.
   generalize dependent Γ'.
   induction e; simpl; intros; auto.
-  - now rewrite IHe1, IHe2.
   - rewrite IHe1; clear IHe1.
     rewrite <- IHe2; clear IHe2.
     simpl.

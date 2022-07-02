@@ -26,7 +26,7 @@ Derive NoConfusion for PrimType.
 
 Inductive Ty : Type :=
   | TyPrim : PrimType → Ty
-  | TyList : Ty → Ty
+  (* | TyList : Ty → Ty *)
 
   (* The arrow type is the only type in the base lambda calculus *)
   | TyArrow : Ty → Ty → Ty.

@@ -72,8 +72,8 @@ Fixpoint RTmExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
   | Constant lit  => Constant lit
   | Seq exp1 exp2 => Seq (RTmExp r exp1) (RTmExp r exp2)
-  | Nil           => Nil
-  | Cons x xs     => Cons (RTmExp r x) (RTmExp r xs)
+  (* | Nil           => Nil *)
+  (* | Cons x xs     => Cons (RTmExp r x) (RTmExp r xs) *)
   | Let x body    => Let (RTmExp r x) (RTmExp (RTmL r) body)
 
   | VAR v         => VAR (r _ v)

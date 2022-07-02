@@ -16,12 +16,12 @@ Section CEK.
 
 Inductive Value : Ty → Type :=
   | VLit {ty} : Literal ty → Value (TyPrim ty)
-  | VNil {τ} : Value (TyList τ)
-  | VCons {τ} : Value τ → Value (TyList τ) → Value (TyList τ)
-  | VClosure {dom cod} : Closure (dom ⟶ cod) → Value (dom ⟶ cod)
+  (* | VNil {τ} : Value (TyList τ) *)
+  (* | VCons {Γ τ} : Exp Γ τ → Exp Γ (TyList τ) → Value (TyList τ) *)
+  | VClosure {dom cod} : Closure dom cod → Value (dom ⟶ cod)
 
-with Closure : Ty → Type :=
-  | Closed {Γ dom cod} : Exp (dom :: Γ) cod → Env Γ → Closure (dom ⟶ cod)
+with Closure : Ty → Ty → Type :=
+  | Lambda {Γ dom cod} : Exp (dom :: Γ) cod → Env Γ → Closure dom cod
 
 with Env : Env → Type :=
   | Empty : Env []
@@ -38,73 +38,112 @@ Equations get `(se : Env Γ) `(v : Var Γ τ) : Value τ :=
 Inductive Kont : Ty → Ty → Type :=
   | Mt {u} : Kont u u
   | Ar {Γ u v w} : Exp Γ u → Env Γ → Kont v w → Kont (u ⟶ v) w
-  | Fn {a b c} : Closure (a ⟶ b) → Kont b c → Kont a c.
+  | Fn {a b c} : Closure a b → Kont b c → Kont a c.
 
 Derive Signature NoConfusion for Kont.
 
-Record Σ := MkΣ {
+Record Σ (τ : Ty) := MkΣ {
   Γ   : Exp.Env;
-  τ   : Ty;
-  exp : Exp Γ τ;
-  env : Env Γ;
   r   : Ty;
-  knt : Kont τ r
+  exp : Exp Γ r;
+  env : Env Γ;
+  knt : Kont r τ
 }.
 
-Arguments MkΣ {Γ τ} _ _ {r} _.
+Derive NoConfusion for Σ.
 
-Definition inject {τ : Ty} (e : Exp [] τ) : Σ := MkΣ e Empty Mt.
+Arguments MkΣ {τ Γ r} _ _ _.
 
-Equations step (gas : nat) {Γ : Exp.Env} {τ : Ty} (e : Exp Γ τ) (ρ : Env Γ)
-          {r : Ty} `(κ : Kont τ r) : Σ :=
-  step 0 _ _ _ := MkΣ e ρ κ;
+(* Inject the expression into a [Σ] whose final continuation will receive the
+   results of the evaluation. Therefore, the resulting [env] will be a
+   singleton list containing that value. *)
+Definition inject {τ : Ty} (e : Exp [] τ) : Σ τ := MkΣ e Empty Mt.
 
+Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   (* A constant is passed as a literal *)
-  step (S g) (Constant x) _ (Fn (Closed b ρ') κ) :=
-    step g b (Val (VLit x) ρ') κ;
+  step (MkΣ (Constant x) _ (Fn (Lambda f ρ') κ)) :=
+    MkΣ f (Val (VLit x) ρ') κ;
 
   (* A sequence just evaluates the second, for now *)
-  step (S g) (Seq e1 e2) ρ κ :=
-    step g e2 ρ κ;
+  step (MkΣ (Seq e1 e2) ρ κ) :=
+    MkΣ e2 ρ κ;
 
-  (* Nil is just a special constant *)
-  step (S g) Nil _ (Fn (Closed b ρ') κ) :=
-    step g b (Val VNil ρ') κ;
-  (* Cons walk down the list evaluating all of the elements *)
-  step (S g) (Cons x xs) ρ κ :=
-    step g x ρ (Fn (Closed (Cons (VAR ZV) (wk xs)) ρ) κ);
+(*
+  (* Nil is a special constant *)
+  step (MkΣ Nil _ (Fn (Lambda b ρ') κ)) :=
+    MkΣ b (Val VNil ρ') κ;
+  (* Cons produces a lazily evaluated list *)
+  step (MkΣ (Cons x xs) ρ (Fn (Lambda b ρ') κ)) :=
+    MkΣ b (Val (VCons x xs) ρ') κ;
+*)
 
   (* Let is a simple desugaring *)
-  step (S g) (Let x body) ρ κ :=
-    step g (APP (LAM body) x) ρ κ;
+  step (MkΣ (Let x body) ρ κ) :=
+    MkΣ (APP (LAM body) x) ρ κ;
 
   (* A variable might lookup a lambda, in which case continue evaluating down
      that vein; otherwise, if no continuation, this is as far as we can go. *)
-  step (S g) (VAR v) ρ κ with get ρ v := {
-    | VClosure (Closed e ρ') => step g (LAM e) ρ' κ
+  step (MkΣ (VAR v) ρ κ) with get ρ v := {
+    | VClosure (Lambda e ρ') => MkΣ (LAM e) ρ' κ
     | x with κ := {
-        | Fn (Closed b ρ') κ' => step g b (Val x ρ') κ'
-        | Mt => step g (VAR v) ρ Mt
+        | Fn (Lambda f ρ') κ' => MkΣ f (Val x ρ') κ'
+        | Mt => MkΣ (VAR v) ρ Mt
       }
   };
 
   (* Lambda evaluates its argument, with the lambda as the cont *)
-  step (S g) (LAM e) ρ (Ar a ρ' κ) :=
-    step g a ρ' (Fn (Closed e ρ) κ);
-  (* If a lambda is being passed, call the continuation with it *)
-  step (S g) (LAM e) ρ (Fn (Closed b ρ') κ) :=
-    step g b (Val (VClosure (Closed e ρ)) ρ') κ;
+  step (MkΣ (LAM e) ρ (Ar a ρ' κ)) :=
+    MkΣ a ρ' (Fn (Lambda e ρ) κ);
+  (* If a lambda is passed, call it with the continuation *)
+  step (MkΣ (LAM e) ρ (Fn (Lambda f ρ') κ)) :=
+    MkΣ f (Val (VClosure (Lambda e ρ)) ρ') κ;
 
   (* Application evaluates the lambda and then the argument *)
-  step (S g) (APP e1 e2) ρ κ :=
-    step g e1 ρ (Ar e2 ρ κ);
+  step (MkΣ (APP e1 e2) ρ κ) :=
+    MkΣ e1 ρ (Ar e2 ρ κ);
 
-  (* Otherwise, there is nothing more than can be done *)
-  step _ s ρ Mt := MkΣ s ρ Mt.
+  (* Otherwise, there is nothing more that can be done *)
+  step (MkΣ s ρ Mt) := MkΣ s ρ Mt.
 
-Definition run (gas : nat) {τ : Ty} (e : Exp [] τ) : Σ :=
-  step gas e Empty Mt.
+Equations loop (gas : nat) {τ : Ty} (s : Σ τ) : Σ τ + Value τ :=
+  loop O s :=
+    inl s;
+  loop _ (MkΣ (Constant x) _ Mt) :=
+    inr (VLit x);
+  (* loop _ (MkΣ Nil _ Mt) := *)
+  (*   inr VNil; *)
+  (* loop _ (MkΣ (Cons x xs) _ Mt) := *)
+  (*   inr (VCons x xs); *)
+  loop _ (MkΣ (VAR v) ρ Mt) :=
+    inr (get ρ v);
+  loop (S gas') s :=
+    loop gas' (step s).
 
+Definition run (gas : nat) {τ : Ty} (e : Exp [] τ) : Σ τ + Value τ :=
+  loop gas (inject e).
+
+Example constant_integer :
+  run 10 (Constant (LInteger 123%Z)) = inr (VLit (LInteger 123%Z)).
+Proof. reflexivity. Qed.
+
+Example constant_lam_integer :
+  run 10 (APP (LAM (VAR ZV)) (Constant (LInteger 123%Z))) =
+    inr (VLit (LInteger 123%Z)).
+Proof. reflexivity. Qed.
+
+(*
+Compute run 20 (Cons (Constant (LInteger 123%Z))
+                     (Cons (Constant (LInteger 456%Z)) Nil)).
+
+Example constant_cons :
+  run 20 (Cons (Constant (LInteger 123%Z))
+               (Cons (Constant (LInteger 456%Z)) Nil)) =
+    inr (VCons (Γ:=[]) (Constant (LInteger 123%Z))
+               (Cons (Constant (LInteger 456%Z)) Nil)).
+Proof. reflexivity. Qed.
+*)
+
+(*
 Theorem cek_sound τ (e : Exp [] τ) v :
   Eval e v → ∃ gas, run gas e = MkΣ v Empty Mt.
 Proof.
@@ -132,3 +171,6 @@ Proof.
   - admit.
   - admit.
 Abort.
+*)
+
+End CEK.

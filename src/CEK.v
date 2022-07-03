@@ -3,7 +3,8 @@ Require Export
   Exp
   Sub
   Sem
-  Eval.
+  Eval
+  Coq.micromega.Lia.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -135,6 +136,10 @@ Equations loop (gas : nat) {τ : Ty} (s : Σ τ) : Σ τ + Value τ :=
 
 Equations loop' (gas : nat) {τ : Ty} (s : Σ τ) : Σ τ :=
   loop' O s := s;
+  loop' _ (MkΣ (Constant x) ρ r Mt) := MkΣ (Constant x) ρ r Mt;
+  loop' _ (MkΣ (List l)     ρ r Mt) := MkΣ (List l) ρ r Mt;
+  loop' _ (MkΣ (VAR v)      ρ r Mt) := MkΣ (VAR v) ρ r Mt;
+  loop' _ (MkΣ (LAM e)      ρ r Mt) := MkΣ (LAM e) ρ r Mt;
   loop' (S gas') s := loop' gas' (step s).
 
 Definition run (gas : nat) {τ : Ty} {Γ : Exp.Env} (e : Exp Γ τ) (E : Env Γ) :

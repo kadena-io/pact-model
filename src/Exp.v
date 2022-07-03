@@ -30,7 +30,7 @@ Inductive Exp Γ : Ty → Type :=
   | LAM {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
   | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
 
-Derive Signature for Exp.
+Derive Signature NoConfusionHom Subterm for Exp.
 
 Variable P : ∀ Γ τ, Exp Γ τ → Type.
 
@@ -53,18 +53,22 @@ Variable Papp      : ∀ Γ dom cod (e1 : Exp Γ (dom ⟶ cod)) (e2 : Exp Γ dom
   P Γ dom e2 →
   P Γ cod (APP Γ e1 e2).
 
-Equations Exp_rect' {Γ τ} (e : Exp Γ τ) : P Γ τ e :=
-  Exp_rect' (Constant _ lit) := Pconstant _ _ lit;
-  Exp_rect' (Seq _ e1 e2)    := Pseq _ _ _ _ _ (Exp_rect' e1) (Exp_rect' e2);
-  Exp_rect' (List _ l)       := Plist _ _ _ (Exp_sub_rect' l);
-  Exp_rect' (Let _ x body)   := Plet _ _ _ _ _ (Exp_rect' x) (Exp_rect' body);
-  Exp_rect' (VAR _ v)        := Pvar _ _ v;
-  Exp_rect' (LAM _ e)        := Plam _ _ _ _ (Exp_rect' e);
-  Exp_rect' (APP _ e1 e2)    := Papp _ _ _ _ _ (Exp_rect' e1) (Exp_rect' e2);
-
-where Exp_sub_rect' {Γ τ} (l : list (Exp Γ τ)) : ilist (P Γ τ) l :=
-  Exp_sub_rect' [] := tt;
-  Exp_sub_rect' (x :: xs) := (Exp_rect' x, Exp_sub_rect' xs).
+Fixpoint Exp_rect' {Γ τ} (e : Exp Γ τ) : P Γ τ e.
+Proof.
+  induction e.
+  - now apply Pconstant.
+  - now apply Pseq.
+  - apply Plist.
+    induction l.
+    + exact tt.
+    + split.
+      * now apply Exp_rect'.
+      * exact IHl.
+  - now apply Plet.
+  - now apply Pvar.
+  - now apply Plam.
+  - now apply Papp.
+Qed.
 
 End Exp.
 

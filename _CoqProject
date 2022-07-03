@@ -1,6 +1,7 @@
 -R src Kadena
 src/EnsemblesExt.v
 src/Group.v
+src/ilist.v
 src/Ty.v
 src/Lit.v
 src/Exp.v

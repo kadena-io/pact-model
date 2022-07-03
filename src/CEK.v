@@ -178,6 +178,7 @@ Example exp_app :
     inr (VLit (LInteger 123%Z)).
 Proof. reflexivity. Qed.
 
+(*
 Theorem cek_sound τ (e : Exp [] τ) v :
   Eval e v → ∃ gas, loop' gas (inject e Empty) = MkΣ v Empty ANone Mt.
 Proof.
@@ -205,5 +206,6 @@ Proof.
     rewrite step_equation_15.
     admit.
 Abort.
+*)
 
 End CEK.

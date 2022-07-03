@@ -70,6 +70,12 @@ Proof.
   - now apply Papp.
 Qed.
 
+(* [ValueP] is an inductive proposition that indicates whether an expression
+   represents a value, i.e., that it does reduce any further. *)
+Inductive ValueP Γ : ∀ τ, Exp Γ τ → Prop :=
+  | ConstantP {ty} (l : Literal ty) : ValueP Γ (TyPrim ty) (Constant Γ l)
+  | ClosureP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (dom ⟶ cod) (LAM Γ e).
+
 End Exp.
 
 Arguments ZV {_ _}.

@@ -15,39 +15,55 @@ Import ListNotations.
 
 Section Eval.
 
-Inductive Eval : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
-  | EvConstant τ (c : Literal τ) :
-    Eval (Constant c) (Constant c)
-  | EvSeq τ τ' (e1 : Exp [] τ') (e2 : Exp [] τ) v :
-    Eval e2 v → Eval (Seq e1 e2) v
-  (* | EvNil τ : *)
-  (*   Eval (@Nil _ τ) Nil *)
-  (* | EvCons τ (x : Exp [] τ) x' (xs : Exp [] (TyList τ)) xs' : *)
-  (*   Eval x x' →                 (* jww (2022-07-02): not lazy here?? *) *)
-  (*   Eval xs xs' → *)
-  (*   Eval (Cons x xs) (Cons x' xs') *)
-  | EvLet τ ty (x : Exp [] ty) (body : Exp [ty] τ) v :
-    Eval (APP (LAM body) x) v →
-    Eval (Let x body) v
+Reserved Notation " t '--->' t' " (at level 40).
 
-  | EvLam dom cod (e : Exp [dom] cod) :
-    Eval (LAM e) (LAM e)
-  | EvApp dom cod e v w (e1 : Exp [] (dom ⟶ cod)) (e2 : Exp [] dom) :
-    Eval e1 (LAM e) →
-    Eval e2 w →
-    Eval (STmExp {| w |} e) v →
-    Eval (APP e1 e2) v.
+(************************************************************************
+ * Small-step operational semantics
+ *)
+
+Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
+  | ST_Seq τ τ' (e1 : Exp [] τ') (e2 : Exp [] τ) :
+    Seq e1 e2 ---> e2
+
+  | ST_ListElem τ (l : list (Exp [] τ)) l' pre post x x' :
+    l  = pre ++ x :: post →
+    l' = pre ++ x' :: post →
+    x ---> x' →
+    List l ---> List l'
+
+  | ST_Let τ ty (x : Exp [] ty) (body : Exp [ty] τ) :
+    Let x body ---> APP (LAM body) x
+
+  | ST_AppAbs dom cod (e : Exp [dom] cod) (v : Exp [] dom) :
+    ValueP [] dom v ->
+    APP (LAM e) v ---> STmExp {| v |} e
+
+  | ST_App1 dom cod (e1 : Exp [] (dom ⟶ cod)) e1' (e2 : Exp [] dom) :
+    e1 ---> e1' →
+    APP e1 e2 ---> APP e1' e2
+
+  | ST_App dom cod (e1 : Exp [] (dom ⟶ cod)) (e2 : Exp [] dom) e2' :
+    e2 ---> e2' →
+    APP e1 e2 ---> APP e1 e2'
+
+  where " t '--->' t' " := (Step t t').
 
 Theorem soundness τ (e : Exp [] τ) v :
-  Eval e v → SemExp e = SemExp v.
+  Step e v → SemExp e = SemExp v.
 Proof.
   intros.
-  induction H; simpl; auto.
-  - extensionality E.
-    destruct E.
-    rewrite IHEval1, IHEval2; simpl.
-    rewrite <- IHEval3.
-    now rewrite <- SemSubComm.
+  induction H; simpl; auto;
+  extensionality E;
+  destruct E.
+  - subst.
+    rewrite !map_app.
+    f_equal.
+    rewrite !map_cons.
+    f_equal.
+    now rewrite IHStep.
+  - now rewrite <- SemSubComm.
+  - now rewrite IHStep.
+  - now rewrite IHStep.
 Qed.
 
 End Eval.

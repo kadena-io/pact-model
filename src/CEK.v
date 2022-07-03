@@ -34,6 +34,9 @@ Equations get `(se : Env Γ) `(v : Var Γ τ) : Value τ :=
   get (Val x _)   ZV    := x;
   get (Val _ xs) (SV v) := get xs v.
 
+(* Although this type is structurally equivalent to [option (list a)], the
+   type indices allow us to prevent it from being passed to [MkΣ] unless its
+   expression argument is of type [TyLList]. *)
 Inductive Accum Γ : ∀ τ : Ty, Exp Γ τ → Type :=
   | ANone {τ e} : Accum Γ τ e
   | AList {τ l} : list (Value τ) → Accum Γ (TyList τ) (List l).

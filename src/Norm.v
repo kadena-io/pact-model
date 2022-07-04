@@ -31,35 +31,91 @@ Proof.
   - now eapply IHv2; eauto.
 Qed.
 
-Lemma substitution_reduces {τ ty} (e : Exp [ty] τ) v :
-  STmExp {|v|} e ≠ APP (LAM e) v.
+Ltac normality :=
+  exfalso;
+  lazymatch goal with
+    | [ H1 : ValueP ?X, H2 : ?X ---> ?Y |- False ] =>
+        apply value_is_nf in H1; destruct H1;
+        now exists Y
+  end.
+
+Lemma If_loop_true {τ} b {x : Exp [] τ} {y : Exp [] τ} :
+  ¬ (If b x y = x).
 Proof.
-  intro.
-  dependent induction e; simpl in H; inv H.
-  - dependent elimination v; simp consSub in H1.
-    + induction v0; inv H1.
-      now intuition.
-    + now induction v; inv H1.
+  induction x; intro; inv H.
+  now eapply IHx2; eauto.
+Qed.
+
+Lemma If_loop_false {τ} b {x : Exp [] τ} {y : Exp [] τ} :
+  ¬ (If b x y = y).
+Proof.
+  induction y; intro; inv H.
+  now eapply IHy3; eauto.
+Qed.
+
+Lemma Seq_loop {τ ty} {x : Exp [] ty} {y : Exp [] τ} :
+  ¬ (Seq x y = y).
+Proof.
+  induction y; intro; inv H.
+  now eapply IHy2; eauto.
+Qed.
+
+Lemma STmExp_self_ref {Γ τ} {v : Exp Γ τ} {e : Exp (τ :: Γ) τ} :
+  STmExp {|v|} e = v →
+    e = wk v ∨
+    e = VAR ZV.
+Proof.
+  intros.
+  unfold wk.
+  generalize dependent Γ.
+  dependent induction e; simpl in *;
+  intros; rewrite <- H; clear H;
+  simpl; intuition eauto.
+Admitted.
+
+Lemma Let_loop {τ ty} {v : Exp [] ty} {e : Exp [ty ] τ} :
+  ¬ (STmExp {|v|} e = Let v e).
+Proof.
+  dependent induction e; repeat intro; inv H.
   - admit.
-Abort.
+  - dependent induction v0; simp consSub in *.
+    + now induction v; inv H1; intuition.
+    + now induction v0; inv H1; intuition.
+Admitted.
+
+Lemma App_Lam_loop {τ ty} {v : Exp [] ty} {e : Exp [ty ] τ} :
+  ¬ (STmExp {|v|} e = APP (LAM e) v).
+Proof.
+Admitted.
 
 (* A term never reduces to itself. *)
-Fixpoint Step_irr {τ} {x : Exp [] τ} : ¬ (x ---> x).
+Theorem Step_irr {τ} {x : Exp [] τ} : ¬ (x ---> x).
 Proof.
   intro.
-  dependent induction x;
-  try solve [ now inv H ].
-  - admit.
+  dependent induction x; try solve [ now inv H ].
   - inv H.
-    + exact (Step_irr _ _ H1).
-    + exact (Step_irr _ _ H7).
+    + now eapply If_loop_true; eauto.
+    + now eapply If_loop_false; eauto.
+    + now firstorder.
   - inv H.
-    + exact (Step_irr _ _ H2).
-    + admit.
-  - admit.
-  - admit.
-  - admit.
-Abort.
+    + now eapply IHx1; eauto.
+    + now eapply IHx2; eauto.
+  - inv H.
+    + now eapply IHx; eauto.
+    + now eapply IHx; eauto.
+  - inv H.
+    + now eapply IHx; eauto.
+    + now eapply IHx; eauto.
+  - inv H.
+    now eapply Seq_loop; eauto.
+  - inv H.
+    + now eapply IHx1; eauto.
+    + now eapply Let_loop; eauto.
+  - inv H.
+    + now eapply App_Lam_loop; eauto.
+    + now eapply IHx1; eauto.
+    + now eapply IHx2; eauto.
+Qed.
 
 (* This injectivity theorem says that there is exactly one way to reduce terms
    at any given step. *)
@@ -78,14 +134,6 @@ Abort.
 
 Definition deterministic {X : Type} (R : relation X) :=
   ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
-
-Ltac normality :=
-  exfalso;
-  lazymatch goal with
-    | [ H1 : ValueP ?X, H2 : ?X ---> ?Y |- False ] =>
-        apply value_is_nf in H1; destruct H1;
-        now exists Y
-  end.
 
 Theorem step_deterministic τ :
   deterministic (@Step τ).
@@ -129,7 +177,8 @@ Proof.
   - inv H0; auto.
     now inv H2; normality.
   (* ST_Seq *)
-  - now inv H0.
+  - inv H0.
+    now intuition.
   (* ST_Let1 *)
   - inv H0.
     + now f_equal; intuition.
@@ -193,8 +242,11 @@ Proof.
   - right.
     now exists e2; constructor.
   - right.
-    exists (APP (LAM e2) e1).
-    now constructor.
+    destruct (IHe1 _ eq_refl JMeq_refl); clear IHe1.
+    + exists (STmExp {| e1 |} e2).
+      now constructor.
+    + destruct H.
+      now exists (Let x e2); constructor.
   - now inversion v.
   - left.
     now constructor.
@@ -299,7 +351,7 @@ Proof.
   unfold normal_form_of, normal_form.
   repeat intro.
   reduce.
-Admitted.
+Abort.
 
 Definition normalizing {X : Type} (R : relation X) :=
   ∀ t, ∃ t', (multi R) t t' ∧ normal_form R t'.

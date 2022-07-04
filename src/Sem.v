@@ -19,15 +19,15 @@ Definition SemPrim (p : PrimType) : Type :=
   | PrimInteger => Z
   | PrimDecimal => Q
   | PrimTime    => UTCTime
-  | PrimBool    => bool
   | PrimString  => string
-  | PrimUnit    => unit
   end.
 
 Fixpoint SemTy (τ : Ty) : Type :=
   match τ with
   | TyPrim p        => SemPrim p
-  | TyList τ'       => list (SemTy τ')
+  | TyUnit          => unit
+  | TyBool          => bool
+  | TyPair t1 t2    => SemTy t1 * SemTy t2
   | TyArrow dom cod => SemTy dom → SemTy cod
   end.
 
@@ -165,17 +165,20 @@ Definition SemLit `(l : Literal ty) : SemPrim ty :=
   | LString  s => s
   | LInteger z => z
   | LDecimal q => q
-  | LBool    b => b
   | LTime    t => t
-  | LUnit      => tt
   end.
 
 Program Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
   | Constant lit  => λ _, SemLit lit
-  (* jww (2022-07-01): change when exp1 has effects *)
+  | EUnit         => λ _, tt
+  | ETrue         => λ _, true
+  | EFalse        => λ _, false
+  | If b t e      => λ se, if SemExp b se then SemExp t se else SemExp e se
+  | Pair x y      => λ se, (SemExp x se, SemExp y se)
+  | Fst p         => λ se, fst (SemExp p se)
+  | Snd p         => λ se, snd (SemExp p se)
   | Seq exp1 exp2 => λ se, SemExp exp2 se
-  | List l        => λ se, map (λ x, SemExp x se) l
   | Let x body    => λ se, SemExp body (SemExp x se, se)
 
   | VAR v         => SemVar v
@@ -198,14 +201,11 @@ Lemma SemRenComm Γ τ (e : Exp Γ τ) Γ' (r : Ren Γ Γ') :
 Proof.
   intros.
   generalize dependent Γ'.
-  induction e using Exp_rect'; simpl; intros; auto.
-  - f_equal.
-    induction l; simpl in *; auto.
-    destruct X.
-    intuition.
-    rewrite H.
-    f_equal.
-    now rewrite e.
+  induction e; simpl; intros; auto.
+  - now rewrite IHe1, IHe2, IHe3.
+  - now rewrite IHe1, IHe2.
+  - now rewrite IHe.
+  - now rewrite IHe.
   - rewrite IHe1; clear IHe1.
     rewrite <- IHe2; clear IHe2.
     simpl.
@@ -245,14 +245,11 @@ Lemma SemSubComm Γ τ (e : Exp Γ τ) Γ' (s : Sub Γ Γ') :
 Proof.
   intros.
   generalize dependent Γ'.
-  induction e using Exp_rect'; simpl; intros; auto.
-  - f_equal.
-    induction l; simpl in *; auto.
-    destruct X.
-    intuition.
-    rewrite H.
-    f_equal.
-    now rewrite e.
+  induction e; simpl; intros; auto.
+  - now rewrite IHe1, IHe2, IHe3.
+  - now rewrite IHe1, IHe2.
+  - now rewrite IHe.
+  - now rewrite IHe.
   - rewrite IHe1; clear IHe1.
     rewrite <- IHe2; clear IHe2.
     simpl.

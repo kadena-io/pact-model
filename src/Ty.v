@@ -8,9 +8,7 @@ Inductive PrimType : Type :=
   | PrimInteger
   | PrimDecimal
   | PrimTime
-  | PrimBool
-  | PrimString
-  | PrimUnit.
+  | PrimString.
 
 Derive NoConfusion for PrimType.
 
@@ -26,7 +24,10 @@ Derive NoConfusion for PrimType.
 
 Inductive Ty : Type :=
   | TyPrim : PrimType → Ty
-  | TyList : Ty → Ty
+
+  | TyUnit : Ty
+  | TyBool : Ty
+  | TyPair : Ty → Ty → Ty
 
   (* The arrow type is the only type in the base lambda calculus *)
   | TyArrow : Ty → Ty → Ty.

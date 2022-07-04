@@ -34,8 +34,14 @@ Equations STmL {Γ Γ' τ} (s : Sub Γ Γ')
 Fixpoint STmExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
   | Constant lit  => Constant lit
+  | EUnit         => EUnit
+  | ETrue         => ETrue
+  | EFalse        => EFalse
+  | If b t e      => If (STmExp s b) (STmExp s t) (STmExp s e)
+  | Pair x y      => Pair (STmExp s x) (STmExp s y)
+  | Fst p         => Fst (STmExp s p)
+  | Snd p         => Snd (STmExp s p)
   | Seq exp1 exp2 => Seq (STmExp s exp1) (STmExp s exp2)
-  | List l        => List (map (STmExp s) l)
   | Let x body    => Let (STmExp s x) (STmExp (STmL s) body)
 
   | VAR v         => s _ v

@@ -23,16 +23,12 @@ Theorem value_is_nf {τ} (v : Exp [] τ) :
 Proof.
   intros.
   unfold normal_form.
-  dependent induction v using Exp_rect';
-  inv H; intro; reduce.
-  - now inversion H.
-  - inv H.
-    apply Forall_app in H2.
-    reduce.
-    inv H0.
-    apply isplit in X; simpl in *; reduce.
-    now eapply n; eauto.
-  - now inversion H.
+  dependent induction v;
+  inv H; intro; reduce;
+  try now inversion H.
+  inv H.
+  - now eapply IHv1; eauto.
+  - now eapply IHv2; eauto.
 Qed.
 
 Lemma substitution_reduces {τ ty} (e : Exp [ty] τ) v :
@@ -45,39 +41,23 @@ Proof.
       now intuition.
     + now induction v; inv H1.
   - admit.
-Admitted.
+Abort.
 
 (* A term never reduces to itself. *)
 Fixpoint Step_irr {τ} {x : Exp [] τ} : ¬ (x ---> x).
 Proof.
   intro.
-  dependent induction x.
-  - now inv H.
+  dependent induction x;
+  try solve [ now inv H ].
+  - admit.
+  - inv H; exact (Step_irr _ _ H1).
   - inv H.
-    clear -H4.
-    induction x2; inv H4.
-    now eapply IHx2_2; eauto.
-  - induction l.
-    + inv H.
-      destruct pre; simpl in *;
-      now inv H1.
-    + inv H.
-      destruct pre; simpl in *;
-      inv H1; inv H2.
-      * exact (Step_irr _ _ H4).
-      * apply app_inv_head in H0.
-        inv H0.
-        apply IHl.
-        constructor; auto.
-        now inv H3.
-  - now inv H.
-  - now inv H.
-  - now inv H.
-  - inv H.
-    + now eapply substitution_reduces; eauto.
-    + now eapply IHx1; eauto.
-    + now eapply IHx2; eauto.
-Qed.
+    + exact (Step_irr _ _ H2).
+    + admit.
+  - admit.
+  - admit.
+  - admit.
+Abort.
 
 (* This injectivity theorem says that there is exactly one way to reduce terms
    at any given step. *)
@@ -86,9 +66,11 @@ Theorem Step_inj {τ} {x y z : Exp [] τ} :
 Proof.
   intros.
   dependent induction x; intros; try solve [ now inv H ].
-  - now inv H; inv H0.
   - admit.
-  - now inv H; inv H0.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
   - admit.
 Abort.
 
@@ -99,63 +81,61 @@ Theorem step_deterministic τ :
   deterministic (@Step τ).
 Proof.
   repeat intro.
-  dependent induction x using Exp_rect'; try inv H.
-  - now inv H0.
-  - apply isplit in X; simpl in *; reduce.
-    now rewrite (Step_List_inv H0 H5).
-  - now inv H0.
-  - inv H0; auto.
-    + now inversion H3.
-    + apply value_is_nf in H3.
-      destruct H3.
-      now exists e2'.
-  - inv H0.
-    + now inversion H3.
-    + f_equal.
-      now eapply IHx1.
-    + apply value_is_nf in H4.
-      destruct H4.
-      now exists e1'.
-  - inv H0.
-    + apply value_is_nf in H2.
-      destruct H2.
-      now exists e2'.
-    + apply value_is_nf in H4.
-      destruct H4.
-      now exists e1'.
-    + f_equal.
-      now eapply IHx2.
-Qed.
+  dependent induction x.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+Admitted.
 
 Theorem strong_progress {τ} (e : Exp [] τ) :
   ValueP e ∨ ∃ e', e ---> e'.
 Proof.
-  dependent induction e using Exp_rect'.
+  dependent induction e.
+  - now left; constructor.
+  - now left; constructor.
+  - now left; constructor.
   - now left; constructor.
   - right.
-    eexists e2.
-    now constructor.
-  - induction l; simpl in *.
-    + left.
-      now constructor.
-    + destruct X.
-      destruct (o _ eq_refl JMeq_refl).
-      * intuition.
-        ** left.
-           constructor.
-           inv H1.
-           now constructor.
-        ** right.
-           destruct H1.
-           inv H0.
-           exists (List (a :: pre ++ x' :: post)).
-           now apply ST_ListElem
-             with (pre:=a :: pre) (post:=post) (x:=x0) (x':=x'); auto.
+    destruct (IHe1 _ eq_refl JMeq_refl); reduce.
+    + inv H.
+      * now exists e2; constructor.
+      * now exists e3; constructor.
+    + now exists (If x e2 e3); constructor.
+  - destruct (IHe1 _ eq_refl JMeq_refl); reduce.
+    + destruct (IHe2 _ eq_refl JMeq_refl); reduce.
+      * left.
+        now constructor.
       * right.
-        destruct H.
-        exists (List (x :: l)).
-        now apply ST_ListElem
-          with (pre:=[]) (post:=l) (x:=a) (x':=x); auto.
+        now exists (Pair e1 x); constructor.
+    + destruct (IHe2 _ eq_refl JMeq_refl); reduce.
+      * right.
+        now exists (Pair x e2); constructor.
+      * right.
+        now exists (Pair x e2); constructor.
+  - destruct (IHe _ eq_refl JMeq_refl); reduce.
+    + right.
+      inv H.
+      now exists x; constructor.
+    + right.
+      now exists (Fst x); constructor.
+  - destruct (IHe _ eq_refl JMeq_refl); reduce.
+    + right.
+      inv H.
+      now exists y; constructor.
+    + right.
+      now exists (Snd x); constructor.
+  - right.
+    now exists e2; constructor.
   - right.
     exists (APP (LAM e2) e1).
     now constructor.
@@ -166,10 +146,10 @@ Proof.
     destruct (IHe1 _ eq_refl JMeq_refl); clear IHe1.
     + destruct (IHe2 _ eq_refl JMeq_refl); clear IHe2.
       * dependent elimination e1; inv H.
-        exists (STmExp {| e2 |} e4).
+        exists (STmExp {| e2 |} e11).
         now constructor.
       * dependent elimination e1; inv H.
-        exists (APP (LAM e4) x).
+        exists (APP (LAM e11) x).
         constructor; auto.
         now constructor.
     + reduce.

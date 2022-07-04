@@ -24,10 +24,34 @@ Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
   | ST_Seq τ τ' (e1 : Exp [] τ') (e2 : Exp [] τ) :
     Seq e1 e2 ---> e2
 
-  | ST_ListElem τ (pre post : list (Exp [] τ)) x x' :
-    Forall ValueP pre →
+  | ST_IfTrue τ (t e : Exp [] τ) :
+    If ETrue t e ---> t
+  | ST_IfFalse τ (t e : Exp [] τ) :
+    If EFalse t e ---> e
+  | ST_If b b' τ (t e : Exp [] τ) :
+    b ---> b' →
+    If b t e ---> If b' t e
+
+  | ST_Pair1 τ1 τ2 (x x' : Exp [] τ1) (y : Exp [] τ2) :
     x ---> x' →
-    List (pre ++ x :: post) ---> List (pre ++ x' :: post)
+    Pair x y ---> Pair x' y
+  | ST_Pair2 τ1 τ2 (x : Exp [] τ1) (y y' : Exp [] τ2) :
+    y ---> y' →
+    Pair x y ---> Pair x y'
+  | ST_Fst1 τ1 τ2 (p p' : Exp [] (TyPair τ1 τ2)) :
+    p ---> p' →
+    Fst p ---> Fst p'
+  | ST_FstPair τ1 τ2 (v1 : Exp [] τ1) (v2 : Exp [] τ2) :
+    ValueP v1 →
+    ValueP v2 →
+    Fst (Pair v1 v2) ---> v1
+  | ST_Snd1 τ1 τ2 (p p' : Exp [] (TyPair τ1 τ2)) :
+    p ---> p' →
+    Snd p ---> Snd p'
+  | ST_SndPair τ1 τ2 (v1 : Exp [] τ1) (v2 : Exp [] τ2) :
+    ValueP v1 →
+    ValueP v2 →
+    Snd (Pair v1 v2) ---> v2
 
   | ST_Let τ ty (x : Exp [] ty) (body : Exp [ty] τ) :
     Let x body ---> APP (LAM body) x
@@ -50,13 +74,13 @@ Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
 Derive Signature for Step.
 
 Ltac reduce :=
-  repeat lazymatch goal with
-         | [ H : existT _ _ _ = existT _ _ _ |- _ ] =>
-             apply inj_pair2 in H; subst
-         | [ H : _ ∧ _ |- _ ] => destruct H
-         | [ H : _ * _ |- _ ] => destruct H
-         | [ H : ∃ _, _ |- _ ] => destruct H
-         end.
+  repeat (lazymatch goal with
+          | [ H : existT _ _ _ = existT _ _ _ |- _ ] =>
+              apply inj_pair2 in H; subst
+          | [ H : _ ∧ _ |- _ ] => destruct H
+          | [ H : _ * _ |- _ ] => destruct H
+          | [ H : ∃ _, _ |- _ ] => destruct H
+          end; subst).
 
 Ltac inv H := inversion H; subst; clear H; reduce.
 
@@ -66,29 +90,7 @@ Proof.
   intros.
   induction H; simpl; auto;
   extensionality E;
-  destruct E.
-  - subst.
-    rewrite !map_app; f_equal.
-    rewrite !map_cons; f_equal.
-    now rewrite !IHStep.
-  - now rewrite <- SemSubComm.
-  - now rewrite IHStep.
-  - now rewrite IHStep.
+  destruct E;
+  try now rewrite IHStep.
+  now rewrite <- SemSubComm.
 Qed.
-
-Theorem Step_List_length τ (l1 l2 : list (Exp [] τ)) :
-  List l1 ---> List l2 → length l1 = length l2.
-Proof.
-  intros.
-  inv H.
-  now rewrite !app_length.
-Qed.
-
-Theorem Step_List_inv {τ pre} {x x' : Exp [] τ} {post l} :
-  List (pre ++ x :: post) ---> l →
-  x ---> x' →
-  l = List (pre ++ x' :: post).
-Proof.
-  intros.
-  inv H.
-Admitted.

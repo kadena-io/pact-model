@@ -13,8 +13,6 @@ Inductive Literal : PrimType → Set :=
   | LString  : string → Literal PrimString
   | LInteger : Z → Literal PrimInteger
   | LDecimal : Q → Literal PrimDecimal
-  | LBool    : bool → Literal PrimBool
-  | LTime    : UTCTime → Literal PrimTime
-  | LUnit    : Literal PrimUnit.
+  | LTime    : UTCTime → Literal PrimTime.
 
 Derive NoConfusion for Literal.

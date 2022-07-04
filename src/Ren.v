@@ -71,8 +71,14 @@ Proof. reflexivity. Qed.
 Fixpoint RTmExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   match e with
   | Constant lit  => Constant lit
+  | EUnit         => EUnit
+  | ETrue         => ETrue
+  | EFalse        => EFalse
+  | If b t e      => If (RTmExp r b) (RTmExp r t) (RTmExp r e)
+  | Pair x y      => Pair (RTmExp r x) (RTmExp r y)
+  | Fst p         => Fst (RTmExp r p)
+  | Snd p         => Snd (RTmExp r p)
   | Seq exp1 exp2 => Seq (RTmExp r exp1) (RTmExp r exp2)
-  | List l        => List (map (RTmExp r) l)
   | Let x body    => Let (RTmExp r x) (RTmExp (RTmL r) body)
 
   | VAR v         => VAR (r _ v)
@@ -85,10 +91,7 @@ Lemma RTmExp_preserves_size {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) :
 Proof.
   generalize dependent r.
   generalize dependent Γ'.
-  induction e using Exp_rect'; simpl; intros; auto.
-  - repeat f_equal.
-    induction l; simpl; auto.
-    now f_equal; intuition.
+  now induction e; simpl; intros; auto.
 Qed.
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RTmExp (λ _, SV).

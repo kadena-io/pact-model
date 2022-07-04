@@ -31,6 +31,6 @@ Inductive Ty : Type :=
   (* The arrow type is the only type in the base lambda calculus *)
   | TyArrow : Ty → Ty → Ty.
 
-Derive NoConfusion for Ty.
+Derive NoConfusion Subterm for Ty.
 
 Infix "⟶" := TyArrow (at level 30, right associativity).

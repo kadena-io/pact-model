@@ -1,4 +1,5 @@
 Require Export
+  Coq.micromega.Lia
   Ty
   Exp
   Ren.
@@ -9,8 +10,6 @@ Set Equations With UIP.
 Generalizable All Variables.
 
 Import ListNotations.
-
-Section Sub.
 
 Definition Sub Γ Γ' := ∀ τ, Var Γ τ → Exp Γ' τ.
 
@@ -52,7 +51,5 @@ Definition RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') :=
 
 Definition ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (s' : Sub Γ Γ') :=
   (λ τ v, STmExp s (s' τ v)) : Sub Γ Γ''.
-
-End Sub.
 
 Notation "{| e ; .. ; f |}" := (consSub e .. (consSub f idSub) ..).

@@ -32,6 +32,24 @@ Inductive Exp Γ : Ty → Type :=
 
 Derive Signature NoConfusionHom Subterm for Exp.
 
+Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
+  match e with
+  | Constant _ x => 1
+  | Seq _ x y    => 1 + Exp_size x + Exp_size y
+  | List _ x     => 1 + fold_left plus (map Exp_size x) 0%nat
+  | Let _ x body => 1 + Exp_size x + Exp_size body
+  | VAR _ v      => 1
+  | LAM _ e      => 1 + Exp_size e
+  | APP _ e1 e2  => 1 + Exp_size e1 + Exp_size e2
+  end.
+
+Corollary Exp_size_preserved {Γ τ} (e1 e2 : Exp Γ τ) :
+  Exp_size e1 ≠ Exp_size e2 → e1 ≠ e2.
+Proof.
+  repeat intro; subst.
+  contradiction.
+Qed.
+
 Section Exp_rect.
 
 Variable P : ∀ Γ τ, Exp Γ τ → Type.

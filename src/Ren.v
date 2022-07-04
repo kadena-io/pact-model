@@ -80,6 +80,17 @@ Fixpoint RTmExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
   | LAM e         => LAM (RTmExp (RTmL r) e)
   end.
 
+Lemma RTmExp_preserves_size {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ τ) :
+  Exp_size (RTmExp r e) = Exp_size e.
+Proof.
+  generalize dependent r.
+  generalize dependent Γ'.
+  induction e using Exp_rect'; simpl; intros; auto.
+  - repeat f_equal.
+    induction l; simpl; auto.
+    now f_equal; intuition.
+Qed.
+
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RTmExp (λ _, SV).
 
 Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (VAR ZV).

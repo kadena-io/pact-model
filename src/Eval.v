@@ -47,8 +47,19 @@ Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
 
   where " t '--->' t' " := (Step t t').
 
-Theorem soundness τ (e : Exp [] τ) v :
-  Step e v → SemExp e = SemExp v.
+Ltac reduce :=
+  repeat lazymatch goal with
+         | [ H : existT _ _ _ = existT _ _ _ |- _ ] =>
+             apply inj_pair2 in H; subst
+         | [ H : _ ∧ _ |- _ ] => destruct H
+         | [ H : _ * _ |- _ ] => destruct H
+         | [ H : ∃ _, _ |- _ ] => destruct H
+         end.
+
+Ltac inv H := inversion H; subst; clear H; reduce.
+
+Theorem Step_sound τ (e : Exp [] τ) v :
+  e ---> v → SemExp e = SemExp v.
 Proof.
   intros.
   induction H; simpl; auto;
@@ -63,209 +74,19 @@ Proof.
   - now rewrite IHStep.
 Qed.
 
-Definition normal_form {X : Type} (R : relation X) (t : X) : Prop :=
-  ¬ ∃ t', R t t'.
-
-Ltac reduce :=
-  repeat lazymatch goal with
-         | [ H : existT _ _ _ = existT _ _ _ |- _ ] =>
-             apply inj_pair2 in H; subst
-         | [ H : _ ∧ _ |- _ ] => destruct H
-         | [ H : _ * _ |- _ ] => destruct H
-         | [ H : ∃ _, _ |- _ ] => destruct H
-         end.
-
-Ltac inv H := inversion H; subst; clear H; reduce.
-
-Theorem value_is_nf {τ} (v : Exp [] τ) :
-  ValueP v → normal_form Step v.
+Theorem Step_List_length τ (l1 l2 : list (Exp [] τ)) :
+  List l1 ---> List l2 → length l1 = length l2.
 Proof.
   intros.
-  unfold normal_form.
-  dependent induction v using Exp_rect';
-  inv H; intro; reduce.
-  - now inversion H.
-  - inv H.
-    apply Forall_app in H2.
-    reduce.
-    inv H0.
-    apply isplit in X; simpl in *; reduce.
-    now eapply n; eauto.
-  - now inversion H.
+  inv H.
+  now rewrite !app_length.
 Qed.
 
-Definition deterministic {X : Type} (R : relation X) :=
-  ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
-
-Theorem step_deterministic τ :
-  deterministic (@Step τ).
+Theorem Step_List_inv {τ pre} {x x' : Exp [] τ} {post l} :
+  List (pre ++ x :: post) ---> l →
+  x ---> x' →
+  l = List (pre ++ x' :: post).
 Proof.
-  repeat intro.
-  dependent induction x using Exp_rect'; try inv H.
-  - now inv H0.
-  - apply isplit in X; simpl in *; reduce.
-    admit.
-  - now inv H0.
-  - inv H0; auto.
-    + now inversion H3.
-    + apply value_is_nf in H3.
-      destruct H3.
-      now exists e2'.
-  - inv H0.
-    + now inversion H3.
-    + f_equal.
-      now eapply IHx1.
-    + apply value_is_nf in H4.
-      destruct H4.
-      now exists e1'.
-  - inv H0.
-    + apply value_is_nf in H2.
-      destruct H2.
-      now exists e2'.
-    + apply value_is_nf in H4.
-      destruct H4.
-      now exists e1'.
-    + f_equal.
-      now eapply IHx2.
+  intros.
+  inv H.
 Admitted.
-
-Theorem strong_progress {τ} (e : Exp [] τ) :
-  ValueP e ∨ ∃ e', e ---> e'.
-Proof.
-  dependent induction e using Exp_rect'.
-  - now left; constructor.
-  - right.
-    eexists e2.
-    now constructor.
-  - induction l; simpl in *.
-    + left.
-      now constructor.
-    + destruct X.
-      destruct (o _ eq_refl JMeq_refl).
-      * intuition.
-        ** left.
-           constructor.
-           inv H1.
-           now constructor.
-        ** right.
-           destruct H1.
-           inv H0.
-           exists (List (a :: pre ++ x' :: post)).
-           now apply ST_ListElem
-             with (pre:=a :: pre) (post:=post) (x:=x0) (x':=x'); auto.
-      * right.
-        destruct H.
-        exists (List (x :: l)).
-        now apply ST_ListElem
-          with (pre:=[]) (post:=l) (x:=a) (x':=x); auto.
-  - right.
-    exists (APP (LAM e2) e1).
-    now constructor.
-  - now inversion v.
-  - left.
-    now constructor.
-  - right.
-    destruct (IHe1 _ eq_refl JMeq_refl); clear IHe1.
-    + destruct (IHe2 _ eq_refl JMeq_refl); clear IHe2.
-      * dependent elimination e1; inv H.
-        exists (STmExp {| e2 |} e4).
-        now constructor.
-      * dependent elimination e1; inv H.
-        exists (APP (LAM e4) x).
-        constructor; auto.
-        now constructor.
-    + reduce.
-      destruct (IHe2 _ eq_refl JMeq_refl); clear IHe2.
-      * exists (APP x e2).
-        now constructor.
-      * reduce.
-        exists (APP x e2).
-        now constructor.
-Qed.
-
-Corollary nf_is_value τ (v : Exp [] τ) :
-  normal_form Step v → ValueP v.
-Proof.
-  intros.
-  destruct (strong_progress v); auto.
-  exfalso.
-  now apply H.
-Qed.
-
-Corollary nf_same_as_value τ (v : Exp [] τ) :
-  normal_form Step v ↔ ValueP v.
-Proof.
-  split.
-  - now apply nf_is_value.
-  - now apply value_is_nf.
-Qed.
-
-Inductive multi {X : Type} (R : relation X) : relation X :=
-  | multi_refl : ∀ (x : X), multi R x x
-  | multi_step : ∀ (x y z : X),
-      R x y →
-      multi R y z →
-      multi R x z.
-
-Notation " t '--->*' t' " := (multi Step t t') (at level 40).
-
-Theorem multi_R : ∀ (X : Type) (R : relation X) (x y : X),
-  R x y → (multi R) x y.
-Proof.
-  intros.
-  eapply multi_step; eauto.
-  now constructor.
-Qed.
-
-Theorem multi_trans : ∀ (X : Type) (R : relation X) (x y z : X),
-  multi R x y →
-  multi R y z →
-  multi R x z.
-Proof.
-  intros.
-  induction H; auto.
-  now eapply multi_step; eauto.
-Qed.
-
-Definition halts {τ} (e : Exp [] τ) : Prop :=
-  ∃ e', e --->* e' ∧ ValueP e'.
-
-Lemma value_halts {τ} (v : Exp [] τ) : ValueP v → halts v.
-Proof.
-  intros.
-  unfold halts.
-  now dependent induction H; eexists; split; constructor.
-Qed.
-
-Lemma step_preserves_halting {τ} (e e' : Exp [] τ) :
-  (e ---> e') → (halts e ↔ halts e').
-Proof.
-  intros.
-  unfold halts.
-  split.
-  - intros [e'' [H1 H2]].
-    destruct H1.
-    + apply value_is_nf in H2.
-      destruct H2.
-      now exists e'.
-    + rewrite (step_deterministic _ _ _ _ H H0).
-      now exists z.
-  - intros [e'0 [H1 H2]].
-    exists e'0.
-    split; auto.
-    now eapply multi_step; eauto.
-Qed.
-
-Definition normal_form_of {τ} (e e' : Exp [] τ) :=
-  (e --->* e' ∧ normal_form Step e').
-
-Theorem normal_forms_unique τ :
-  deterministic (normal_form_of (τ:=τ)).
-Proof.
-  unfold normal_form_of, normal_form.
-  repeat intro.
-  reduce.
-Admitted.
-
-Definition normalizing {X : Type} (R : relation X) :=
-  ∀ t, ∃ t', (multi R) t t' ∧ normal_form R t'.

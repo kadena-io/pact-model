@@ -138,7 +138,6 @@ Equations loop' (gas : nat) {τ : Ty} (s : Σ τ) : Σ τ :=
   loop' O s := s;
   loop' _ (MkΣ (Constant x) ρ r Mt) := MkΣ (Constant x) ρ r Mt;
   loop' _ (MkΣ (List l)     ρ r Mt) := MkΣ (List l) ρ r Mt;
-  loop' _ (MkΣ (VAR v)      ρ r Mt) := MkΣ (VAR v) ρ r Mt;
   loop' _ (MkΣ (LAM e)      ρ r Mt) := MkΣ (LAM e) ρ r Mt;
   loop' (S gas') s := loop' gas' (step s).
 
@@ -178,34 +177,9 @@ Example exp_app :
     inr (VLit (LInteger 123%Z)).
 Proof. reflexivity. Qed.
 
-(*
 Theorem cek_sound τ (e : Exp [] τ) v :
-  Eval e v → ∃ gas, loop' gas (inject e Empty) = MkΣ v Empty ANone Mt.
+  e --->* v → ∃ gas, loop' gas (inject e Empty) = MkΣ v Empty ANone Mt.
 Proof.
-  unfold run, Basics.compose, inject.
-  intros.
-  induction H; simpl; intros; auto.
-  - exists 1%nat; simpl.
-    rewrite loop'_equation_2.
-    now rewrite step_equation_1.
-  - destruct IHEval as [gas' IHEval'].
-    now exists (S gas').
-  - destruct IHEval as [gas' IHEval'].
-    exists (S gas'); simpl.
-    rewrite loop'_equation_2.
-    now rewrite step_equation_10.
-  - exists 1%nat; simpl.
-    rewrite loop'_equation_2.
-    rewrite step_equation_12.
-    now rewrite loop'_equation_1.
-  - destruct IHEval1 as [gas1 IHEval1].
-    destruct IHEval2 as [gas2 IHEval2].
-    destruct IHEval3 as [gas3 IHEval3].
-    exists (S (S (S (gas1 + gas2 + gas3)))).
-    rewrite loop'_equation_2.
-    rewrite step_equation_15.
-    admit.
 Abort.
-*)
 
 End CEK.

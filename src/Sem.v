@@ -170,7 +170,7 @@ Definition SemLit `(l : Literal ty) : SemPrim ty :=
   | LUnit      => tt
   end.
 
-Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
+Program Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
   | Constant lit  => λ _, SemLit lit
   (* jww (2022-07-01): change when exp1 has effects *)
@@ -199,12 +199,13 @@ Proof.
   intros.
   generalize dependent Γ'.
   induction e using Exp_rect'; simpl; intros; auto.
-  - induction l; simpl in *; auto.
+  - f_equal.
+    induction l; simpl in *; auto.
     destruct X.
     intuition.
     rewrite H.
     f_equal.
-    now apply e.
+    now rewrite e.
   - rewrite IHe1; clear IHe1.
     rewrite <- IHe2; clear IHe2.
     simpl.
@@ -245,12 +246,13 @@ Proof.
   intros.
   generalize dependent Γ'.
   induction e using Exp_rect'; simpl; intros; auto.
-  - induction l; simpl in *; auto.
+  - f_equal.
+    induction l; simpl in *; auto.
     destruct X.
     intuition.
     rewrite H.
     f_equal.
-    now apply e.
+    now rewrite e.
   - rewrite IHe1; clear IHe1.
     rewrite <- IHe2; clear IHe2.
     simpl.

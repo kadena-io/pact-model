@@ -4,8 +4,6 @@ Require Export
 From Equations Require Import Equations.
 Set Equations With UIP.
 
-Section Ty.
-
 Inductive PrimType : Type :=
   | PrimInteger
   | PrimDecimal
@@ -34,7 +32,5 @@ Inductive Ty : Type :=
   | TyArrow : Ty → Ty → Ty.
 
 Derive NoConfusion for Ty.
-
-End Ty.
 
 Infix "⟶" := TyArrow (at level 30, right associativity).

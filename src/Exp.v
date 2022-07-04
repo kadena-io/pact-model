@@ -9,8 +9,6 @@ Set Equations With UIP.
 
 Import ListNotations.
 
-Section Exp.
-
 Definition Env := list Ty.
 
 Inductive Var : Env → Ty → Type :=
@@ -22,6 +20,8 @@ Derive Signature NoConfusion for Var.
 Inductive Exp Γ : Ty → Type :=
   | Constant {ty} : Literal ty → Exp Γ (TyPrim ty)
   | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
+  (* The first list contains terms that need to be evaluated;
+     the second is a reversed list of terms in normal form. *)
   | List {τ}      : list (Exp Γ τ) → Exp Γ (TyList τ)
   | Let {τ ty}    : Exp Γ ty → Exp (ty :: Γ) τ → Exp Γ τ
 
@@ -31,6 +31,8 @@ Inductive Exp Γ : Ty → Type :=
   | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
 
 Derive Signature NoConfusionHom Subterm for Exp.
+
+Section Exp_rect.
 
 Variable P : ∀ Γ τ, Exp Γ τ → Type.
 
@@ -60,27 +62,28 @@ Proof.
   - now apply Pseq.
   - apply Plist.
     induction l.
-    + exact tt.
-    + split.
-      * now apply Exp_rect'.
-      * exact IHl.
+    * exact tt.
+    * split.
+      ** now apply Exp_rect'.
+      ** exact IHl.
   - now apply Plet.
   - now apply Pvar.
   - now apply Plam.
   - now apply Papp.
 Qed.
 
+End Exp_rect.
+
 (* [ValueP] is an inductive proposition that indicates whether an expression
    represents a value, i.e., that it does reduce any further. *)
-Inductive ValueP Γ : ∀ τ, Exp Γ τ → Prop :=
+Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
   | ConstantP {ty} (l : Literal ty) :
-    ValueP Γ (TyPrim ty) (Constant Γ l)
+    ValueP Γ (Constant Γ l)
   | ListP {τ} (l : list (Exp Γ τ)) :
-    Forall (ValueP _ _) l → ValueP Γ (TyList τ) (List Γ l)
+    Forall (ValueP Γ) l →
+    ValueP Γ (List Γ l)
   | ClosureP {dom cod} (e : Exp (dom :: Γ) cod) :
-    ValueP Γ (dom ⟶ cod) (LAM Γ e).
-
-End Exp.
+    ValueP Γ (LAM Γ e).
 
 Arguments ZV {_ _}.
 Arguments SV {_ _ _} _.
@@ -94,3 +97,6 @@ Arguments LAM {Γ dom cod} _.
 Arguments APP {Γ dom cod} _ _.
 
 Arguments ValueP {Γ τ} _.
+Arguments ConstantP {Γ ty} _.
+Arguments ListP {Γ τ} _.
+Arguments ClosureP {Γ dom cod} _.

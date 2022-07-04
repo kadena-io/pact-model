@@ -7,8 +7,6 @@ Require Export
 From Equations Require Import Equations.
 Set Equations With UIP.
 
-Section Lit.
-
 Definition UTCTime : Set := nat.
 
 Inductive Literal : PrimType → Set :=
@@ -20,5 +18,3 @@ Inductive Literal : PrimType → Set :=
   | LUnit    : Literal PrimUnit.
 
 Derive NoConfusion for Literal.
-
-End Lit.

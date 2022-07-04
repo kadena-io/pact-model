@@ -86,20 +86,14 @@ Proof.
   dependent induction v using Exp_rect';
   inv H; intro; reduce.
   - now inversion H.
-  - induction l; simpl in *.
-    + inv H.
-      destruct pre; simpl in *;
-      now inversion H1.
-    + reduce.
-      inv H2.
-      intuition.
-      inv H.
-      destruct pre; simpl in *.
-      * inv H2.
-        now eapply n; eauto.
-      * admit.
+  - inv H.
+    apply Forall_app in H2.
+    reduce.
+    inv H0.
+    apply isplit in X; simpl in *; reduce.
+    now eapply n; eauto.
   - now inversion H.
-Admitted.
+Qed.
 
 Definition deterministic {X : Type} (R : relation X) :=
   ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
@@ -108,33 +102,32 @@ Theorem step_deterministic τ :
   deterministic (@Step τ).
 Proof.
   repeat intro.
-  induction H.
+  dependent induction x using Exp_rect'; try inv H.
   - now inv H0.
-  - subst.
-    inv H0.
+  - apply isplit in X; simpl in *; reduce.
     admit.
   - now inv H0.
   - inv H0; auto.
     + now inversion H3.
-    + apply value_is_nf in H.
-      destruct H.
+    + apply value_is_nf in H3.
+      destruct H3.
       now exists e2'.
   - inv H0.
-    + now inversion H.
+    + now inversion H3.
     + f_equal.
-      now apply IHStep.
+      now eapply IHx1.
     + apply value_is_nf in H4.
       destruct H4.
       now exists e1'.
   - inv H0.
+    + apply value_is_nf in H2.
+      destruct H2.
+      now exists e2'.
     + apply value_is_nf in H4.
       destruct H4.
-      now exists e2'.
-    + apply value_is_nf in H.
-      destruct H.
       now exists e1'.
     + f_equal.
-      now apply IHStep.
+      now eapply IHx2.
 Admitted.
 
 Theorem strong_progress {τ} (e : Exp [] τ) :
@@ -272,6 +265,7 @@ Theorem normal_forms_unique τ :
 Proof.
   unfold normal_form_of, normal_form.
   repeat intro.
+  reduce.
 Admitted.
 
 Definition normalizing {X : Type} (R : relation X) :=

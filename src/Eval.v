@@ -47,6 +47,8 @@ Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
 
   where " t '--->' t' " := (Step t t').
 
+Derive Signature for Step.
+
 Ltac reduce :=
   repeat lazymatch goal with
          | [ H : existT _ _ _ = existT _ _ _ |- _ ] =>

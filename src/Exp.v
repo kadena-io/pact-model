@@ -73,8 +73,12 @@ Qed.
 (* [ValueP] is an inductive proposition that indicates whether an expression
    represents a value, i.e., that it does reduce any further. *)
 Inductive ValueP Γ : ∀ τ, Exp Γ τ → Prop :=
-  | ConstantP {ty} (l : Literal ty) : ValueP Γ (TyPrim ty) (Constant Γ l)
-  | ClosureP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (dom ⟶ cod) (LAM Γ e).
+  | ConstantP {ty} (l : Literal ty) :
+    ValueP Γ (TyPrim ty) (Constant Γ l)
+  | ListP {τ} (l : list (Exp Γ τ)) :
+    Forall (ValueP _ _) l → ValueP Γ (TyList τ) (List Γ l)
+  | ClosureP {dom cod} (e : Exp (dom :: Γ) cod) :
+    ValueP Γ (dom ⟶ cod) (LAM Γ e).
 
 End Exp.
 
@@ -88,3 +92,5 @@ Arguments Let {Γ τ ty} _ _.
 Arguments VAR {Γ τ} _.
 Arguments LAM {Γ dom cod} _.
 Arguments APP {Γ dom cod} _ _.
+
+Arguments ValueP {Γ τ} _.

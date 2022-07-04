@@ -25,6 +25,7 @@ Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
     Seq e1 e2 ---> e2
 
   | ST_ListElem τ (l1 l2 : list (Exp [] τ)) pre x x' post :
+    Forall ValueP pre →
     l1 = pre ++ x  :: post →
     l2 = pre ++ x' :: post →
     x ---> x' →

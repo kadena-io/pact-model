@@ -50,7 +50,9 @@ Proof.
   dependent induction x;
   try solve [ now inv H ].
   - admit.
-  - inv H; exact (Step_irr _ _ H1).
+  - inv H.
+    + exact (Step_irr _ _ H1).
+    + exact (Step_irr _ _ H7).
   - inv H.
     + exact (Step_irr _ _ H2).
     + admit.
@@ -77,25 +79,79 @@ Abort.
 Definition deterministic {X : Type} (R : relation X) :=
   ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
 
+Ltac normality :=
+  exfalso;
+  lazymatch goal with
+    | [ H1 : ValueP ?X, H2 : ?X ---> ?Y |- False ] =>
+        apply value_is_nf in H1; destruct H1;
+        now exists Y
+  end.
+
 Theorem step_deterministic τ :
   deterministic (@Step τ).
 Proof.
   repeat intro.
-  dependent induction x.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-Admitted.
+  generalize dependent y2.
+  dependent induction x; intros; inv H.
+  (* ST_IfTrue *)
+  - inv H0; auto.
+    now inv H2.
+  (* ST_IfFalse *)
+  - inv H0; auto.
+    now inv H2.
+  (* ST_If *)
+  - inv H0.
+    + now inv H3.
+    + now inv H3.
+    + now f_equal; intuition.
+  (* ST_Pair1 *)
+  - inv H0.
+    + now f_equal; intuition.
+    + now normality.
+  (* ST_Pair2 *)
+  - inv H0.
+    + now normality.
+    + now f_equal; intuition.
+  (* ST_Fst1 *)
+  - inv H0.
+    + now f_equal; intuition.
+    + exfalso.
+      now inv H3; normality.
+  (* ST_FstPair *)
+  - inv H0; auto.
+    now inv H2; normality.
+  (* ST_Snd1 *)
+  - inv H0.
+    + now f_equal; intuition.
+    + exfalso.
+      now inv H3; normality.
+  (* ST_SndPair *)
+  - inv H0; auto.
+    now inv H2; normality.
+  (* ST_Seq *)
+  - now inv H0.
+  (* ST_Let1 *)
+  - inv H0.
+    + now f_equal; intuition.
+    + now normality.
+  (* ST_Let2 *)
+  - inv H0; auto.
+    now normality.
+  (* ST_AppAbs *)
+  - inv H0; auto.
+    + now inv H2.
+    + now normality.
+  (* ST_App1 *)
+  - inv H0.
+    + now inv H3.
+    + now f_equal; intuition.
+    + now normality.
+  (* ST_App2 *)
+  - inv H0.
+    + now normality.
+    + now normality.
+    + now f_equal; intuition.
+Qed.
 
 Theorem strong_progress {τ} (e : Exp [] τ) :
   ValueP e ∨ ∃ e', e ---> e'.

@@ -36,6 +36,7 @@ Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
     x ---> x' →
     Pair x y ---> Pair x' y
   | ST_Pair2 τ1 τ2 (x : Exp [] τ1) (y y' : Exp [] τ2) :
+    ValueP x →
     y ---> y' →
     Pair x y ---> Pair x y'
   | ST_Fst1 τ1 τ2 (p p' : Exp [] (TyPair τ1 τ2)) :
@@ -53,11 +54,15 @@ Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
     ValueP v2 →
     Snd (Pair v1 v2) ---> v2
 
-  | ST_Let τ ty (x : Exp [] ty) (body : Exp [ty] τ) :
-    Let x body ---> APP (LAM body) x
+  | ST_Let1 τ ty (x : Exp [] ty) x' (body : Exp [ty] τ) :
+    x ---> x' →
+    Let x body ---> Let x' body
+  | ST_Let2 τ ty (x : Exp [] ty) (body : Exp [ty] τ) :
+    ValueP x →
+    Let x body ---> STmExp {| x |} body
 
   | ST_AppAbs dom cod (e : Exp [dom] cod) (v : Exp [] dom) :
-    ValueP v ->
+    ValueP v →
     APP (LAM e) v ---> STmExp {| v |} e
 
   | ST_App1 dom cod (e1 : Exp [] (dom ⟶ cod)) e1' (e2 : Exp [] dom) :
@@ -92,5 +97,6 @@ Proof.
   extensionality E;
   destruct E;
   try now rewrite IHStep.
-  now rewrite <- SemSubComm.
+  - now rewrite <- SemSubComm.
+  - now rewrite <- SemSubComm.
 Qed.

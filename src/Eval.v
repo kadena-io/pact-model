@@ -24,12 +24,10 @@ Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
   | ST_Seq τ τ' (e1 : Exp [] τ') (e2 : Exp [] τ) :
     Seq e1 e2 ---> e2
 
-  | ST_ListElem τ (l1 l2 : list (Exp [] τ)) pre x x' post :
+  | ST_ListElem τ (pre post : list (Exp [] τ)) x x' :
     Forall ValueP pre →
-    l1 = pre ++ x  :: post →
-    l2 = pre ++ x' :: post →
     x ---> x' →
-    List l1 ---> List l2
+    List (pre ++ x :: post) ---> List (pre ++ x' :: post)
 
   | ST_Let τ ty (x : Exp [] ty) (body : Exp [ty] τ) :
     Let x body ---> APP (LAM body) x

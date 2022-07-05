@@ -60,19 +60,6 @@ Proof.
   now eapply IHy2; eauto.
 Qed.
 
-Lemma STmExp_self_ref {Γ τ} {v : Exp Γ τ} {e : Exp (τ :: Γ) τ} :
-  STmExp {|v|} e = v →
-    e = wk v ∨
-    e = VAR ZV.
-Proof.
-  intros.
-  unfold wk.
-  generalize dependent Γ.
-  dependent induction e; simpl in *;
-  intros; rewrite <- H; clear H;
-  simpl; intuition eauto.
-Admitted.
-
 Lemma Let_loop {τ ty} {v : Exp [] ty} {e : Exp [ty ] τ} :
   ¬ (STmExp {|v|} e = Let v e).
 Proof.
@@ -86,6 +73,11 @@ Admitted.
 Lemma App_Lam_loop {τ ty} {v : Exp [] ty} {e : Exp [ty ] τ} :
   ¬ (STmExp {|v|} e = APP (LAM e) v).
 Proof.
+  dependent induction e; repeat intro; inv H.
+  - dependent induction v0; simp consSub in *.
+    + now induction v; inv H1; intuition.
+    + now induction v0; inv H1; intuition.
+  - admit.
 Admitted.
 
 (* A term never reduces to itself. *)
@@ -117,20 +109,50 @@ Proof.
     + now eapply IHx2; eauto.
 Qed.
 
+Corollary Step_productive {τ} {x x' : Exp [] τ} : x ---> x' → x ≠ x'.
+Proof.
+  repeat intro; subst.
+  now eapply Step_irr; eauto.
+Qed.
+
 (* This injectivity theorem says that there is exactly one way to reduce terms
    at any given step. *)
-Theorem Step_inj {τ} {x y z : Exp [] τ} :
+Fixpoint Step_inj {τ} {x y z : Exp [] τ} :
   x ---> y → x ---> z → y = z.
 Proof.
   intros.
   dependent induction x; intros; try solve [ now inv H ].
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-Abort.
+  - inv H; inv H0; auto.
+    + now inv H2.
+    + now inv H2.
+    + now inv H3.
+    + now inv H3.
+    + now f_equal; intuition.
+  - inv H; inv H0; auto.
+    + now f_equal; intuition.
+    + now normality.
+    + now normality.
+    + now f_equal; intuition.
+  - inv H; inv H0; auto.
+    + now f_equal; intuition.
+    + now inv H3; normality.
+    + now inv H2; normality.
+  - inv H; inv H0; auto.
+    + now f_equal; intuition.
+    + now inv H3; normality.
+    + now inv H2; normality.
+  - now inv H; inv H0.
+  - inv H; inv H0; auto.
+    + now f_equal; intuition.
+    + now normality.
+    + now normality.
+  - inv H; inv H0; auto; try solve [ now inv H2 ].
+    + now normality.
+    + now f_equal; intuition.
+    + now normality.
+    + now normality.
+    + now f_equal; intuition.
+Qed.
 
 Definition deterministic {X : Type} (R : relation X) :=
   ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
@@ -348,10 +370,22 @@ Definition normal_form_of {τ} (e e' : Exp [] τ) :=
 Theorem normal_forms_unique τ :
   deterministic (normal_form_of (τ:=τ)).
 Proof.
-  unfold normal_form_of, normal_form.
-  repeat intro.
-  reduce.
-Abort.
+  unfold deterministic, normal_form_of.
+  intros x y1 y2 P1 P2.
+  destruct P1 as [P11 P12].
+  destruct P2 as [P21 P22].
+  generalize dependent y2.
+  induction P11; intros.
+  - inversion P21; auto.
+    induction P12.
+    now exists y.
+  - apply IHP11; auto.
+    inv P21.
+    + destruct P22.
+      now exists y.
+    + assert (y = y0) by now apply step_deterministic with x.
+      now subst.
+Qed.
 
 Definition normalizing {X : Type} (R : relation X) :=
   ∀ t, ∃ t', (multi R) t t' ∧ normal_form R t'.

@@ -32,6 +32,8 @@ Inductive Exp Γ : Ty → Type :=
 
   | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
+  | Builtin {τ ty} : Exp Γ ty → Exp (ty :: Γ) τ → Exp Γ τ
+
   | Let {τ ty}    : Exp Γ ty → Exp (ty :: Γ) τ → Exp Γ τ
 
   (* These are the terms of the base lambda calculus *)

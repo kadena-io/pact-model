@@ -34,4 +34,15 @@ Inductive Ty : Type :=
 
 Derive NoConfusion Subterm for Ty.
 
-Infix "⟶" := TyArrow (at level 30, right associativity).
+Declare Scope Ty_scope.
+Bind Scope Ty_scope with Ty.
+Delimit Scope category_scope with ty.
+
+Infix "⟶" := TyArrow (at level 30, right associativity) : ty_scope.
+Infix "×"  := TyPair  (at level 41, right associativity) : ty_scope.
+
+Definition ℤ := TyPrim PrimInteger.
+Definition ℝ := TyPrim PrimDecimal.
+Definition 𝕋 := TyPrim PrimTime.
+Definition 𝕊 := TyPrim PrimString.
+Definition 𝔹 := TyBool.

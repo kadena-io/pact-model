@@ -41,6 +41,8 @@ Inductive Exp Γ : Ty → Type :=
 
 Derive Signature NoConfusionHom Subterm for Exp.
 
+Notation "Γ ⊢ τ" := (Exp Γ τ) (at level 100).
+
 Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   match e with
   | Constant _ x => 1

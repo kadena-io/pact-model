@@ -10,5 +10,6 @@ src/Sub.v
 src/Sem.v
 src/Eval.v
 src/Norm.v
+src/Cat.v
 src/CEK.v
 src/Capabilities.v

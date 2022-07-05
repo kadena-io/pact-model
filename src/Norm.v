@@ -61,7 +61,7 @@ Proof.
 Qed.
 
 Lemma Let_loop {τ ty} {v : Exp [] ty} {e : Exp [ty ] τ} :
-  ¬ (STmExp {|v|} e = Let v e).
+  ¬ (STmExp {||v||} e = Let v e).
 Proof.
   dependent induction e; repeat intro; inv H.
   - admit.
@@ -71,7 +71,7 @@ Proof.
 Admitted.
 
 Lemma App_Lam_loop {τ ty} {v : Exp [] ty} {e : Exp [ty ] τ} :
-  ¬ (STmExp {|v|} e = APP (LAM e) v).
+  ¬ (STmExp {||v||} e = APP (LAM e) v).
 Proof.
   dependent induction e; repeat intro; inv H.
   - dependent induction v0; simp consSub in *.
@@ -265,7 +265,7 @@ Proof.
     now exists e2; constructor.
   - right.
     destruct (IHe1 _ eq_refl JMeq_refl); clear IHe1.
-    + exists (STmExp {| e1 |} e2).
+    + exists (STmExp {|| e1 ||} e2).
       now constructor.
     + destruct H.
       now exists (Let x e2); constructor.
@@ -276,7 +276,7 @@ Proof.
     destruct (IHe1 _ eq_refl JMeq_refl); clear IHe1.
     + destruct (IHe2 _ eq_refl JMeq_refl); clear IHe2.
       * dependent elimination e1; inv H.
-        exists (STmExp {| e2 |} e11).
+        exists (STmExp {|| e2 ||} e11).
         now constructor.
       * dependent elimination e1; inv H.
         exists (APP (LAM e11) x).

@@ -58,4 +58,4 @@ Definition RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') :=
 Definition ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (s' : Sub Γ Γ') :=
   (λ τ v, STmExp s (s' τ v)) : Sub Γ Γ''.
 
-Notation "{| e ; .. ; f |}" := (consSub e .. (consSub f idSub) ..).
+Notation "{|| e ; .. ; f ||}" := (consSub e .. (consSub f idSub) ..).

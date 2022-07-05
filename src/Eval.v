@@ -59,11 +59,11 @@ Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
     Let x body ---> Let x' body
   | ST_Let2 τ ty (x : Exp [] ty) (body : Exp [ty] τ) :
     ValueP x →
-    Let x body ---> STmExp {| x |} body
+    Let x body ---> STmExp {|| x ||} body
 
   | ST_AppAbs dom cod (e : Exp [dom] cod) (v : Exp [] dom) :
     ValueP v →
-    APP (LAM e) v ---> STmExp {| v |} e
+    APP (LAM e) v ---> STmExp {|| v ||} e
 
   | ST_App1 dom cod (e1 : Exp [] (dom ⟶ cod)) e1' (e2 : Exp [] dom) :
     e1 ---> e1' →

@@ -10,8 +10,8 @@ At the moment only the core of Pact is implemented: namely, a simply-typed
 lambda calculus with primitive types and lists. Here is the roadmap of future
 work, roughly in order:
 
-- Strong normalization
 - Prove soundness of CEK evaluator
+- Extract computable evaluator to Haskell
 - Add Builtins
 - Add Row-types
 - Add Modules
@@ -35,14 +35,15 @@ thus providing a type-theoretic semantics for the language.
 
 There is a small-step evaluation semantics that specifies how terms are
 reduced operationally, and a proof that this implements the denotational
-semantics.
+semantics. We also show that terms are strongly normalizing, with the
+implication being that there always exists some amount of gas that can
+complete any evaluation.
 
 ### Categorical semantics
 
-The Pact language is at least a category with terminal objects (unit). It
-remains to be decided whether products should be added, at least internally,
-so that it may become a full CCC, since it does have internal homs in the form
-of lambda abstractions.
+The Pact language is a cartesian closed category, although its products are
+not visible as such to the user, who is only able to use them to form n-tuples
+in the form of "arrays".
 
 ### Computational CEK evaluator
 

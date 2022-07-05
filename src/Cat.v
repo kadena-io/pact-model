@@ -2,7 +2,6 @@ Set Warnings "-notation-overridden".
 
 Require Import
   Coq.Unicode.Utf8
-  Ty
   Exp
   Sem.
 

@@ -36,10 +36,10 @@ Derive NoConfusion Subterm for Ty.
 
 Declare Scope Ty_scope.
 Bind Scope Ty_scope with Ty.
-Delimit Scope category_scope with ty.
+Delimit Scope Ty_scope with ty.
 
-Infix "⟶" := TyArrow (at level 30, right associativity) : ty_scope.
-Infix "×"  := TyPair  (at level 41, right associativity) : ty_scope.
+Infix "⟶" := TyArrow (at level 30, right associativity) : Ty_scope.
+Infix "×"  := TyPair  (at level 40, left associativity) : Ty_scope.
 
 Definition ℤ := TyPrim PrimInteger.
 Definition ℝ := TyPrim PrimDecimal.

@@ -9,6 +9,8 @@ Set Equations With UIP.
 
 Import ListNotations.
 
+Open Scope Ty_scope.
+
 Definition Env := list Ty.
 
 Inductive Var : Env → Ty → Type :=
@@ -32,7 +34,7 @@ Inductive Exp Γ : Ty → Type :=
 
   | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
-  | Builtin {τ ty} : Exp Γ ty → Exp (ty :: Γ) τ → Exp Γ τ
+  (* | Builtin {τ ty} : Exp Γ ty → Exp (ty :: Γ) τ → Exp Γ τ *)
 
   | Let {τ ty}    : Exp Γ ty → Exp (ty :: Γ) τ → Exp Γ τ
 

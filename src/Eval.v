@@ -20,56 +20,56 @@ Reserved Notation " t '--->' t' " (at level 40).
  * Small-step operational semantics
  *)
 
-Inductive Step : ∀ {τ}, Exp [] τ → Exp [] τ → Prop :=
-  | ST_Seq τ τ' (e1 : Exp [] τ') (e2 : Exp [] τ) :
+Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
+  | ST_Seq Γ τ τ' (e1 : Exp Γ τ') (e2 : Exp Γ τ) :
     Seq e1 e2 ---> e2
 
-  | ST_IfTrue τ (t e : Exp [] τ) :
+  | ST_IfTrue Γ τ (t e : Exp Γ τ) :
     If ETrue t e ---> t
-  | ST_IfFalse τ (t e : Exp [] τ) :
+  | ST_IfFalse Γ τ (t e : Exp Γ τ) :
     If EFalse t e ---> e
-  | ST_If b b' τ (t e : Exp [] τ) :
+  | ST_If Γ b b' τ (t e : Exp Γ τ) :
     b ---> b' →
     If b t e ---> If b' t e
 
-  | ST_Pair1 τ1 τ2 (x x' : Exp [] τ1) (y : Exp [] τ2) :
+  | ST_Pair1 Γ τ1 τ2 (x x' : Exp Γ τ1) (y : Exp Γ τ2) :
     x ---> x' →
     Pair x y ---> Pair x' y
-  | ST_Pair2 τ1 τ2 (x : Exp [] τ1) (y y' : Exp [] τ2) :
+  | ST_Pair2 Γ τ1 τ2 (x : Exp Γ τ1) (y y' : Exp Γ τ2) :
     ValueP x →
     y ---> y' →
     Pair x y ---> Pair x y'
-  | ST_Fst1 τ1 τ2 (p p' : Exp [] (TyPair τ1 τ2)) :
+  | ST_Fst1 Γ τ1 τ2 (p p' : Exp Γ (TyPair τ1 τ2)) :
     p ---> p' →
     Fst p ---> Fst p'
-  | ST_FstPair τ1 τ2 (v1 : Exp [] τ1) (v2 : Exp [] τ2) :
+  | ST_FstPair Γ τ1 τ2 (v1 : Exp Γ τ1) (v2 : Exp Γ τ2) :
     ValueP v1 →
     ValueP v2 →
     Fst (Pair v1 v2) ---> v1
-  | ST_Snd1 τ1 τ2 (p p' : Exp [] (TyPair τ1 τ2)) :
+  | ST_Snd1 Γ τ1 τ2 (p p' : Exp Γ (TyPair τ1 τ2)) :
     p ---> p' →
     Snd p ---> Snd p'
-  | ST_SndPair τ1 τ2 (v1 : Exp [] τ1) (v2 : Exp [] τ2) :
+  | ST_SndPair Γ τ1 τ2 (v1 : Exp Γ τ1) (v2 : Exp Γ τ2) :
     ValueP v1 →
     ValueP v2 →
     Snd (Pair v1 v2) ---> v2
 
-  | ST_Let1 τ ty (x : Exp [] ty) x' (body : Exp [ty] τ) :
+  | ST_Let1 Γ τ ty (x : Exp Γ ty) x' (body : Exp (ty :: Γ) τ) :
     x ---> x' →
     Let x body ---> Let x' body
-  | ST_Let2 τ ty (x : Exp [] ty) (body : Exp [ty] τ) :
+  | ST_Let2 Γ τ ty (x : Exp Γ ty) (body : Exp (ty :: Γ) τ) :
     ValueP x →
     Let x body ---> STmExp {|| x ||} body
 
-  | ST_AppAbs dom cod (e : Exp [dom] cod) (v : Exp [] dom) :
+  | ST_AppAbs Γ dom cod (e : Exp (dom :: Γ) cod) (v : Exp Γ dom) :
     ValueP v →
     APP (LAM e) v ---> STmExp {|| v ||} e
 
-  | ST_App1 dom cod (e1 : Exp [] (dom ⟶ cod)) e1' (e2 : Exp [] dom) :
+  | ST_App1 Γ dom cod (e1 : Exp Γ (dom ⟶ cod)) e1' (e2 : Exp Γ dom) :
     e1 ---> e1' →
     APP e1 e2 ---> APP e1' e2
 
-  | ST_App2 dom cod (v1 : Exp [] (dom ⟶ cod)) (e2 : Exp [] dom) e2' :
+  | ST_App2 Γ dom cod (v1 : Exp Γ (dom ⟶ cod)) (e2 : Exp Γ dom) e2' :
     ValueP v1 →
     e2 ---> e2' →
     APP v1 e2 ---> APP v1 e2'
@@ -89,14 +89,21 @@ Ltac reduce :=
 
 Ltac inv H := inversion H; subst; clear H; reduce.
 
-Theorem Step_sound τ (e : Exp [] τ) v :
+Theorem Step_sound {Γ τ} (e : Exp Γ τ) v :
   e ---> v → SemExp e = SemExp v.
 Proof.
   intros.
   induction H; simpl; auto;
   extensionality E;
-  destruct E;
   try now rewrite IHStep.
-  - now rewrite <- SemSubComm.
-  - now rewrite <- SemSubComm.
+  - rewrite <- SemSubComm.
+    f_equal; simpl.
+    rewrite tlSub_sing.
+    unfold hdSub; simp consSub.
+    now rewrite SemSub_id.
+  - rewrite <- SemSubComm.
+    f_equal; simpl.
+    rewrite tlSub_sing.
+    unfold hdSub; simp consSub.
+    now rewrite SemSub_id.
 Qed.

@@ -96,6 +96,21 @@ Qed.
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RTmExp (λ _, SV).
 
+Lemma ActionRcR {Γ Γ' Γ''} (r : Ren Γ' Γ'') (r' : Ren Γ Γ') `(e : Exp Γ τ) :
+  RTmExp (RcR r r') e = RTmExp r (RTmExp r' e).
+Proof.
+  generalize dependent r'.
+  generalize dependent r.
+  generalize dependent Γ''.
+  generalize dependent Γ'.
+  induction e; simpl; intros; auto;
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto.
+  - rewrite LiftRcR.
+    now rewrite IHe2.
+  - rewrite LiftRcR.
+    now rewrite IHe.
+Qed.
+
 Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (VAR ZV).
 
 (** Now that we have renaming, we can define composition. *)

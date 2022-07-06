@@ -24,41 +24,41 @@ Program Definition Pact Γ : Category := {|
   hom     := λ A B : Ty, Exp Γ (A ⟶ B);
   homset  := λ _ _, {| equiv := λ f g, SemExp f = SemExp g |};
   id      := @Ren.identity Γ;
-  compose := @Ren.compose Γ
+  compose := @Ren.composition Γ
 |}.
 Next Obligation. equivalence; congruence. Qed.
 Next Obligation.
   extensionality se.
-  rewrite !SemExp_compose.
+  rewrite !SemExp_composition.
   now rewrite H, H0.
 Qed.
 Next Obligation.
   extensionality se.
   extensionality x0.
   fold SemTy in x0.
-  simp RTmL; simpl.
+  simp Keep; simpl.
   unfold wk.
-  rewrite <- SemRenComm.
-  now rewrite SemRen_skip1.
+  rewrite <- SemExp_RenSem.
+  now rewrite RenSem_skip1.
 Qed.
 Next Obligation.
   extensionality se.
   extensionality x0.
   fold SemTy in x0.
-  simp RTmL; simpl.
+  simp Keep; simpl.
   unfold wk.
-  rewrite <- SemRenComm.
-  now rewrite SemRen_skip1.
+  rewrite <- SemExp_RenSem.
+  now rewrite RenSem_skip1.
 Qed.
 Next Obligation.
   extensionality se.
-  pose proof (SemExp_compose_assoc se f g h).
+  pose proof (SemExp_composition_assoc se f g h).
   simpl in H.
   now apply H.
 Qed.
 Next Obligation.
   extensionality se.
-  pose proof (SemExp_compose_assoc se f g h).
+  pose proof (SemExp_composition_assoc se f g h).
   symmetry in H.
   simpl in H.
   now apply H.
@@ -90,8 +90,8 @@ Next Obligation.
   fold SemTy in x2.
   simpl.
   unfold wk.
-  rewrite <- !SemRenComm.
-  rewrite !SemRen_skip1.
+  rewrite <- !SemExp_RenSem.
+  rewrite !RenSem_skip1.
   simpl.
   now rewrite H, H0.
 Qed.
@@ -102,37 +102,37 @@ Next Obligation.
       extensionality x2.
       fold SemTy in x2.
       unfold wk.
-      rewrite <- !SemRenComm.
-      rewrite !SemRen_skip1.
+      rewrite <- !SemExp_RenSem.
+      rewrite !RenSem_skip1.
       simpl.
-      simp RTmL; simpl.
+      simp Keep; simpl.
       rewrite H; simpl.
       unfold wk.
-      rewrite <- !SemRenComm.
-      now rewrite !SemRen_skip1.
+      rewrite <- !SemExp_RenSem.
+      now rewrite !RenSem_skip1.
     + extensionality se.
       extensionality x2.
       fold SemTy in x2.
       unfold wk.
-      rewrite <- !SemRenComm.
-      rewrite !SemRen_skip1.
+      rewrite <- !SemExp_RenSem.
+      rewrite !RenSem_skip1.
       simpl.
-      simp RTmL; simpl.
+      simp Keep; simpl.
       rewrite H; simpl.
       unfold wk.
-      rewrite <- !SemRenComm.
-      now rewrite !SemRen_skip1.
+      rewrite <- !SemExp_RenSem.
+      now rewrite !RenSem_skip1.
   - destruct H.
     extensionality se.
     extensionality x2.
     fold SemTy in x2.
     unfold wk.
-    rewrite <- !SemRenComm.
+    rewrite <- !SemExp_RenSem.
     rewrite <- e, <- e0.
-    simp RTmL; simpl.
+    simp Keep; simpl.
     unfold wk.
-    rewrite <- !SemRenComm.
-    rewrite !SemRen_skip1; simpl.
+    rewrite <- !SemExp_RenSem.
+    rewrite !RenSem_skip1; simpl.
     now destruct (SemExp h se x2).
 Qed.
 
@@ -153,8 +153,8 @@ Next Obligation.
   fold SemTy in x1.
   simpl.
   unfold wk.
-  rewrite <- !SemRenComm.
-  rewrite !SemRen_skip1; simpl.
+  rewrite <- !SemExp_RenSem.
+  repeat setoid_rewrite RenSem_skip1; simpl.
   now rewrite H2.
 Qed.
 Next Obligation.
@@ -164,8 +164,8 @@ Next Obligation.
   destruct x0.
   simpl.
   unfold wk.
-  rewrite <- !SemRenComm.
-  rewrite !SemRen_skip1; simpl.
+  rewrite <- !SemExp_RenSem.
+  repeat setoid_rewrite RenSem_skip1; simpl.
   now rewrite H2.
 Qed.
 Next Obligation.
@@ -175,22 +175,35 @@ Next Obligation.
   fold SemTy in x0.
   fold SemTy in x1.
   unfold wk.
-  rewrite <- !SemRenComm.
-  simp RTmL.
-  simpl SemVar.
-  simpl fst.
-  simpl snd.
-  f_equal.
-Admitted.
+  rewrite <- !SemExp_RenSem.
+  simp RenSem.
+  simp RenVar.
+  simpl.
+  now repeat setoid_rewrite RenSem_skip1.
+Qed.
+Next Obligation.
+  extensionality se.
+  extensionality x0.
+  fold SemTy in x0.
+  unfold wk.
+  rewrite <- !SemExp_RenSem.
+  simp RenSem.
+  simp RenVar.
+  simpl.
+  repeat setoid_rewrite RenSem_skip1.
+  now destruct x0.
+Qed.
 Next Obligation.
   extensionality se.
   extensionality x0.
   fold SemTy in x0.
   destruct x0.
-Admitted.
-Next Obligation.
-  extensionality se.
-  extensionality x0.
-  fold SemTy in x0.
-  destruct x0.
-Admitted.
+  unfold wk.
+  simp RenVar.
+  simpl.
+  rewrite <- !SemExp_RenSem.
+  simp RenSem.
+  rewrite !RenSem_skip1.
+  now setoid_rewrite RenSem_skip1.
+Qed.
+

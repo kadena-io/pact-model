@@ -11,165 +11,318 @@ Generalizable All Variables.
 
 Import ListNotations.
 
-Definition Sub Γ Γ' := ∀ τ, Var Γ τ → Exp Γ' τ.
+Inductive Sub (Γ : Env) : Env → Type :=
+  | NoSub : Sub Γ []
+  | Push {Γ' τ} : Exp Γ τ → Sub Γ Γ' → Sub Γ (τ :: Γ').
 
-Definition idSub {Γ} : Sub Γ Γ := @VAR Γ.
+Derive Signature NoConfusion for Sub.
 
-Equations consSub {Γ Γ' τ} (e : Exp Γ' τ) (s : Sub Γ Γ')
-          (* Sub (τ :: Γ) Γ' *)
-          τ' (v : Var (τ :: Γ) τ') : Exp Γ' τ' :=
-  consSub e s τ' ZV      := e;
-  consSub e s τ' (SV v') := s _ v'.
+Arguments NoSub {Γ}.
+Arguments Push {Γ Γ' τ} _ _.
 
-Definition tlSub {Γ Γ' τ} (s : Sub (τ :: Γ) Γ') : Sub Γ Γ' :=
-  fun τ' v => s τ' (SV v).
-Definition hdSub {Γ Γ' τ} (s : Sub (τ :: Γ) Γ') : Exp Γ' τ := s τ ZV.
+Equations ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') : Sub Γ Γ'' :=
+  ScR NoSub      δ := NoSub;
+  ScR (Push t σ) δ := Push (RenExp δ t) (ScR σ δ).
 
-Definition sskip1 {Γ τ} : Sub Γ (τ :: Γ) := λ _ v, VAR (SV v).
+Fixpoint idSub {Γ} : Sub Γ Γ :=
+  match Γ with
+  | []     => NoSub
+  | τ :: Γ => Push (VAR ZV) (ScR (@idSub Γ) skip1)
+  end.
 
-Equations STmL {Γ Γ' τ} (s : Sub Γ Γ')
-          (* Sub (τ :: Γ) (τ :: Γ') *)
-          τ' (v : Var (τ :: Γ) τ') : Exp (τ :: Γ') τ' :=
-  STmL _ τ' ZV      := VAR ZV;
-  STmL _ τ' (SV v') := wk (s _ v').
-
-Lemma STmL_idSub {Γ τ} : @STmL Γ Γ τ idSub = idSub.
-Proof.
-  extensionality τ'.
-  extensionality v.
-  dependent elimination v.
-  - now rewrite STmL_equation_1.
-  - now rewrite STmL_equation_2.
-Qed.
-
-Corollary tlSub_idSub {Γ τ} : @tlSub Γ _ τ idSub = sskip1.
+Corollary NoSub_idSub : NoSub = @idSub [].
 Proof. reflexivity. Qed.
 
-Notation "{|| e ; .. ; f ||}" := (consSub e .. (consSub f idSub) ..).
+Equations RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') : Sub Γ Γ'' :=
+  RcS NoRen    δ          := δ;
+  RcS (Drop σ) (Push t δ) := RcS σ δ;
+  RcS (Keep σ) (Push t δ) := Push t (RcS σ δ).
 
-Lemma tlSub_sing Γ τ (x : Exp Γ τ) : tlSub {|| x ||} = idSub.
-Proof.
-  unfold tlSub, idSub.
-  extensionality τ'.
-  extensionality v.
-  now induction v; simp consSub.
-Qed.
+Definition Dropₛ {Γ Γ' τ} (s : Sub Γ Γ') : Sub (τ :: Γ) Γ' :=
+  ScR s skip1.
 
-Fixpoint STmExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ τ) : Exp Γ' τ :=
+Definition Keepₛ {Γ Γ' τ} (s : Sub Γ Γ') : Sub (τ :: Γ) (τ :: Γ') :=
+  Push (VAR ZV) (Dropₛ s).
+
+Equations SubVar {Γ Γ' τ} (s : Sub Γ Γ') (v : Var Γ' τ) : Exp Γ τ :=
+  SubVar (Push t σ) ZV     := t;
+  SubVar (Push t σ) (SV v) := SubVar σ v.
+
+Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
   | Constant lit  => Constant lit
   | EUnit         => EUnit
   | ETrue         => ETrue
   | EFalse        => EFalse
-  | If b t e      => If (STmExp s b) (STmExp s t) (STmExp s e)
-  | Pair x y      => Pair (STmExp s x) (STmExp s y)
-  | Fst p         => Fst (STmExp s p)
-  | Snd p         => Snd (STmExp s p)
-  | Seq exp1 exp2 => Seq (STmExp s exp1) (STmExp s exp2)
-  | Let x body    => Let (STmExp s x) (STmExp (STmL s) body)
+  | If b t e      => If (SubExp s b) (SubExp s t) (SubExp s e)
+  | Pair x y      => Pair (SubExp s x) (SubExp s y)
+  | Fst p         => Fst (SubExp s p)
+  | Snd p         => Snd (SubExp s p)
+  | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
+  | Let x body    => Let (SubExp s x) (SubExp (Keepₛ s) body)
 
-  | VAR v         => s _ v
-  | APP e1 e2     => APP (STmExp s e1) (STmExp s e2)
-  | LAM e         => LAM (STmExp (STmL s) e)
+  | VAR v         => SubVar s v
+  | APP e1 e2     => APP (SubExp s e1) (SubExp s e2)
+  | LAM e         => LAM (SubExp (Keepₛ s) e)
   end.
 
-Ltac Rewrites E :=
-  (intros; simpl; try rewrite E;
-   repeat match goal with
-          | [H : _ = _ |- _ ] => rewrite H; clear H
-          end; auto).
+Fixpoint ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (δ : Sub Γ Γ') : Sub Γ Γ'' :=
+  match s with
+  | NoSub    => NoSub
+  | Push e σ => Push (SubExp δ e) (ScS σ δ)
+  end.
 
-Lemma STmExp_idSub {Γ τ} (e : Exp Γ τ) :
-  STmExp idSub e = e.
+Lemma ScR_ScR {Γ Γ' Γ'' Γ'''} (σ : Sub Γ'' Γ''') (δ : Ren Γ' Γ'') (ν : Ren Γ Γ') :
+  ScR (ScR σ δ) ν = ScR σ (RcR δ ν).
+Proof.
+  induction σ; simp ScR; auto.
+  now rewrite RenExp_RcR, IHσ.
+Qed.
+
+Lemma ScR_RcS {Γ Γ' Γ'' Γ'''} (σ : Ren Γ'' Γ''') (δ : Sub Γ' Γ'') (ν : Ren Γ Γ') :
+  ScR (RcS σ δ) ν = RcS σ (ScR δ ν).
+Proof.
+  induction σ; dependent elimination δ; auto.
+  - simp RcS.
+    now simp ScR.
+  - simp RcS.
+    simp ScR.
+    simp RcS.
+    now rewrite IHσ.
+Qed.
+
+Lemma RcS_idRen {Γ Γ'} (σ : Sub Γ Γ') :
+  RcS idRen σ = σ.
+Proof.
+  induction σ; simp RcS; simpl; simp RcS; auto.
+  now rewrite IHσ.
+Qed.
+
+Lemma RcS_idSub {Γ Γ'} (σ : Ren Γ Γ') :
+  RcS σ idSub = ScR idSub σ.
+Proof.
+  induction σ; simp RcS; simpl; simp RcS; simp ScR; auto.
+  - rewrite <- ScR_RcS.
+    rewrite IHσ.
+    rewrite ScR_ScR.
+    unfold skip1.
+    simp RcR.
+    now rewrite RcR_idRen_right.
+  - simpl.
+    f_equal.
+    rewrite <- ScR_RcS.
+    rewrite IHσ.
+    rewrite ScR_ScR.
+    unfold skip1.
+    rewrite ScR_ScR.
+    simp RcR.
+    rewrite RcR_idRen_left.
+    now rewrite RcR_idRen_right.
+Qed.
+
+Lemma RcS_skip1 {Γ Γ' τ} (e : Exp Γ τ) (σ : Sub Γ Γ') :
+  RcS skip1 (Push e σ) = σ.
+Proof.
+  unfold skip1.
+  simp RcS.
+  now rewrite RcS_idRen.
+Qed.
+
+Lemma SubVar_RcS {Γ Γ' Γ'' τ} (σ : Ren Γ' Γ'') (δ : Sub Γ Γ') (v : Var Γ'' τ) :
+  SubVar (RcS σ δ) v = SubVar δ (RenVar σ v).
+Proof.
+  induction σ; simp RenVar; auto.
+  - dependent elimination δ.
+    now simp RcS.
+  - dependent elimination δ.
+    simp RcS.
+    dependent elimination v.
+    + now simp RenVar.
+    + simp RenVar.
+      now simp SubVar.
+Qed.
+
+Lemma SubExp_RcS {Γ Γ' Γ'' τ} (σ : Ren Γ' Γ'') (δ : Sub Γ Γ') (e : Exp Γ'' τ) :
+  SubExp (RcS σ δ) e = SubExp δ (RenExp σ e).
+Proof.
+  generalize dependent Γ'.
+  generalize dependent Γ.
+  induction e; simpl; intros; auto;
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto; f_equal.
+  - rewrite <- IHe2.
+    unfold Keepₛ.
+    simp RcS.
+    repeat f_equal.
+    unfold Dropₛ.
+    now apply ScR_RcS.
+  - now rewrite SubVar_RcS.
+  - specialize (IHe _ _ (Keep σ) (Keepₛ δ)).
+    rewrite <- IHe.
+    unfold Keepₛ.
+    simp RcS.
+    repeat f_equal.
+    unfold Dropₛ.
+    now apply ScR_RcS.
+Qed.
+
+Lemma SubVar_ScR {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Ren Γ Γ') (v : Var Γ'' τ) :
+  SubVar (ScR σ δ) v = RenExp δ (SubVar σ v).
+Proof.
+  induction σ; simp SubVar; simp ScR.
+  - now inversion v.
+  - now dependent elimination v; simp SubVar.
+Qed.
+
+Lemma SubExp_ScR {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Ren Γ Γ') (e : Exp Γ'' τ) :
+  SubExp (ScR σ δ) e = RenExp δ (SubExp σ e).
+Proof.
+  generalize dependent Γ'.
+  generalize dependent Γ.
+  induction e; simpl; intros; auto;
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto; f_equal.
+  - rewrite <- IHe2.
+    unfold Keepₛ.
+    simp ScR.
+    simpl.
+    repeat f_equal.
+    unfold Dropₛ.
+    rewrite !ScR_ScR.
+    unfold skip1; simp RcR.
+    rewrite RcR_idRen_left.
+    now rewrite RcR_idRen_right.
+  - now rewrite SubVar_ScR.
+  - rewrite <- IHe.
+    unfold Keepₛ.
+    simp ScR.
+    simpl.
+    repeat f_equal.
+    unfold Dropₛ.
+    rewrite !ScR_ScR.
+    unfold skip1; simp RcR.
+    rewrite RcR_idRen_left.
+    now rewrite RcR_idRen_right.
+Qed.
+
+Lemma ScS_ScR {Γ Γ' Γ'' Γ'''} (σ : Sub Γ'' Γ''') (δ : Ren Γ' Γ'') (ν : Sub Γ Γ') :
+  ScS (ScR σ δ) ν = ScS σ (RcS δ ν).
+Proof.
+  generalize dependent Γ'.
+  generalize dependent Γ.
+  induction σ; simp ScR; simp ScS; simpl; intros; auto.
+  simp ScR.
+  simpl.
+  rewrite IHσ.
+  f_equal.
+  now rewrite <- SubExp_RcS.
+Qed.
+
+Lemma ScR_ScS {Γ Γ' Γ'' Γ'''} (σ : Sub Γ'' Γ''') (δ : Sub Γ' Γ'') (ν : Ren Γ Γ') :
+  ScR (ScS σ δ) ν = ScS σ (ScR δ ν).
+Proof.
+  generalize dependent Γ'.
+  generalize dependent Γ.
+  induction σ; simp ScR; simp ScS; simpl; intros; auto.
+  simp ScR.
+  rewrite IHσ.
+  f_equal.
+  now rewrite <- SubExp_ScR.
+Qed.
+
+Lemma SubVar_idSub {Γ τ} (v : Var Γ τ) :
+  SubVar idSub v = VAR v.
+Proof.
+  induction v; simpl; simp SubVar; auto.
+  rewrite SubVar_ScR.
+  rewrite IHv.
+  simpl.
+  now rewrite RenVar_skip1.
+Qed.
+
+Lemma SubVar_ScS {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Sub Γ Γ') (v : Var Γ'' τ) :
+  SubVar (ScS σ δ) v = SubExp δ (SubVar σ v).
+Proof.
+  induction σ; simp SubVar; simp ScR.
+  - now inversion v.
+  - simpl.
+    now dependent elimination v; simp SubVar.
+Qed.
+
+Lemma SubExp_idSub {Γ τ} (e : Exp Γ τ) :
+  SubExp idSub e = e.
 Proof.
   induction e; simpl; auto;
-  now Rewrites (@STmL_idSub Γ).
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto.
+  - f_equal.
+    rewrite <- IHe2 at 2.
+    now f_equal.
+  - now rewrite SubVar_idSub.
+  - f_equal.
+    rewrite <- IHe at 2.
+    now f_equal.
 Qed.
 
-Definition ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (s' : Sub Γ Γ') :=
-  (λ τ v, STmExp s (s' τ v)) : Sub Γ Γ''.
-
-Corollary tlSub_sskip1 Γ Γ' τ (f : Sub (τ :: Γ') Γ) :
-  tlSub f = ScS f sskip1.
-Proof. reflexivity. Qed.
-
-Corollary ScS_idSub_left Γ Γ' (f : Sub Γ' Γ) :
-  ScS idSub f = f.
+Lemma SubExp_ScS {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Sub Γ Γ') (e : Exp Γ'' τ) :
+  SubExp (ScS σ δ) e = SubExp δ (SubExp σ e).
 Proof.
-  unfold ScS.
-  extensionality τ.
-  extensionality v.
-  now rewrite STmExp_idSub.
-Qed.
-
-Corollary ScS_idSub_right Γ Γ' (f : Sub Γ' Γ) :
-  ScS f idSub = f.
-Proof.
-  unfold ScS.
-  extensionality τ.
-  extensionality v.
-  now induction v.
-Qed.
-
-Corollary ScS_assoc Γ Γ' Γ'' Γ'''
-          (f : Sub Γ' Γ) (g : Sub Γ'' Γ') (h : Sub Γ''' Γ'') :
-  ScS f (ScS g h) = ScS (ScS f g) h.
-Proof.
-  unfold ScS.
-  extensionality τ.
-  extensionality v.
-  induction (h τ v); simpl; auto;
-  rewrite ?STmL_idSub, ?IHe1, ?IHe2, ?IHe3, ?IHe; auto.
-Abort.
-
-Definition ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') :=
-  (λ τ v, s τ (r τ v)) : Sub Γ Γ''.
-
-Definition RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') :=
-  (λ τ v, RTmExp r (s τ v)) : Sub Γ Γ''.
-
-Lemma LiftScR {Γ Γ' Γ'' τ} (r : Ren Γ Γ') (s : Sub Γ' Γ'') :
-  STmL (τ:=τ) (ScR s r) = ScR (STmL s) (RTmL r).
-Proof.
-Admitted.
-
-Lemma ActionScR {Γ Γ' Γ'' τ} (r : Ren Γ Γ') (s : Sub Γ' Γ'') (e : Exp Γ τ) :
-  STmExp (ScR s r) e = STmExp s (RTmExp r e).
-Proof.
-Admitted.
-
-Lemma LiftRcS {Γ Γ' Γ'' τ} (r : Ren Γ' Γ'') (s : Sub Γ Γ') :
-  STmL (τ:=τ) (RcS r s) = RcS (RTmL r) (STmL s).
-Proof.
-Admitted.
-
-Lemma ActionRcS {Γ Γ' Γ'' τ} (r : Ren Γ' Γ'') (s : Sub Γ Γ') (e : Exp Γ τ) :
-  STmExp (RcS r s) e = RTmExp r (STmExp s e).
-Proof.
-Admitted.
-
-Lemma LiftScS {Γ Γ' Γ'' τ} (s : Sub Γ' Γ'') (s' : Sub Γ Γ') :
-  STmL (τ:=τ) (ScS s s') = ScS (STmL s) (STmL s').
-Proof.
-  extensionality τ'.
-  extensionality v.
-  unfold ScS.
-  dependent induction v.
-  - now simp STmL; simpl; simp STmL.
-  - simp STmL; simpl; simp STmL.
-    unfold wk.
-    now rewrite <- ActionRcS, <- ActionScR.
-Qed.
-
-Lemma ActionScS {Γ Γ' Γ'' τ} (s : Sub Γ' Γ'') (s' : Sub Γ Γ') (e : Exp Γ τ) :
-  STmExp (ScS s s') e = STmExp s (STmExp s' e).
-Proof.
-  generalize dependent Γ''.
   generalize dependent Γ'.
+  generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?STmL_idSub, ?IHe1, ?IHe2, ?IHe3, ?IHe; auto.
-  - rewrite LiftScS.
-    now rewrite IHe2.
-  - rewrite LiftScS.
-    now rewrite IHe.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto; f_equal.
+  - rewrite <- IHe2; clear.
+    f_equal.
+    unfold Keepₛ.
+    unfold Dropₛ.
+    simpl.
+    simp SubVar.
+    f_equal.
+    rewrite ScR_ScS.
+    remember (ScR δ skip1) as g; clear.
+    unfold skip1.
+    generalize dependent g.
+    generalize dependent Γ0.
+    induction σ; simpl; simp ScR; simpl; intros; auto.
+    f_equal; auto.
+    rewrite <- SubExp_RcS.
+    simp RcS.
+    now rewrite RcS_idRen.
+  - now rewrite SubVar_ScS.
+  - rewrite <- IHe; clear.
+    f_equal.
+    unfold Keepₛ.
+    unfold Dropₛ.
+    simpl.
+    simp SubVar.
+    f_equal.
+    rewrite ScR_ScS.
+    remember (ScR δ skip1) as g; clear.
+    unfold skip1.
+    generalize dependent g.
+    generalize dependent Γ0.
+    induction σ; simpl; simp ScR; simpl; intros; auto.
+    f_equal; auto.
+    rewrite <- SubExp_RcS.
+    simp RcS.
+    now rewrite RcS_idRen.
 Qed.
+
+Lemma ScS_idSub_right {Γ Γ'} (σ : Sub Γ Γ') :
+  ScS σ idSub = σ.
+Proof.
+  induction σ; simpl; auto.
+  rewrite IHσ.
+  now rewrite SubExp_idSub.
+Qed.
+
+Lemma ScS_idSub_left {Γ Γ'} (σ : Sub Γ Γ') :
+  ScS idSub σ = σ.
+Proof.
+  induction σ; simpl; auto.
+  simp SubVar.
+  rewrite ScS_ScR.
+  unfold skip1.
+  simp RcS.
+  rewrite RcS_idRen.
+  now rewrite IHσ.
+Qed.
+
+Notation "{|| e ; .. ; f ||}" := (Push e .. (Push f idSub) ..).

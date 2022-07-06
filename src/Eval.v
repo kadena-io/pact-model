@@ -59,11 +59,11 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
     Let x body ---> Let x' body
   | ST_Let2 Γ τ ty (x : Exp Γ ty) (body : Exp (ty :: Γ) τ) :
     ValueP x →
-    Let x body ---> STmExp {|| x ||} body
+    Let x body ---> SubExp {|| x ||} body
 
   | ST_AppAbs Γ dom cod (e : Exp (dom :: Γ) cod) (v : Exp Γ dom) :
     ValueP v →
-    APP (LAM e) v ---> STmExp {|| v ||} e
+    APP (LAM e) v ---> SubExp {|| v ||} e
 
   | ST_App1 Γ dom cod (e1 : Exp Γ (dom ⟶ cod)) e1' (e2 : Exp Γ dom) :
     e1 ---> e1' →
@@ -96,14 +96,12 @@ Proof.
   induction H; simpl; auto;
   extensionality E;
   try now rewrite IHStep.
-  - rewrite <- SemSubComm.
+  - rewrite <- SemExp_SubSem.
     f_equal; simpl.
-    rewrite tlSub_sing.
-    unfold hdSub; simp consSub.
-    now rewrite SemSub_id.
-  - rewrite <- SemSubComm.
+    simp SubSem.
+    now rewrite SubSem_idSub.
+  - rewrite <- SemExp_SubSem.
     f_equal; simpl.
-    rewrite tlSub_sing.
-    unfold hdSub; simp consSub.
-    now rewrite SemSub_id.
+    simp SubSem.
+    now rewrite SubSem_idSub.
 Qed.

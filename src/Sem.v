@@ -33,123 +33,60 @@ Fixpoint SemTy (τ : Ty) : Type :=
 
 Definition SemEnv Γ : Type := ilist SemTy Γ.
 
-Equations trunc {Γ} Γ' `(E : SemEnv (Γ' ++ Γ)) : SemEnv Γ :=
-  trunc []        E := E;
-  trunc (x :: xs) E := trunc xs (snd E).
-
 Fixpoint SemVar `(v : Var Γ τ) : SemEnv Γ → SemTy τ :=
   match v with
   | ZV   => λ se, fst se
   | SV v => λ se, SemVar v (snd se)
   end.
 
-Fixpoint SemRen {Γ Γ'} : Ren Γ' Γ → SemEnv Γ → SemEnv Γ' :=
-  match Γ' with
-  | []     => λ r se, tt
-  | _ :: _ => λ r se, (SemVar (hdRen r) se, SemRen (tlRen r) se)
-  end.
+Equations RenSem {Γ Γ'} (r : Ren Γ Γ') (se : SemEnv Γ) : SemEnv Γ' :=
+  RenSem NoRen    se      := se;
+  RenSem (Drop r) (_, se) := RenSem r se;
+  RenSem (Keep r) (e, se) := (e, RenSem r se).
 
-Lemma SemRenVarComm Γ τ (v : Var Γ τ) Γ' (r : Ren Γ Γ') :
-  ∀ se, SemVar v (SemRen r se) = SemVar (r _ v) se.
+Lemma RenSem_inil (r : Ren [] []) :
+  RenSem r () = ().
+Proof. now dependent elimination r. Qed.
+
+Lemma RenSem_idRen {Γ} (se : SemEnv Γ) :
+  RenSem idRen se = se.
+Proof.
+  induction Γ; destruct se; simpl; simp RenSem; intros; auto.
+  now rewrite IHΓ.
+Qed.
+
+Lemma RenSem_skip1 {Γ τ} (e : SemTy τ) (se : SemEnv Γ) :
+  RenSem skip1 (e, se) = se.
+Proof.
+  induction Γ; destruct se; simpl; intros; auto.
+  unfold skip1; simp RenSem.
+  now rewrite RenSem_idRen.
+Qed.
+
+Lemma SemVar_RenSem Γ τ (v : Var Γ τ) Γ' (r : Ren Γ' Γ) (se : SemEnv Γ') :
+  SemVar v (RenSem r se) = SemVar (RenVar r v) se.
 Proof.
   intros.
+  induction r; simp RenSem; simp RenVar; simpl;
+  destruct se; simp RenSem; auto.
+  now dependent elimination v; simpl; simp RenVar.
+Qed.
+
+Lemma RenSem_RcR {Γ Γ' Γ''} (f : Ren Γ' Γ'') (g : Ren Γ Γ') (se : SemEnv Γ) :
+  RenSem (RcR f g) se = RenSem f (RenSem g se).
+Proof.
+  generalize dependent Γ''.
   generalize dependent Γ'.
-  induction v; simpl; intros; auto.
-  unfold tlRen.
-  specialize (IHv _ (RcR r skip1)).
-  unfold RcR, skip1 in IHv.
-  now rewrite <- IHv; clear IHv.
+  induction Γ; destruct se; simpl; intros; auto.
+  - inversion g; subst.
+    rewrite RenSem_inil.
+    inversion f; subst.
+    now rewrite !RenSem_inil.
+  - dependent elimination g; simp RenSem.
+    + now rewrite <- IHΓ; simp RcR; simp RenSem.
+    + dependent elimination f; simp RenSem;
+      now rewrite <- IHΓ; simp RcR; simp RenSem.
 Qed.
-
-Lemma SemRen_RcR {Γ Γ' Γ''} (f : Ren Γ'' Γ') (g : Ren Γ' Γ) :
-  SemRen (RcR g f) = SemRen f ∘ SemRen g.
-Proof.
-  extensionality E.
-  unfold Basics.compose.
-  unfold RcR.
-  induction Γ''; simpl; auto.
-  f_equal.
-  - unfold hdRen.
-    clear.
-    now rewrite SemRenVarComm.
-  - unfold tlRen.
-    specialize (IHΓ'' (RcR f skip1)).
-    unfold skip1, RcR in IHΓ''.
-    now rewrite <- IHΓ''.
-Qed.
-
-Lemma SemRen_skip1_f Γ Γ' (f : Ren Γ' Γ)
-      τ (x : SemTy τ) (E : SemEnv Γ) :
-  SemRen (RcR skip1 f) (x, E) = SemRen f E.
-Proof.
-  generalize dependent τ.
-  induction Γ'; simpl; intros; auto.
-  f_equal.
-  rewrite !tlRen_skip1.
-  rewrite !SemRen_RcR.
-  rewrite <- compose_assoc.
-  rewrite <- !SemRen_RcR.
-  now rewrite IHΓ'.
-Qed.
-
-Lemma SemRen_id Γ :
-  SemRen idRen = @id (SemEnv Γ).
-Proof.
-  unfold id.
-  extensionality E.
-  induction Γ; simpl; intros; auto.
-  - now destruct E.
-  - destruct E as [x E]; simpl.
-    f_equal.
-    rewrite tlRen_skip1.
-    rewrite RcR_idRen_left.
-    rewrite <- (RcR_idRen_right _ _ skip1).
-    rewrite SemRen_skip1_f.
-    apply IHΓ.
-Qed.
-
-Lemma SemRen_skip1 Γ τ :
-  SemRen skip1 = @snd (SemTy τ) (SemEnv Γ).
-Proof.
-  extensionality E.
-  induction Γ; simpl; intros; auto.
-  - now destruct E as [x ()].
-  - destruct E as [x [y E]]; simpl.
-    f_equal.
-    rewrite tlRen_skip1.
-    rewrite SemRen_skip1_f.
-    rewrite <- (RcR_idRen_right _ _ skip1).
-    rewrite SemRen_skip1_f.
-    now rewrite SemRen_id.
-Qed.
-
-Lemma SemRen_skipn Γ Γ' :
-  @SemRen (Γ ++ Γ') _ (skipn Γ) = trunc Γ.
-Proof.
-  generalize dependent Γ'.
-  induction Γ; simpl; intros.
-  - rewrite skipn_equation_1.
-    extensionality E.
-    rewrite trunc_equation_1.
-    now rewrite SemRen_id.
-  - rewrite skipn_equation_2.
-    extensionality E.
-    rewrite trunc_equation_2.
-    rewrite <- IHΓ.
-    replace (λ τ v,
-              @SV (Γ ++ Γ') τ a (@skipn Γ' Γ τ v))
-       with (RcR (Γ:=Γ') (skip1 (τ:=a)) (skipn Γ))
-         by reflexivity.
-    rewrite SemRen_RcR.
-    now rewrite SemRen_skip1.
-Qed.
-
-Lemma SemRen_RTmL Γ Γ' τ (x : SemTy τ) (se : SemEnv Γ') (r : Ren Γ Γ') :
-  SemRen (RTmL r) (x, se) = (x, SemRen r se).
-Proof.
-  generalize dependent τ.
-  induction Γ'; simpl; intros.
-Abort.
 
 Definition SemLit `(l : Literal ty) : SemPrim ty :=
   match l with
@@ -159,7 +96,7 @@ Definition SemLit `(l : Literal ty) : SemPrim ty :=
   | LTime    t => t
   end.
 
-Program Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
+Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
   | Constant lit  => λ _, SemLit lit
   | EUnit         => λ _, tt
@@ -177,20 +114,21 @@ Program Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   | APP e1 e2     => λ se, SemExp e1 se (SemExp e2 se)
   end.
 
-Fixpoint SemSub {Γ Γ'} : Sub Γ' Γ → SemEnv Γ → SemEnv Γ' :=
-  match Γ' with
-  | []     => λ s se, ()
-  | _ :: _ => λ s se, (SemExp (hdSub s) se, SemSub (tlSub s) se)
-  end.
+Equations SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : SemEnv Γ' :=
+  SubSem NoSub      _  := tt;
+  SubSem (Push t σ) se := (SemExp t se, SubSem σ se).
 
-Lemma SemExp_Let Γ τ ty (e1 : Exp Γ ty) (e2 : Exp (ty :: Γ) τ) se :
+Lemma SubSem_inil (s : Sub [] []) :
+  SubSem s () = ().
+Proof. now dependent elimination s. Qed.
+
+Corollary SemExp_Let {Γ τ ty} (e1 : Exp Γ ty) (e2 : Exp (ty :: Γ) τ) se :
   SemExp (Let e1 e2) se = SemExp (APP (LAM e2) e1) se.
 Proof. reflexivity. Qed.
 
-Lemma SemRenComm Γ τ (e : Exp Γ τ) Γ' (r : Ren Γ Γ') :
-  ∀ se, SemExp e (SemRen r se) = SemExp (RTmExp r e) se.
+Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ') :
+  SemExp e (RenSem r se) = SemExp (RenExp r e) se.
 Proof.
-  intros.
   generalize dependent Γ'.
   induction e; simpl; intros; auto.
   - now rewrite IHe1, IHe2, IHe3.
@@ -200,41 +138,72 @@ Proof.
   - rewrite IHe1; clear IHe1.
     rewrite <- IHe2; clear IHe2.
     simpl.
-    repeat f_equal.
-    generalize (SemExp (RTmExp r e1) se); intros.
-    clear.
-    induction Γ; simpl; intros; auto.
-    f_equal.
-    now rewrite IHΓ.
-  - simpl; induction v; simpl.
-    + reflexivity.
-    + now rewrite IHv.
+    now repeat f_equal.
+  - now rewrite SemVar_RenSem.
   - extensionality z.
     fold SemTy in z.
     rewrite <- IHe; clear IHe.
     simpl.
-    repeat f_equal.
-    clear.
-    induction Γ; simpl; auto.
-    f_equal.
-    now rewrite IHΓ.
+    now repeat f_equal.
   - now rewrite IHe1, IHe2.
 Qed.
 
-Lemma SemExp_wk `(E : SemEnv Γ)
-      {τ τ'} (y : SemTy τ') (e : Exp Γ τ) :
+Lemma ScR_idRen {Γ Γ'} (s : Sub Γ Γ') :
+  ScR s idRen = s.
+Proof.
+  induction s; simp ScR; auto.
+  now rewrite RenExp_idRen, IHs.
+Qed.
+
+Lemma SubSem_ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') (se : SemEnv Γ) :
+  SubSem (ScR s r) se = SubSem s (RenSem r se).
+Proof.
+  generalize dependent Γ''.
+  generalize dependent Γ'.
+  destruct Γ, se; simpl; intros; auto.
+  - dependent elimination r; simp RenSem.
+    rewrite NoRen_idRen.
+    now rewrite ScR_idRen.
+  - clear.
+    dependent induction s1; simp ScR.
+    + now simp SubSem.
+    + simp SubSem.
+      f_equal.
+      * now rewrite SemExp_RenSem.
+      * dependent elimination r; simp RenSem;
+        now rewrite IHs1.
+Qed.
+
+Lemma SubSem_idSub {Γ} (se : SemEnv Γ) :
+  SubSem idSub se = se.
+Proof.
+  induction Γ; destruct se; simpl; simp SubSem; simpl; intros; auto.
+  rewrite SubSem_ScR.
+  rewrite RenSem_skip1.
+  now rewrite IHΓ.
+Qed.
+
+Lemma SemExp_wk `(E : SemEnv Γ) {τ τ'} (y : SemTy τ') (e : Exp Γ τ) :
   SemExp (wk e) (y, E) = SemExp e E.
 Proof.
   unfold wk.
-  rewrite <- SemRenComm; simpl.
+  rewrite <- SemExp_RenSem; simpl.
   f_equal.
-  now rewrite SemRen_skip1.
+  now rewrite RenSem_skip1.
 Qed.
 
-Lemma SemSubComm Γ τ (e : Exp Γ τ) Γ' (s : Sub Γ Γ') :
-  ∀ se, SemExp e (SemSub s se) = SemExp (STmExp s e) se.
+Lemma SemVar_SubSem {Γ Γ' τ} (v : Var Γ τ) (s : Sub Γ' Γ) (se : SemEnv Γ') :
+  SemVar v (SubSem s se) = SemExp (SubVar s v) se.
 Proof.
   intros.
+  induction s; simp SubSem; simp SubVar; simpl.
+  - now inversion v.
+  - now dependent elimination v; simpl; simp RenVar.
+Qed.
+
+Lemma SemExp_SubSem {Γ Γ' τ} (e : Exp Γ τ) (s : Sub Γ' Γ) (se : SemEnv Γ') :
+  SemExp e (SubSem s se) = SemExp (SubExp s e) se.
+Proof.
   generalize dependent Γ'.
   induction e; simpl; intros; auto.
   - now rewrite IHe1, IHe2, IHe3.
@@ -244,176 +213,78 @@ Proof.
   - rewrite IHe1; clear IHe1.
     rewrite <- IHe2; clear IHe2.
     simpl.
+    unfold Keepₛ, Dropₛ; simp SubSem.
     repeat f_equal.
-    generalize (SemExp (STmExp s e1) se); intros.
-    clear.
-    unfold tlSub.
-    induction Γ; simpl; intros; auto.
-    f_equal.
-    + unfold hdSub.
-      clear.
-      rewrite STmL_equation_2.
-      now rewrite SemExp_wk.
-    + unfold tlSub.
-      rewrite IHΓ; clear IHΓ.
-      reflexivity.
-  - induction v; simpl.
-    + reflexivity.
-    + now rewrite IHv.
+    rewrite SubSem_ScR.
+    now rewrite RenSem_skip1.
+  - now rewrite SemVar_SubSem.
   - extensionality z.
     fold SemTy in z.
     rewrite <- IHe; clear IHe.
     simpl.
+    unfold Keepₛ, Dropₛ; simp SubSem.
     repeat f_equal.
-    clear.
-    unfold tlSub.
-    induction Γ; simpl; auto.
-    f_equal.
-    + unfold hdSub.
-      clear.
-      rewrite STmL_equation_2.
-      now rewrite SemExp_wk.
-    + unfold tlSub.
-      rewrite IHΓ; clear IHΓ.
-      reflexivity.
+    rewrite SubSem_ScR.
+    now rewrite RenSem_skip1.
   - now rewrite IHe1, IHe2.
 Qed.
 
-Lemma SemSubVarComm Γ τ (v : Var Γ τ) Γ' (s : Sub Γ Γ') :
-  ∀ se, SemVar v (SemSub s se) = SemExp (s _ v) se.
+Lemma SubSem_ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (t : Sub Γ Γ') (se : SemEnv Γ) :
+  SubSem (ScS s t) se = SubSem s (SubSem t se).
 Proof.
-  intros.
-  generalize dependent Γ'.
-  induction v; simpl; intros; auto.
-  unfold tlRen.
-  specialize (IHv _ (ScS s sskip1)).
-  unfold ScS, sskip1 in IHv.
-  now rewrite <- IHv; clear IHv.
+  generalize dependent Γ''.
+  induction s; intros; simpl; simp SubSem; auto.
+  now rewrite <- SemExp_SubSem, IHs.
 Qed.
 
-Lemma SemSub_ScS {Γ Γ' Γ''} (f : Sub Γ'' Γ') (g : Sub Γ' Γ) :
-  SemSub (ScS g f) = SemSub f ∘ SemSub g.
+Lemma SubSem_RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') (se : SemEnv Γ) :
+  SubSem (RcS r s) se = RenSem r (SubSem s se).
 Proof.
-  extensionality E.
-  unfold Basics.compose.
-  unfold ScS.
-  induction Γ''; simpl; auto.
-  f_equal.
-  - unfold hdSub.
-    clear.
-    now rewrite <- !SemSubComm.
-  - unfold tlSub.
-    exact (IHΓ'' (ScS f sskip1)).
-Qed.
-
-Lemma STmExp_sskip1_f {Γ Γ' τ τ'} (e : Exp Γ' τ) (f : Sub Γ' Γ) :
-  STmExp (ScS (sskip1 (τ:=τ')) f) e = wk (STmExp f e).
-Proof.
-  unfold wk.
-  rewrite <- ActionRcS.
-  f_equal.
-  unfold ScS, RcS.
-  extensionality τ''.
-  extensionality v.
-  f_equal.
-  clear.
-  remember (f τ'' v) as g.
-  clear.
-  induction g; simpl; auto;
-  rewrite ?IHg, ?IHg1, ?IHg2, ?IHg3; auto.
-Abort.
-
-Lemma SemSub_sskip1_f Γ Γ' (f : Sub Γ' Γ)
-      τ (x : SemTy τ) (E : SemEnv Γ) :
-  SemSub (ScS sskip1 f) (x, E) = SemSub f E.
-Proof.
-  generalize dependent τ.
   generalize dependent Γ.
-  induction Γ'; simpl; intros; auto.
-  unfold hdSub.
-  f_equal.
-  - unfold ScS.
-    rewrite <- SemSubComm.
-    specialize (IHΓ' _ (tlSub f) E _ x).
-    rewrite SemSub_ScS in IHΓ'.
-    admit.
-  - rewrite !tlSub_sskip1.
-    rewrite !SemSub_ScS.
-    rewrite <- compose_assoc.
-    rewrite <- !SemSub_ScS.
-    now rewrite IHΓ'.
-Admitted.
-
-Lemma SemSub_id Γ :
-  SemSub idSub = @id (SemEnv Γ).
-Proof.
-  unfold id.
-  extensionality E.
-  induction Γ; simpl; intros; auto.
-  - now destruct E.
-  - destruct E as [x E]; simpl.
-    f_equal.
-    rewrite tlSub_sskip1.
-    rewrite ScS_idSub_left.
-    rewrite <- (ScS_idSub_right _ _ sskip1).
-    rewrite SemSub_sskip1_f.
-    apply IHΓ.
+  induction r; intros; simpl; simp RcS; simp RenSem; auto;
+  dependent elimination s; simp RcS; simp SubSem; simp RenSem.
+  now rewrite IHr.
 Qed.
 
-Lemma SemSub_sskip1 Γ τ :
-  SemSub sskip1 = @snd (SemTy τ) (SemEnv Γ).
-Proof.
-  extensionality E.
-  induction Γ; simpl; intros; auto.
-  - now destruct E as [x ()].
-  - destruct E as [x [y E]]; simpl.
-    f_equal.
-    rewrite tlSub_sskip1.
-    rewrite SemSub_sskip1_f.
-    rewrite <- (ScS_idSub_right _ _ sskip1).
-    rewrite SemSub_sskip1_f.
-    now rewrite SemSub_id.
-Qed.
+Lemma SemExp_identity {Γ τ} (se : SemEnv Γ) :
+  SemExp (identity Γ τ) se = id.
+Proof. now extensionality e. Qed.
 
-Lemma SemExp_identity `(E : SemEnv Γ) τ :
-  SemExp (identity Γ τ) E = id.
-Proof. now extensionality z. Qed.
-
-Lemma SemExp_compose `(E : SemEnv Γ)
+Lemma SemExp_composition `(E : SemEnv Γ)
       {τ τ' τ''} (f : Exp Γ (τ' ⟶ τ'')) (g : Exp Γ (τ ⟶ τ')) :
-  SemExp (compose f g) E = SemExp f E ∘ SemExp g E.
+  SemExp (composition f g) E = SemExp f E ∘ SemExp g E.
 Proof.
   extensionality z.
   fold SemTy in z.
-  unfold compose; simpl.
+  unfold composition; simpl.
   now rewrite !SemExp_wk.
 Qed.
 
-Lemma SemExp_compose_identity_right `(E : SemEnv Γ)
+Lemma SemExp_composition_identity_right `(E : SemEnv Γ)
       {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
-  SemExp (compose f (identity Γ τ)) E = SemExp f E.
+  SemExp (composition f (identity Γ τ)) E = SemExp f E.
 Proof.
-  rewrite SemExp_compose.
+  rewrite SemExp_composition.
   reflexivity.
 Qed.
 
-Lemma SemExp_compose_identity_left `(E : SemEnv Γ)
+Lemma SemExp_composition_identity_left `(E : SemEnv Γ)
       {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
-  SemExp (compose (identity Γ τ') f) E = SemExp f E.
+  SemExp (composition (identity Γ τ') f) E = SemExp f E.
 Proof.
-  rewrite SemExp_compose.
+  rewrite SemExp_composition.
   reflexivity.
 Qed.
 
-Lemma SemExp_compose_assoc `(E : SemEnv Γ)
+Lemma SemExp_composition_assoc `(E : SemEnv Γ)
       {τ τ' τ'' τ'''}
       (f : Exp Γ (τ'' ⟶ τ'''))
       (g : Exp Γ (τ' ⟶ τ''))
       (h : Exp Γ (τ ⟶ τ')) :
-  SemExp (compose f (compose g h)) E =
-  SemExp (compose (compose f g) h) E.
+  SemExp (composition f (composition g h)) E =
+  SemExp (composition (composition f g) h) E.
 Proof.
-  rewrite !SemExp_compose.
+  rewrite !SemExp_composition.
   now rewrite compose_assoc.
 Qed.
 

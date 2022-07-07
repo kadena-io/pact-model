@@ -49,5 +49,5 @@ Declare Scope Ty_scope.
 Bind Scope Ty_scope with Ty.
 Delimit Scope Ty_scope with ty.
 
-Infix "⟶" := TyArrow (at level 30, right associativity) : Ty_scope.
+Infix "⟶" := TyArrow (at level 51, right associativity) : Ty_scope.
 Infix "×"  := TyPair  (at level 40, left associativity) : Ty_scope.

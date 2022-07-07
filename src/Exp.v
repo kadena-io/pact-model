@@ -72,7 +72,7 @@ Proof. repeat intro; subst; contradiction. Qed.
 
 (* [ValueP] is an inductive proposition that indicates whether an expression
    represents a value, i.e., that it does reduce any further. *)
-Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
+Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Type :=
   | HostedP {ty} (x : HostExp (TyHost ty)) : ValueP Γ (Hosted Γ x)
   | UnitP : ValueP Γ (EUnit Γ)
   | TrueP : ValueP Γ (ETrue Γ)

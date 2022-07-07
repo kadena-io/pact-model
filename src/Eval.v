@@ -32,9 +32,9 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
   | ST_HostUnit Γ (u : HostExp TyUnit) :
     Hosted u ---> EUnit (Γ:=Γ)
   | ST_HostBool Γ (b : HostExp TyBool) :
-    Hosted b ---> ` (GetBool (Γ:=Γ) b)
+    Hosted b ---> projT1 (GetBool (Γ:=Γ) b)
   | ST_HostPair Γ τ1 τ2 (p : HostExp (TyPair τ1 τ2)) :
-    Hosted p ---> ` (GetPair (Γ:=Γ) p)
+    Hosted p ---> projT1 (GetPair (Γ:=Γ) p)
 
   | ST_IfTrue Γ τ (t e : Exp Γ τ) :
     If ETrue t e ---> t
@@ -119,31 +119,31 @@ Class HostLang (A : Type) : Type := {
 
 
   GetBool_sound {Γ} (b : HostExp TyBool) se :
-    HostExpSem b = SemExp (` (GetBool (Γ:=Γ) b)) se;
+    HostExpSem b = SemExp (projT1 (GetBool (Γ:=Γ) b)) se;
 
   GetBool_irr {Γ} (b : HostExp TyBool) :
-    ¬ (` (GetBool (Γ:=Γ) b) = Hosted b);
+    ¬ (projT1 (GetBool (Γ:=Γ) b) = Hosted b);
 
   GetBool_preserves_renaming {Γ Γ'} (b : HostExp TyBool) (σ : Ren Γ Γ') :
-    RenExp σ (Hosted b) ---> RenExp σ (` (GetBool b));
+    RenExp σ (Hosted b) ---> RenExp σ (projT1 (GetBool b));
 
   GetBool_preserves_substitution {Γ Γ'} (b : HostExp TyBool) (σ : Sub Γ Γ') :
-    SubExp σ (Hosted b) ---> SubExp σ (` (GetBool b));
+    SubExp σ (Hosted b) ---> SubExp σ (projT1 (GetBool b));
 
 
   GetPair_sound {Γ τ1 τ2} (p : HostExp (TyPair τ1 τ2)) se :
-    HostExpSem p = SemExp (` (GetPair (Γ:=Γ) p)) se;
+    HostExpSem p = SemExp (projT1 (GetPair (Γ:=Γ) p)) se;
 
   GetPair_irr {Γ τ1 τ2} (p : HostExp (TyPair τ1 τ2)) :
-    ¬ (` (GetPair (Γ:=Γ) p) = Hosted p);
+    ¬ (projT1 (GetPair (Γ:=Γ) p) = Hosted p);
 
   GetPair_preserves_renaming {Γ Γ' τ1 τ2} (p : HostExp (TyPair τ1 τ2))
                              (σ : Ren Γ Γ') :
-    RenExp σ (Hosted p) ---> RenExp σ (` (GetPair p));
+    RenExp σ (Hosted p) ---> RenExp σ (projT1 (GetPair p));
 
   GetPair_preserves_substitution {Γ Γ' τ1 τ2} (p : HostExp (TyPair τ1 τ2))
                                  (σ : Sub Γ Γ') :
-    SubExp σ (Hosted p) ---> SubExp σ (` (GetPair p));
+    SubExp σ (Hosted p) ---> SubExp σ (projT1 (GetPair p));
 }.
 
 Section Sound.

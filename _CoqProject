@@ -11,4 +11,5 @@ src/Eval.v
 src/Norm.v
 src/Cat.v
 src/CEK.v
+src/Pact.v
 src/Capabilities.v

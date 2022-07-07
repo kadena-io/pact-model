@@ -2,6 +2,7 @@ Require Import
   Coq.Unicode.Utf8
   Coq.Program.Program
   Coq.Relations.Relation_Definitions
+  Coq.Classes.CRelationClasses
   Coq.Lists.List
   Ty
   Exp
@@ -41,7 +42,7 @@ Proof.
   intros.
   unfold normal_form.
   dependent induction v;
-  inv H; intro; reduce;
+  inv X; intro; reduce;
   try now inversion H.
   - inv H.
     + now eapply IHv1; eauto.
@@ -126,6 +127,13 @@ Ltac invert_step :=
 Definition deterministic {X : Type} (R : relation X) :=
   ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
 
+Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP v) :
+  H1 = H2.
+Proof.
+  induction H1; dependent elimination H2; auto.
+  now erewrite IHValueP1, IHValueP2; eauto.
+Qed.
+
 Theorem step_deterministic Γ τ :
   deterministic (@Step _ _ Γ τ).
 Proof.
@@ -137,25 +145,25 @@ Proof.
   - inv H3; now invert_step.
   - inv H4; now invert_step.
   - inv H3; now invert_step.
-  - now pose proof (proof_irrelevance _ H H1); subst.
+  - now f_equal; apply ValueP_irrelevance.
 Qed.
 
 Theorem strong_progress {τ} (e : Exp [] τ) :
-  ValueP e ∨ ∃ e', e ---> e'.
+  ValueP e + ∃ e', e ---> e'.
 Proof.
   dependent induction e.
   - destruct τ.
     + now left; constructor.
     + right; now exists EUnit; constructor.
-    + right; now exists (` (GetBool h)); constructor.
-    + right; now exists (` (GetPair h)); constructor.
+    + right; now exists (projT1 (GetBool h)); constructor.
+    + right; now exists (projT1 (GetPair h)); constructor.
     + now left; constructor.
   - now left; constructor.
   - now left; constructor.
   - now left; constructor.
   - right.
     destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
-    + inv H.
+    + inv v.
       * now exists e2; constructor.
       * now exists e3; constructor.
     + now exists (If x e2 e3); constructor.
@@ -163,24 +171,24 @@ Proof.
     + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
       * left.
         now constructor.
-      * right.
+      * right; reduce.
         now exists (Pair e1 x); constructor.
     + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
-      * right.
+      * right; reduce.
         now exists (Pair x e2); constructor.
-      * right.
-        now exists (Pair x e2); constructor.
+      * right; reduce.
+        now exists (Pair x0 e2); constructor.
   - destruct (IHe _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
     + right.
-      inv H.
+      inv v; reduce.
       * now exists x; constructor.
-    + right.
+    + right; reduce.
       now exists (Fst x); constructor.
   - destruct (IHe _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
     + right.
-      inv H.
+      inv v.
       * now exists y; constructor.
-    + right.
+    + right; reduce.
       now exists (Snd x); constructor.
   - right.
     now exists e2; constructor.
@@ -190,14 +198,14 @@ Proof.
   - right.
     destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe1.
     + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe2.
-      * dependent elimination e1; inv H.
-        ** now exists (CallHost h e2 H0); constructor.
+      * dependent elimination e1; inv v.
+        ** now exists (CallHost h e2 v0); constructor.
         ** exists (SubExp {|| e2 ||} e9).
            now constructor.
-      * dependent elimination e1; inv H.
+      * dependent elimination e1; inv v.
         ** exists (APP (Hosted h) x); constructor; auto.
            now constructor.
-        ** exists (APP (LAM e9) x).
+        ** exists (APP (LAM e10) x).
            constructor; auto.
            now constructor.
     + reduce.
@@ -219,7 +227,7 @@ Proof.
 Qed.
 
 Corollary nf_same_as_value {τ} (v : Exp [] τ) :
-  normal_form Step v ↔ ValueP v.
+  iffT (normal_form Step v) (ValueP v).
 Proof.
   split.
   - now apply nf_is_value.
@@ -254,13 +262,13 @@ Proof.
 Qed.
 
 Definition halts {Γ τ} (e : Exp Γ τ) : Prop :=
-  ∃ e', e --->* e' ∧ ValueP e'.
+  ∃ e', e --->* e' ∧ inhabited (ValueP e').
 
 Lemma value_halts {Γ τ} (v : Exp Γ τ) : ValueP v → halts v.
 Proof.
   intros.
   unfold halts.
-  now dependent induction H; eexists; split; constructor.
+  now induction X; eexists; repeat constructor.
 Qed.
 
 Lemma step_preserves_halting {Γ τ} (e e' : Exp Γ τ) :
@@ -271,8 +279,9 @@ Proof.
   split.
   - intros [e'' [H1 H2]].
     destruct H1.
-    + apply value_is_nf in H2.
-      destruct H2.
+    + destruct H2.
+      apply value_is_nf in X.
+      destruct X.
       now exists e'.
     + rewrite (step_deterministic _ _ _ _ _ H H0).
       now exists z.
@@ -409,15 +418,15 @@ Proof.
 Lemma RenExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Ren Γ' Γ) :
   ValueP v → ValueP (RenExp σ v).
 Proof.
-  induction v; simpl; intros; try constructor;
-  now inv H; intuition; constructor.
+  intros.
+  now induction X; simpl; intros; try constructor.
 Qed.
 
 Lemma SubExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Sub Γ' Γ) :
   ValueP v → ValueP (SubExp σ v).
 Proof.
-  induction v; simpl; intros; try constructor;
-  now inv H; intuition; constructor.
+  intros.
+  now induction X; simpl; intros; try constructor.
 Qed.
 
 Lemma RenExp_Step {Γ Γ' τ} {e e' : Exp Γ τ} (σ : Ren Γ' Γ) :

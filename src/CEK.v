@@ -34,13 +34,38 @@ with ValEnv : Env → Type :=
   | Empty : ValEnv []
   | Val {Γ τ} : Value τ → ValEnv Γ → ValEnv (τ :: Γ).
 
-Derive Signature NoConfusion Subterm for Value.
+Derive Signature NoConfusion for Value.
 Derive Signature NoConfusion Subterm for Closure.
 Derive Signature NoConfusion for ValEnv.
 
 Equations get_value `(s : ValEnv Γ) `(v : Var Γ τ) : Value τ :=
   get_value (Val x _)   ZV    := x;
   get_value (Val _ xs) (SV v) := get_value xs v.
+
+Equations keepAll Γ : Ren Γ [] :=
+  keepAll []        := NoRen;
+  keepAll (x :: xs) := Drop (keepAll xs).
+
+Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
+  valueToExp (HostValue x)             := existT _ (Hosted x) (HostedP x);
+  valueToExp VUnit                     := existT _ EUnit (UnitP []);
+  valueToExp VTrue                     := existT _ (ETrue) TrueP;
+  valueToExp VFalse                    := existT _ (EFalse) FalseP;
+  valueToExp (VPair x y)               :=
+    let '(existT _ v1 H1) := valueToExp x in
+    let '(existT _ v2 H2) := valueToExp y in
+    existT _ (Pair v1 v2) (PairP H1 H2);
+  valueToExp (ClosureExp (Lambda e ρ)) := existT _ (LAM (msubst e ρ)) (LambdaP _);
+  valueToExp (ClosureExp (Func f))     := existT _ (Hosted f) (FunctionP f)
+}
+where msubst {Γ ty τ} (e : (ty :: Γ) ⊢ τ) (s : ValEnv Γ) : [ty] ⊢ τ := {
+  msubst e Empty      := e;
+  msubst e (Val x xs) :=
+    let r := keepAll _ in
+    let v := RenExp r (projT1 (valueToExp x)) in
+    let s := Keepₛ {|| v ||} in
+    msubst (SubExp s e) xs
+}.
 
 Equations render `(v : Exp Γ τ) {V : ValueP v} (ρ : ValEnv Γ) : Value τ :=
   render (τ:=TyHost _) (Hosted x) ρ := HostValue x;
@@ -52,15 +77,6 @@ Equations render `(v : Exp Γ τ) {V : ValueP v} (ρ : ValEnv Γ) : Value τ :=
   render (LAM e)                  ρ := ClosureExp (Lambda e ρ).
 Next Obligation. now inv V. Qed.
 Next Obligation. now inv V. Qed.
-
-Equations valueToExp `(c : Value τ) {Γ} : Exp Γ τ :=
-  valueToExp (HostValue x)             := Hosted x;
-  valueToExp VUnit                     := EUnit;
-  valueToExp VTrue                     := ETrue;
-  valueToExp VFalse                    := EFalse;
-  valueToExp (VPair x y)               := Pair (valueToExp x) (valueToExp y);
-  valueToExp (ClosureExp (Lambda e ρ)) := LAM e;
-  valueToExp (ClosureExp (Func f))     := Hosted f.
 
 Inductive Kont : Ty → Ty → Type :=
   | MT {a}   : Kont a a
@@ -87,7 +103,8 @@ Equations with_closure `(a : Exp Γ dom) `(ρ : ValEnv Γ)
   with_closure a ρ κ (ClosureExp (Lambda e ρ')) :=
     MkΣ a ρ (FN (λ v, MkΣ e (Val v ρ') κ));
   with_closure a ρ κ (ClosureExp (Func f)) :=
-    MkΣ a ρ (FN (λ v, MkΣ (CallFunction f v) ρ κ)).
+    MkΣ a ρ (FN (λ v, let '(existT _ x H) := valueToExp v in
+                      MkΣ (CallHost f x H) Empty κ)).
 
 Equations IfBody `(v : Value TyBool) {Γ τ} (t e : Exp Γ τ) : Exp Γ τ :=
   IfBody VTrue  t _ := t;
@@ -103,8 +120,8 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   (* Constants *)
   step (MkΣ (r:=TyHost _)   (Hosted x) ρ (FN f)) := f (HostValue x);
   step (MkΣ (r:=TyUnit)     (Hosted x) ρ (FN f)) := f VUnit;
-  step (MkΣ (r:=TyBool)     (Hosted x) ρ κ)      := MkΣ (` (GetBool x)) ρ κ;
-  step (MkΣ (r:=_ × _)      (Hosted x) ρ κ) := MkΣ (` (GetPair x)) ρ κ;
+  step (MkΣ (r:=TyBool)     (Hosted x) ρ κ)      := MkΣ (projT1 (GetBool x)) ρ κ;
+  step (MkΣ (r:=_ × _)      (Hosted x) ρ κ)      := MkΣ (projT1 (GetPair x)) ρ κ;
   step (MkΣ (r:=dom ⟶ cod) (Hosted x) ρ (FN f)) := f (ClosureExp (Func x));
 
   step (MkΣ EUnit  _ (FN f)) := f VUnit;
@@ -126,7 +143,7 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
      that vein; otherwise, if no continuation, this is as far as we can go. *)
   step (MkΣ (VAR v) ρ κ) with get_value ρ v := {
     | x with κ := {
-        | MT   => MkΣ (VAR v) ρ κ
+        | MT   => MkΣ (projT1 (valueToExp x)) Empty κ
         | FN f => f x
       }
   };
@@ -141,10 +158,7 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
 
 Equations loop (gas : nat) {τ : Ty} (s : Σ τ) : Σ τ :=
   loop O s := s;
-  loop (S gas') s with step s := {
-    | MkΣ e ρ MT => MkΣ e ρ MT
-    | s' => loop gas' s'
-  }.
+  loop (S gas') s := loop gas' (step s).
 
 Definition run (gas : nat) {τ : Ty} (e : Exp [] τ) : Σ τ := loop gas (inject e).
 
@@ -160,7 +174,7 @@ Ltac is_step := ceksimp; firstorder eauto.
 
 Theorem cek_sound τ (e e' : Exp [] τ) :
   e --->* e' → ValueP e' →      (* evaluation halts at e' *)
-  ∃ v, represents e' v ∧ ∃ gas, loop gas (inject e) = MkV v.
+  ∃ gas, loop gas (inject e) = MkΣ e' Empty MT.
 Proof.
 Abort.
 

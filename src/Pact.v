@@ -97,6 +97,7 @@ Next Obligation. now inv x. Defined.
 Next Obligation. now inv x. Defined.
 Next Obligation. now inv x. Defined.
 Next Obligation. now inv x. Defined.
+Next Obligation. now inv H. Defined.
 
 Program Instance Pact_HostLang : HostLang Pact := {|
   has_host_exprs_sem := Pact_HostExprsSem;
@@ -112,6 +113,10 @@ Next Obligation.
   simp PactF; simpl.
   now simp Pact_HostExpSem.
 Qed.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
 Next Obligation. Admitted.
 Next Obligation. Admitted.
 Next Obligation. Admitted.

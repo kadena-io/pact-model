@@ -36,6 +36,8 @@ Class HostExprsSem (A : Type) : Type := {
     HostExp TyBool → { v : Exp Γ TyBool & ValueP v };
   GetPair {Γ a b} :
     HostExp (TyPair a b) → { v : Exp Γ (TyPair a b) & ValueP v };
+  GetList {Γ τ} :
+    HostExp (TyList τ) → { v : Exp Γ (TyList τ) & ValueP v };
 }.
 
 Context {A : Type}.

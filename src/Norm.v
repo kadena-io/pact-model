@@ -102,6 +102,7 @@ Proof.
   - inv H.
     + now apply GetBool_irr in H6.
     + now apply GetPair_irr in H6.
+    + now apply GetList_irr in H6.
   - inv H.
     + now eapply If_loop_true; eauto.
     + now eapply If_loop_false; eauto.

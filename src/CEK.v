@@ -132,8 +132,8 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   step (MkΣ (r:=TyHost _)   (Hosted x) ρ (FN f)) := f (HostValue x);
   step (MkΣ (r:=TyUnit)     (Hosted x) ρ (FN f)) := f VUnit;
   step (MkΣ (r:=TyBool)     (Hosted x) ρ κ)      := MkΣ (projT1 (GetBool x)) ρ κ;
-  step (MkΣ (r:=TyList _)   (Hosted x) ρ κ)      := MkΣ _ ρ κ;
   step (MkΣ (r:=_ × _)      (Hosted x) ρ κ)      := MkΣ (projT1 (GetPair x)) ρ κ;
+  step (MkΣ (r:=TyList _)   (Hosted x) ρ κ)      := MkΣ (projT1 (GetList x)) ρ κ;
   step (MkΣ (r:=dom ⟶ cod) (Hosted x) ρ (FN f)) := f (ClosureExp (Func x));
 
   step (MkΣ EUnit  _ (FN f)) := f VUnit;
@@ -172,8 +172,6 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   step (MkΣ (APP e1 e2) ρ κ) := MkΣ e1 ρ (FN (with_closure e2 ρ κ));
 
   step (MkΣ e ρ MT) := MkΣ e ρ MT.
-Next Obligation.
-Admitted.                       (* jww (2022-07-07): Need hosted lists *)
 
 Equations loop (gas : nat) {τ : Ty} (s : Σ τ) : Σ τ :=
   loop O s := s;

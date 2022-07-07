@@ -35,6 +35,8 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
     Hosted b ---> projT1 (GetBool (Γ:=Γ) b)
   | ST_HostPair Γ τ1 τ2 (p : HostExp (TyPair τ1 τ2)) :
     Hosted p ---> projT1 (GetPair (Γ:=Γ) p)
+  | ST_HostList Γ τ (l : HostExp (TyList τ)) :
+    Hosted l ---> projT1 (GetList (Γ:=Γ) l)
 
   | ST_IfTrue Γ τ (t e : Exp Γ τ) :
     If ETrue t e ---> t
@@ -68,10 +70,10 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
     ValueP v2 →
     Snd (Pair v1 v2) ---> v2
 
-  | ST_ConsHead Γ τ (x : Exp Γ τ) x' (xs : Exp Γ (TyList τ)) :
+  | ST_Cons1 Γ τ (x : Exp Γ τ) x' (xs : Exp Γ (TyList τ)) :
     x ---> x' →
     Cons x xs ---> Cons x' xs
-  | ST_ConsTail Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) xs' :
+  | ST_Cons2 Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) xs' :
     ValueP x →
     xs ---> xs' →
     Cons x xs ---> Cons x xs'
@@ -152,6 +154,21 @@ Class HostLang (A : Type) : Type := {
   GetPair_preserves_substitution {Γ Γ' τ1 τ2} (p : HostExp (TyPair τ1 τ2))
                                  (σ : Sub Γ Γ') :
     SubExp σ (Hosted p) ---> SubExp σ (projT1 (GetPair p));
+
+
+  GetList_sound {Γ τ} (p : HostExp (TyList τ)) se :
+    HostExpSem p = SemExp (projT1 (GetList (Γ:=Γ) p)) se;
+
+  GetList_irr {Γ τ} (p : HostExp (TyList τ)) :
+    ¬ (projT1 (GetList (Γ:=Γ) p) = Hosted p);
+
+  GetList_preserves_renaming {Γ Γ' τ} (p : HostExp (TyList τ))
+                             (σ : Ren Γ Γ') :
+    RenExp σ (Hosted p) ---> RenExp σ (projT1 (GetList p));
+
+  GetList_preserves_substitution {Γ Γ' τ} (p : HostExp (TyList τ))
+                                 (σ : Sub Γ Γ') :
+    SubExp σ (Hosted p) ---> SubExp σ (projT1 (GetList p));
 }.
 
 Section Sound.
@@ -169,6 +186,7 @@ Proof.
   - now erewrite Unit_sound; eauto.
   - now erewrite GetBool_sound; eauto.
   - now erewrite GetPair_sound; eauto.
+  - now erewrite GetList_sound; eauto.
   - now apply CallHost_sound.
   - rewrite <- SemExp_SubSem.
     f_equal; simpl.

@@ -15,8 +15,6 @@ Context {A : Type}.
 Context `{HostTypes A}.
 
 (* TODO:
- - Lists
- - Builtins
  - Row-types
  - Modules
  - Schemas
@@ -29,6 +27,7 @@ Inductive Ty : Type :=
 
   | TyUnit : Ty
   | TyBool : Ty
+  | TyList : Ty → Ty
   | TyPair : Ty → Ty → Ty
 
   (* The arrow type is the only type in the base lambda calculus *)
@@ -42,6 +41,7 @@ Arguments Ty {A H}.
 Arguments TyHost {A H} _.
 Arguments TyUnit {A H}.
 Arguments TyBool {A H}.
+Arguments TyList {A H} _.
 Arguments TyPair {A H} _ _.
 Arguments TyArrow {A H} _ _.
 

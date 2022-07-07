@@ -68,6 +68,14 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
     ValueP v2 →
     Snd (Pair v1 v2) ---> v2
 
+  | ST_ConsHead Γ τ (x : Exp Γ τ) x' (xs : Exp Γ (TyList τ)) :
+    x ---> x' →
+    Cons x xs ---> Cons x' xs
+  | ST_ConsTail Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) xs' :
+    ValueP x →
+    xs ---> xs' →
+    Cons x xs ---> Cons x xs'
+
   | ST_AppHost Γ dom cod (f : HostExp (dom ⟶ cod)) (v : Exp Γ dom) :
     ∀ H : ValueP v,
     APP (Hosted f) v ---> CallHost f v H

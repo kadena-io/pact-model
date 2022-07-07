@@ -47,6 +47,9 @@ Proof.
   - inv H.
     + now eapply IHv1; eauto.
     + now eapply IHv2; eauto.
+  - inv H.
+    + now eapply IHv1; eauto.
+    + now eapply IHv2; eauto.
 Qed.
 
 Ltac normality :=
@@ -131,7 +134,8 @@ Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP v) :
   H1 = H2.
 Proof.
   induction H1; dependent elimination H2; auto.
-  now erewrite IHValueP1, IHValueP2; eauto.
+  - now erewrite IHValueP1, IHValueP2; eauto.
+  - now erewrite IHValueP1, IHValueP2; eauto.
 Qed.
 
 Theorem step_deterministic Γ τ :
@@ -156,6 +160,7 @@ Proof.
     + now left; constructor.
     + right; now exists EUnit; constructor.
     + right; now exists (projT1 (GetBool h)); constructor.
+    + admit.
     + right; now exists (projT1 (GetPair h)); constructor.
     + now left; constructor.
   - now left; constructor.
@@ -190,6 +195,12 @@ Proof.
       * now exists y; constructor.
     + right; reduce.
       now exists (Snd x); constructor.
+  - now left; constructor.
+  - destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe1.
+    + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe2.
+      * now left; constructor.
+      * admit.
+    + admit.
   - right.
     now exists e2; constructor.
   - now inversion v.
@@ -200,12 +211,12 @@ Proof.
     + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe2.
       * dependent elimination e1; inv v.
         ** now exists (CallHost h e2 v0); constructor.
-        ** exists (SubExp {|| e2 ||} e9).
+        ** exists (SubExp {|| e2 ||} e11).
            now constructor.
       * dependent elimination e1; inv v.
         ** exists (APP (Hosted h) x); constructor; auto.
            now constructor.
-        ** exists (APP (LAM e10) x).
+        ** exists (APP (LAM e12) x).
            constructor; auto.
            now constructor.
     + reduce.
@@ -215,7 +226,7 @@ Proof.
       * reduce.
         exists (APP x e2).
         now constructor.
-Qed.
+Admitted.
 
 Corollary nf_is_value {τ} (v : Exp [] τ) :
   normal_form Step v → ValueP v.
@@ -321,6 +332,7 @@ Equations R {Γ τ} (e : Γ ⊢ τ) : Prop :=
   R (τ:=TyHost _) e := halts e;
   R (τ:=TyUnit)   e := halts e;
   R (τ:=TyBool)   e := halts e;
+  R (τ:=TyList _) e := halts e; (* jww (2022-07-07): NYI *)
   R (τ:=_ × _)    e := halts e ∧ R (Fst e) ∧ R (Snd e);
   R (τ:=_ ⟶ _)   e := halts e ∧ ∀ e', R e' → R (APP e e').
 
@@ -438,6 +450,7 @@ Proof.
     + now inv H.
     + now inv H; constructor.
     + inv H; now apply GetBool_preserves_renaming.
+    + admit.
     + inv H; now apply GetPair_preserves_renaming.
     + now inv H.
   - now inv H; constructor; intuition.
@@ -452,6 +465,7 @@ Proof.
     + now apply RenExp_ValueP.
   - inv H; constructor; intuition;
     now apply RenExp_ValueP.
+  - now inv H; simpl; try constructor; intuition.
   - inv H; simpl; try constructor; intuition.
     + rewrite <- SubExp_ScR.
       simp ScR.
@@ -462,7 +476,7 @@ Proof.
       constructor.
       now apply RenExp_ValueP.
     + now apply RenExp_ValueP.
-Qed.
+Admitted.
 
 Lemma SubExp_Step {Γ Γ' τ} {e e' : Exp Γ τ} (σ : Sub Γ' Γ) :
   e ---> e' → SubExp σ e ---> SubExp σ e'.
@@ -473,6 +487,7 @@ Proof.
     + now inv H.
     + now inv H; constructor.
     + inv H; now apply GetBool_preserves_substitution.
+    + admit.
     + inv H; now apply GetPair_preserves_substitution.
     + now inv H.
   - now inv H; constructor; intuition.
@@ -487,6 +502,7 @@ Proof.
     + now apply SubExp_ValueP.
   - inv H; constructor; intuition;
     now apply SubExp_ValueP.
+  - now inv H; simpl; try constructor; intuition.
   - inv H; simpl; try constructor; intuition.
     + rewrite <- SubExp_ScS.
       simpl ScS.
@@ -502,7 +518,7 @@ Proof.
       constructor.
       now apply SubExp_ValueP.
     + now apply SubExp_ValueP.
-Qed.
+Admitted.
 
 (*
 Equations RenExp_Step {Γ Γ' τ} {e : Exp Γ τ} {σ : Ren Γ' Γ} {e'}

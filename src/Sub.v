@@ -67,6 +67,8 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | Pair x y      => Pair (SubExp s x) (SubExp s y)
   | Fst p         => Fst (SubExp s p)
   | Snd p         => Snd (SubExp s p)
+  | Nil           => Nil
+  | Cons x xs     => Cons (SubExp s x) (SubExp s xs)
   | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
 
   | VAR v         => SubVar s v

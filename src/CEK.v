@@ -24,6 +24,8 @@ Inductive Value : Ty → Type :=
   | VTrue                  : Value TyBool
   | VFalse                 : Value TyBool
   | VPair {τ1 τ2}          : Value τ1 → Value τ2 → Value (TyPair τ1 τ2)
+  | VNil {τ}               : Value (TyList τ)
+  | VCons {τ}              : Value τ → Value (TyList τ) → Value (TyList τ)
   | ClosureExp {dom cod}   : Closure dom cod → Value (dom ⟶ cod)
 
 with Closure : Ty → Ty → Type :=
@@ -55,6 +57,11 @@ Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
     let '(existT _ v1 H1) := valueToExp x in
     let '(existT _ v2 H2) := valueToExp y in
     existT _ (Pair v1 v2) (PairP H1 H2);
+  valueToExp VNil                      := existT _ Nil NilP;
+  valueToExp (VCons x xs)              :=
+    let '(existT _ v1 H1) := valueToExp x in
+    let '(existT _ v2 H2) := valueToExp xs in
+    existT _ (Cons v1 v2) (ConsP H1 H2);
   valueToExp (ClosureExp (Lambda e ρ)) := existT _ (LAM (msubst e ρ)) (LambdaP _);
   valueToExp (ClosureExp (Func f))     := existT _ (Hosted f) (FunctionP f)
 }
@@ -74,7 +81,11 @@ Equations render `(v : Exp Γ τ) {V : ValueP v} (ρ : ValEnv Γ) : Value τ :=
   render ETrue                    ρ := VTrue;
   render EFalse                   ρ := VFalse;
   render (Pair x y)               ρ := VPair (render x ρ) (render y ρ);
+  render Nil                      ρ := VNil;
+  render (Cons x xs)              ρ := VCons (render x ρ) (render xs ρ);
   render (LAM e)                  ρ := ClosureExp (Lambda e ρ).
+Next Obligation. now inv V. Qed.
+Next Obligation. now inv V. Qed.
 Next Obligation. now inv V. Qed.
 Next Obligation. now inv V. Qed.
 
@@ -121,6 +132,7 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   step (MkΣ (r:=TyHost _)   (Hosted x) ρ (FN f)) := f (HostValue x);
   step (MkΣ (r:=TyUnit)     (Hosted x) ρ (FN f)) := f VUnit;
   step (MkΣ (r:=TyBool)     (Hosted x) ρ κ)      := MkΣ (projT1 (GetBool x)) ρ κ;
+  step (MkΣ (r:=TyList _)   (Hosted x) ρ κ)      := MkΣ _ ρ κ;
   step (MkΣ (r:=_ × _)      (Hosted x) ρ κ)      := MkΣ (projT1 (GetPair x)) ρ κ;
   step (MkΣ (r:=dom ⟶ cod) (Hosted x) ρ (FN f)) := f (ClosureExp (Func x));
 
@@ -135,6 +147,11 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
     MkΣ x ρ (FN (λ v1, MkΣ y ρ (FN (λ v2, f (VPair v1 v2)))));
   step (MkΣ (Fst p) ρ (FN f)) := MkΣ p ρ (FN (f ∘ VFst));
   step (MkΣ (Snd p) ρ (FN f)) := MkΣ p ρ (FN (f ∘ VSnd));
+
+  step (MkΣ Nil _ (FN f)) := f VNil;
+  step (MkΣ (Cons x xs) ρ (FN f)) :=
+    MkΣ x ρ (FN (λ v1, MkΣ xs ρ (FN (λ v2, f (VCons v1 v2)))));
+  (* jww (2022-07-07): Need Car and Cdr here *)
 
   (* A sequence just evaluates the second, for now *)
   step (MkΣ (Seq e1 e2) ρ κ) := MkΣ e2 ρ κ;
@@ -155,6 +172,8 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   step (MkΣ (APP e1 e2) ρ κ) := MkΣ e1 ρ (FN (with_closure e2 ρ κ));
 
   step (MkΣ e ρ MT) := MkΣ e ρ MT.
+Next Obligation.
+Admitted.                       (* jww (2022-07-07): Need hosted lists *)
 
 Equations loop (gas : nat) {τ : Ty} (s : Σ τ) : Σ τ :=
   loop O s := s;

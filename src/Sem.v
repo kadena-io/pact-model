@@ -20,6 +20,7 @@ Fixpoint SemTy `{HostTypes A} (τ : Ty) : Type :=
   | TyHost τ        => HostTySem τ
   | TyUnit          => unit
   | TyBool          => bool
+  | TyList τ        => list (SemTy τ)
   | TyPair t1 t2    => SemTy t1 * SemTy t2
   | TyArrow dom cod => SemTy dom → SemTy cod
   end.
@@ -107,6 +108,8 @@ Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   | Pair x y      => λ se, (SemExp x se, SemExp y se)
   | Fst p         => λ se, fst (SemExp p se)
   | Snd p         => λ se, snd (SemExp p se)
+  | Nil           => λ se, nil
+  | Cons x xs     => λ se, SemExp x se :: SemExp xs se
   | Seq exp1 exp2 => λ se, SemExp exp2 se
 
   | VAR v         => SemVar v
@@ -131,6 +134,7 @@ Proof.
   - now rewrite IHe1, IHe2.
   - now rewrite IHe.
   - now rewrite IHe.
+  - now rewrite IHe1, IHe2.
   - now rewrite SemVar_RenSem.
   - extensionality z.
     fold SemTy in z.
@@ -202,6 +206,7 @@ Proof.
   - now rewrite IHe1, IHe2.
   - now rewrite IHe.
   - now rewrite IHe.
+  - now rewrite IHe1, IHe2.
   - now rewrite SemVar_SubSem.
   - extensionality z.
     fold SemTy in z.

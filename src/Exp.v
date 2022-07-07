@@ -39,6 +39,9 @@ Inductive Exp Γ : Ty → Type :=
   | Fst {τ1 τ2}   : Exp Γ (TyPair τ1 τ2) → Exp Γ τ1
   | Snd {τ1 τ2}   : Exp Γ (TyPair τ1 τ2) → Exp Γ τ2
 
+  | Nil {τ}       : Exp Γ (TyList τ)
+  | Cons {τ}      : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
+
   | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
   (* | Builtin {τ ty} : Exp Γ ty → Exp (ty :: Γ) τ → Exp Γ τ *)
@@ -60,6 +63,8 @@ Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   | Pair _ x y   => 1 + Exp_size x + Exp_size y
   | Fst _ p      => 1 + Exp_size p
   | Snd _ p      => 1 + Exp_size p
+  | Nil _        => 1
+  | Cons _ x xs  => 1 + Exp_size x + Exp_size xs
   | Seq _ x y    => 1 + Exp_size x + Exp_size y
   | VAR _ v      => 1
   | LAM _ e      => 1 + Exp_size e
@@ -79,6 +84,9 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Type :=
   | FalseP : ValueP Γ (EFalse Γ)
   | PairP {τ1 τ2} {x : Exp Γ τ1} {y : Exp Γ τ2} :
     ValueP Γ x → ValueP Γ y → ValueP Γ (Pair Γ x y)
+  | NilP {τ} : ValueP Γ (Nil (τ:=τ) Γ)
+  | ConsP {τ} (x : Exp Γ τ) xs :
+    ValueP Γ x → ValueP Γ xs → ValueP Γ (Cons Γ x xs)
   | LambdaP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (LAM Γ e)
   | FunctionP {dom cod} (f : HostExp (dom ⟶ cod)) : ValueP Γ (Hosted Γ f).
 
@@ -97,6 +105,8 @@ Arguments If {A H Γ τ} _ _ _.
 Arguments Pair {A H Γ τ1 τ2} _ _.
 Arguments Fst {A H Γ τ1 τ2} _.
 Arguments Snd {A H Γ τ1 τ2} _.
+Arguments Nil {A H Γ τ}.
+Arguments Cons {A H Γ τ} _ _.
 Arguments Seq {A H Γ τ τ'} _ _.
 Arguments VAR {A H Γ τ} _.
 Arguments LAM {A H Γ dom cod} _.
@@ -107,6 +117,8 @@ Arguments HostedP {A H Γ ty} _.
 Arguments TrueP {A H Γ}.
 Arguments FalseP {A H Γ}.
 Arguments PairP {A H Γ τ1 τ2 x y} _ _.
+Arguments NilP {A H Γ τ}.
+Arguments ConsP {A H Γ τ _ _} _ _.
 Arguments LambdaP {A H Γ dom cod} _.
 Arguments FunctionP {A H Γ dom cod} _.
 

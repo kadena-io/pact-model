@@ -549,10 +549,6 @@ Admitted.
 -- Strong normalization
 --------------------------------------------------------------------------------
 
--- strong normalization predicate
-data SN {Γ τ} (t : Exp Γ τ) : Set where
-  sn : (∀ {t'} → t ---> t' → SN t') → SN t
-
 -- SN annotated all the way down with a predicate on terms
 data SN* {τ} (P : ∀ {Γ} → Exp Γ τ → Set) {Γ}(t : Exp Γ τ) : Set where
   sn* : P t → (∀ {t'} → t ---> t' → SN* P t') → SN* P t
@@ -637,10 +633,11 @@ idₛᴾ : ∀ {Γ} → Subᴾ (idₛ {Γ})
 idₛᴾ {[]}     = NoSubᴾ
 idₛᴾ {τ :: Γ} = Subᴾₑ skip1 idₛᴾ , sn* tt (λ ())
 
-strongNorm : ∀
-strongNorm t = coe (SN & Tm-idₛ t) (SN*-SN (fth t idₛᴾ))
 *)
 
-Theorem normalization {Γ τ} (e : Exp Γ τ) : SN e.
+Theorem strong_normalization {Γ τ} (e : Exp Γ τ) : SN e.
 Proof.
 Abort.
+(*
+strongNorm t = coe (SN & Tm-idₛ t) (SN*-SN (fth t idₛᴾ))
+*)

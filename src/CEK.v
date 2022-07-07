@@ -4,20 +4,22 @@ Require Export
   Sub
   Sem
   Eval
-  Norm
-  Coq.micromega.Lia.
+  Norm.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
 
 Generalizable All Variables.
 
-Import ListNotations.
-
 Section CEK.
 
+Import ListNotations.
+
+Context {A : Type}.
+Context `{L : HostLang A}.
+
 Inductive Value : Ty → Type :=
-  | VConst {ty}        : Literal ty → Value (TyPrim ty)
+  | VHost {ty}         : HostExp (TyHost ty) → Value (TyHost ty)
   | VUnit              : Value TyUnit
   | VTrue              : Value TyBool
   | VFalse             : Value TyBool
@@ -25,7 +27,8 @@ Inductive Value : Ty → Type :=
   | VClosure {dom cod} : Closure dom cod → Value (dom ⟶ cod)
 
 with Closure : Ty → Ty → Type :=
-  | Lambda {Γ dom cod} : Exp (dom :: Γ) cod → Env Γ → Closure dom cod
+  | Lambda {Γ dom cod}   : Exp (dom :: Γ) cod   → Env Γ → Closure dom cod
+  | Function {Γ dom cod} : HostExp (dom ⟶ cod) → Env Γ → Closure dom cod
 
 with Env : Env → Type :=
   | Empty : Env []
@@ -36,8 +39,8 @@ Derive Signature NoConfusion Subterm for Closure.
 Derive Signature NoConfusion for Env.
 
 Inductive represents {Γ} : ∀ {τ}, Exp Γ τ → Value τ → Prop :=
-  | VConst_represents {ty} (l : Literal ty) :
-    represents (Constant l) (VConst l)
+  | VHost_represents {ty} (x : HostExp (TyHost ty)) :
+    represents (Hosted x) (VHost x)
   | VUnit_represents  : represents EUnit VUnit
   | VTrue_represents  : represents ETrue VTrue
   | VFalse_represents : represents EFalse VFalse
@@ -45,8 +48,12 @@ Inductive represents {Γ} : ∀ {τ}, Exp Γ τ → Value τ → Prop :=
     represents x x' →
     represents y y' →
     represents (Pair x y) (VPair x' y')
-  | VClosure_represents {dom cod} (e : Exp (dom :: Γ) cod) (ρ : Env Γ) :
-    represents (LAM e) (VClosure (Lambda e ρ)).
+  | VClosure_Lambda_represents
+      {dom cod} (e : Exp (dom :: Γ) cod) (ρ : Env Γ) :
+    represents (LAM e) (VClosure (Lambda e ρ))
+  | VClosure_Function_represents
+      {dom cod} (f : HostExp (dom ⟶ cod)) (ρ : Env Γ) :
+    represents (Hosted f) (VClosure (Function f ρ)).
 
 Lemma represents_values Γ {τ : Ty} (v : Exp Γ τ) (v' : Value τ) :
   represents v v' → ValueP v.
@@ -94,7 +101,9 @@ Equations VSnd {τ1 τ2 : Ty} (v : Value (TyPair τ1 τ2)) : Value τ2 :=
 Equations with_closure `(a : Exp Γ dom) (ρ : Env Γ) {τ} `(κ : Kont cod τ)
           `(v : Value (dom ⟶ cod)) : Σ τ :=
   with_closure a ρ κ (VClosure (Lambda e ρ')) :=
-    MkΣ a ρ (Fn (λ v, MkΣ e (Val v ρ') κ)).
+    MkΣ a ρ (Fn (λ v, MkΣ e (Val v ρ') κ));
+  with_closure a ρ κ (VClosure (Function f ρ')) :=
+    MkΣ a ρ (Fn (λ v, CallHost f v)).
 
 (*
 Equations eval
@@ -141,7 +150,12 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   step (MkV v) := MkV v;
 
   (* Constants *)
-  step (MkΣ (Constant x) _ (Fn f)) := f (VConst x);
+  (* step (MkΣ (Hosted x) _ (Fn f)) := f (VHost x); *)
+  step (MkΣ (r:=TyUnit)     (Hosted x) ρ (Fn f)) := f VUnit;
+  step (MkΣ (r:=TyBool)     (Hosted x) ρ (Fn f)) := f (GetBool x);
+  step (MkΣ (r:=_ × _)      (Hosted x) ρ (Fn f)) := f (GetPair x);
+  step (MkΣ (r:=dom ⟶ cod) (Hosted x) ρ (Fn f)) := f (VClosure (Function x ρ));
+  step (MkΣ (r:=TyHost _)   (Hosted x) ρ (Fn f)) := f (VHost x);
 
   step (MkΣ EUnit  _ (Fn f)) := f VUnit;
   step (MkΣ ETrue  _ (Fn f)) := f VTrue;
@@ -152,31 +166,27 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
 
   step (MkΣ (Pair x y) ρ (Fn f)) :=
     MkΣ x ρ (Fn (λ v1, MkΣ y ρ (Fn (λ v2, f (VPair v1 v2)))));
-  step (MkΣ (Fst p) ρ (Fn f)) :=
-    MkΣ p ρ (Fn (f ∘ VFst));
-  step (MkΣ (Snd p) ρ (Fn f)) :=
-    MkΣ p ρ (Fn (f ∘ VSnd));
+  step (MkΣ (Fst p) ρ (Fn f)) := MkΣ p ρ (Fn (f ∘ VFst));
+  step (MkΣ (Snd p) ρ (Fn f)) := MkΣ p ρ (Fn (f ∘ VSnd));
 
   (* A sequence just evaluates the second, for now *)
-  step (MkΣ (Seq e1 e2) ρ κ) :=
-    MkΣ e2 ρ κ;
+  step (MkΣ (Seq e1 e2) ρ κ) := MkΣ e2 ρ κ;
 
   (* A variable might lookup a lambda, in which case continue evaluating down
      that vein; otherwise, if no continuation, this is as far as we can go. *)
   step (MkΣ (VAR v) ρ κ) with get ρ v := {
     | VClosure (Lambda e ρ') => MkΣ (LAM e) ρ' κ
+    | VClosure (Function f ρ') => MkΣ (Hosted f) ρ' κ
     | x with κ := {
         | Fn f => f x
       }
   };
 
   (* If a lambda is passed, call it with the continuation *)
-  step (MkΣ (LAM e) ρ (Fn f)) :=
-    f (VClosure (Lambda e ρ));
+  step (MkΣ (LAM e) ρ (Fn f)) := f (VClosure (Lambda e ρ));
 
   (* Application evaluates the lambda and then the argument *)
-  step (MkΣ (APP e1 e2) ρ κ) :=
-    MkΣ e1 ρ (Fn (with_closure e2 ρ κ)).
+  step (MkΣ (APP e1 e2) ρ κ) := MkΣ e1 ρ (Fn (with_closure e2 ρ κ)).
 
 Equations loop (gas : nat) {τ : Ty} (s : Σ τ) : Σ τ :=
   loop O s := s;

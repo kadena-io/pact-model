@@ -107,7 +107,6 @@ Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   | Fst p         => λ se, fst (SemExp p se)
   | Snd p         => λ se, snd (SemExp p se)
   | Seq exp1 exp2 => λ se, SemExp exp2 se
-  | Let x body    => λ se, SemExp body (SemExp x se, se)
 
   | VAR v         => SemVar v
   | LAM e         => λ se x, SemExp e (x, se)
@@ -122,10 +121,6 @@ Lemma SubSem_inil (s : Sub [] []) :
   SubSem s () = ().
 Proof. now dependent elimination s. Qed.
 
-Corollary SemExp_Let {Γ τ ty} (e1 : Exp Γ ty) (e2 : Exp (ty :: Γ) τ) se :
-  SemExp (Let e1 e2) se = SemExp (APP (LAM e2) e1) se.
-Proof. reflexivity. Qed.
-
 Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ') :
   SemExp e (RenSem r se) = SemExp (RenExp r e) se.
 Proof.
@@ -135,10 +130,6 @@ Proof.
   - now rewrite IHe1, IHe2.
   - now rewrite IHe.
   - now rewrite IHe.
-  - rewrite IHe1; clear IHe1.
-    rewrite <- IHe2; clear IHe2.
-    simpl.
-    now repeat f_equal.
   - now rewrite SemVar_RenSem.
   - extensionality z.
     fold SemTy in z.
@@ -210,13 +201,6 @@ Proof.
   - now rewrite IHe1, IHe2.
   - now rewrite IHe.
   - now rewrite IHe.
-  - rewrite IHe1; clear IHe1.
-    rewrite <- IHe2; clear IHe2.
-    simpl.
-    unfold Keepₛ, Dropₛ; simp SubSem.
-    repeat f_equal.
-    rewrite SubSem_ScR.
-    now rewrite RenSem_skip1.
   - now rewrite SemVar_SubSem.
   - extensionality z.
     fold SemTy in z.

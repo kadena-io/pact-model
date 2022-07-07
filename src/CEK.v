@@ -161,10 +161,6 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   step (MkΣ (Seq e1 e2) ρ κ) :=
     MkΣ e2 ρ κ;
 
-  (* Let is a simple desugaring *)
-  step (MkΣ (Let x body) ρ κ) :=
-    MkΣ (APP (LAM body) x) ρ κ;
-
   (* A variable might lookup a lambda, in which case continue evaluating down
      that vein; otherwise, if no continuation, this is as far as we can go. *)
   step (MkΣ (VAR v) ρ κ) with get ρ v := {
@@ -200,11 +196,6 @@ Example exp_pair :
                (Constant (LInteger 456%Z))) =
     MkV (VPair (VConst (LInteger 123%Z))
                (VConst (LInteger 456%Z))).
-Proof. reflexivity. Qed.
-
-Example exp_let :
-  run 10 (Let (Constant (LInteger 123%Z)) (VAR ZV)) =
-    MkV (VConst (LInteger 123%Z)).
 Proof. reflexivity. Qed.
 
 Example exp_lam τ :

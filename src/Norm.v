@@ -60,20 +60,6 @@ Proof.
   now eapply IHy2; eauto.
 Qed.
 
-Lemma Let_loop {Γ τ ty} {v : Exp Γ ty} {e : Exp (ty :: Γ) τ} :
-  ¬ (SubExp {||v||} e = Let v e).
-Proof.
-  generalize dependent Γ.
-  dependent induction e; repeat intro; inv H.
-  - admit.
-  - dependent induction v0; simp consSub in *.
-    + simp SubVar in H1.
-      now induction v; inv H1; intuition.
-    + simp SubVar in H1.
-      rewrite SubVar_idSub in H1.
-      now induction v0; inv H1; intuition.
-Admitted.
-
 Lemma App_Lam_loop {Γ τ ty} {v : Exp Γ ty} {e : Exp (ty :: Γ) τ} :
   ¬ (SubExp {||v||} e = APP (LAM e) v).
 Proof.
@@ -98,9 +84,6 @@ Proof.
     + now firstorder.
   - inv H.
     now eapply Seq_loop; eauto.
-  - inv H.
-    + now eapply IHx1; eauto.
-    + now eapply Let_loop; eauto.
   - inv H.
     + now eapply App_Lam_loop; eauto.
     + now eapply IHx1; eauto.
@@ -144,29 +127,29 @@ Proof.
   - now left; constructor.
   - now left; constructor.
   - right.
-    destruct (IHe1 _ eq_refl JMeq_refl); reduce.
+    destruct (IHe1 _ JMeq_refl JMeq_refl); reduce.
     + inv H.
       * now exists e2; constructor.
       * now exists e3; constructor.
     + now exists (If x e2 e3); constructor.
-  - destruct (IHe1 _ eq_refl JMeq_refl); reduce.
-    + destruct (IHe2 _ eq_refl JMeq_refl); reduce.
+  - destruct (IHe1 _ JMeq_refl JMeq_refl); reduce.
+    + destruct (IHe2 _ JMeq_refl JMeq_refl); reduce.
       * left.
         now constructor.
       * right.
         now exists (Pair e1 x); constructor.
-    + destruct (IHe2 _ eq_refl JMeq_refl); reduce.
+    + destruct (IHe2 _ JMeq_refl JMeq_refl); reduce.
       * right.
         now exists (Pair x e2); constructor.
       * right.
         now exists (Pair x e2); constructor.
-  - destruct (IHe _ eq_refl JMeq_refl); reduce.
+  - destruct (IHe _ JMeq_refl JMeq_refl); reduce.
     + right.
       inv H.
       now exists x; constructor.
     + right.
       now exists (Fst x); constructor.
-  - destruct (IHe _ eq_refl JMeq_refl); reduce.
+  - destruct (IHe _ JMeq_refl JMeq_refl); reduce.
     + right.
       inv H.
       now exists y; constructor.
@@ -174,27 +157,21 @@ Proof.
       now exists (Snd x); constructor.
   - right.
     now exists e2; constructor.
-  - right.
-    destruct (IHe1 _ eq_refl JMeq_refl); clear IHe1.
-    + exists (SubExp {|| e1 ||} e2).
-      now constructor.
-    + destruct H.
-      now exists (Let x e2); constructor.
   - now inversion v.
   - left.
     now constructor.
   - right.
-    destruct (IHe1 _ eq_refl JMeq_refl); clear IHe1.
-    + destruct (IHe2 _ eq_refl JMeq_refl); clear IHe2.
+    destruct (IHe1 _ JMeq_refl JMeq_refl); clear IHe1.
+    + destruct (IHe2 _ JMeq_refl JMeq_refl); clear IHe2.
       * dependent elimination e1; inv H.
-        exists (SubExp {|| e2 ||} e11).
+        exists (SubExp {|| e2 ||} e9).
         now constructor.
       * dependent elimination e1; inv H.
-        exists (APP (LAM e11) x).
+        exists (APP (LAM e9) x).
         constructor; auto.
         now constructor.
     + reduce.
-      destruct (IHe2 _ eq_refl JMeq_refl); clear IHe2.
+      destruct (IHe2 _ JMeq_refl JMeq_refl); clear IHe2.
       * exists (APP x e2).
         now constructor.
       * reduce.
@@ -429,15 +406,6 @@ Proof.
   - inv H; constructor; intuition;
     now apply RenExp_ValueP.
   - inv H; simpl; try constructor; intuition.
-    rewrite <- SubExp_ScR.
-    simp ScR.
-    rewrite <- RcS_idSub.
-    pose proof (SubExp_RcS (Keep σ) (Push (RenExp σ e1) idSub) e2).
-    simp RcS in H.
-    rewrite H.
-    constructor.
-    now apply RenExp_ValueP.
-  - inv H; simpl; try constructor; intuition.
     + rewrite <- SubExp_ScR.
       simp ScR.
       rewrite <- RcS_idSub.
@@ -463,20 +431,6 @@ Proof.
   - inv H; constructor; intuition;
     now apply SubExp_ValueP.
   - inv H; constructor; intuition;
-    now apply SubExp_ValueP.
-  - inv H; simpl; try constructor; intuition.
-    rewrite <- SubExp_ScS.
-    simpl ScS.
-    rewrite ScS_idSub_left.
-    pose proof (SubExp_ScS (Keepₛ σ) (Push (SubExp σ e1) idSub) e2).
-    simpl in H.
-    simp SubVar in H.
-    unfold Dropₛ in H.
-    rewrite ScS_ScR in H.
-    rewrite RcS_skip1 in H.
-    rewrite ScS_idSub_right in H.
-    rewrite H.
-    constructor.
     now apply SubExp_ValueP.
   - inv H; simpl; try constructor; intuition.
     + rewrite <- SubExp_ScS.
@@ -538,8 +492,6 @@ Proof.
   (* Snd *)
   - admit.
   (* Seq *)
-  - admit.
-  (* Let *)
   - admit.
   (* App *)
   - admit.

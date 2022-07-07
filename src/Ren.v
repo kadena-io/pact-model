@@ -119,7 +119,6 @@ Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | Fst p         => Fst (RenExp r p)
   | Snd p         => Snd (RenExp r p)
   | Seq exp1 exp2 => Seq (RenExp r exp1) (RenExp r exp2)
-  | Let x body    => Let (RenExp r x) (RenExp (Keep r) body)
 
   | VAR v         => VAR (RenVar r v)
   | APP e1 e2     => APP (RenExp r e1) (RenExp r e2)
@@ -139,7 +138,6 @@ Lemma RenExp_idRen {τ Γ} (e : Exp Γ τ) :
 Proof.
   induction e; simpl; simp RenVar; simpl; intros; auto;
   rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto.
-  - now rewrite Keep_idRen, IHe2.
   - now rewrite RenVar_idRen.
   - now rewrite Keep_idRen, IHe.
 Qed.
@@ -151,7 +149,6 @@ Proof.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
   rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto.
-  - now rewrite <- IHe2; simp RcR.
   - now rewrite RenVar_RcR.
   - now rewrite <- IHe; simp RcR.
 Qed.

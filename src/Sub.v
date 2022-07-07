@@ -59,7 +59,6 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | Fst p         => Fst (SubExp s p)
   | Snd p         => Snd (SubExp s p)
   | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
-  | Let x body    => Let (SubExp s x) (SubExp (Keepₛ s) body)
 
   | VAR v         => SubVar s v
   | APP e1 e2     => APP (SubExp s e1) (SubExp s e2)
@@ -149,12 +148,6 @@ Proof.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
   rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto; f_equal.
-  - rewrite <- IHe2.
-    unfold Keepₛ.
-    simp RcS.
-    repeat f_equal.
-    unfold Dropₛ.
-    now apply ScR_RcS.
   - now rewrite SubVar_RcS.
   - specialize (IHe _ _ (Keep σ) (Keepₛ δ)).
     rewrite <- IHe.
@@ -180,16 +173,6 @@ Proof.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
   rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto; f_equal.
-  - rewrite <- IHe2.
-    unfold Keepₛ.
-    simp ScR.
-    simpl.
-    repeat f_equal.
-    unfold Dropₛ.
-    rewrite !ScR_ScR.
-    unfold skip1; simp RcR.
-    rewrite RcR_idRen_left.
-    now rewrite RcR_idRen_right.
   - now rewrite SubVar_ScR.
   - rewrite <- IHe.
     unfold Keepₛ.
@@ -252,9 +235,6 @@ Lemma SubExp_idSub {Γ τ} (e : Exp Γ τ) :
 Proof.
   induction e; simpl; auto;
   rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto.
-  - f_equal.
-    rewrite <- IHe2 at 2.
-    now f_equal.
   - now rewrite SubVar_idSub.
   - f_equal.
     rewrite <- IHe at 2.
@@ -268,23 +248,6 @@ Proof.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
   rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto; f_equal.
-  - rewrite <- IHe2; clear.
-    f_equal.
-    unfold Keepₛ.
-    unfold Dropₛ.
-    simpl.
-    simp SubVar.
-    f_equal.
-    rewrite ScR_ScS.
-    remember (ScR δ skip1) as g; clear.
-    unfold skip1.
-    generalize dependent g.
-    generalize dependent Γ0.
-    induction σ; simpl; simp ScR; simpl; intros; auto.
-    f_equal; auto.
-    rewrite <- SubExp_RcS.
-    simp RcS.
-    now rewrite RcS_idRen.
   - now rewrite SubVar_ScS.
   - rewrite <- IHe; clear.
     f_equal.

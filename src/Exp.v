@@ -1,13 +1,21 @@
 Require Export
   Ty
-  Lit
-  ilist
   Coq.Lists.List.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
 
+Section Exp.
+
 Import ListNotations.
+
+Class HostExprs (A : Type) : Type := {
+  has_host_types :> HostTypes A;
+  HostExp : Ty → Type
+}.
+
+Context {A : Type}.
+Context `{HostExprs A}.
 
 Open Scope Ty_scope.
 
@@ -20,10 +28,9 @@ Inductive Var : Env → Ty → Type :=
 Derive Signature NoConfusion for Var.
 
 Inductive Exp Γ : Ty → Type :=
-  | Constant {ty} : Literal ty → Exp Γ (TyPrim ty)
+  | Hosted {τ}    : HostExp τ → Exp Γ τ
 
   | EUnit         : Exp Γ TyUnit
-
   | ETrue         : Exp Γ TyBool
   | EFalse        : Exp Γ TyBool
   | If {τ}        : Exp Γ TyBool → Exp Γ τ → Exp Γ τ → Exp Γ τ
@@ -41,13 +48,11 @@ Inductive Exp Γ : Ty → Type :=
   | LAM {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
   | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
 
-Derive Signature NoConfusionHom Subterm for Exp.
-
-Notation "Γ ⊢ τ" := (Exp Γ τ) (at level 100).
+Derive Signature NoConfusionHom for Exp.
 
 Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   match e with
-  | Constant _ x => 1
+  | Hosted _ x   => 1
   | EUnit _      => 1
   | ETrue _      => 1
   | EFalse _     => 1
@@ -68,8 +73,7 @@ Proof. repeat intro; subst; contradiction. Qed.
 (* [ValueP] is an inductive proposition that indicates whether an expression
    represents a value, i.e., that it does reduce any further. *)
 Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
-  | ConstantP {ty} (l : Literal ty) :
-    ValueP Γ (Constant Γ l)
+  | HostedP {τ} (x : HostExp τ) : ValueP Γ (Hosted Γ x)
   | UnitP : ValueP Γ (EUnit Γ)
   | TrueP : ValueP Γ (ETrue Γ)
   | FalseP : ValueP Γ (EFalse Γ)
@@ -77,26 +81,31 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
     ValueP Γ x → ValueP Γ y → ValueP Γ (Pair Γ x y)
   | ClosureP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (LAM Γ e).
 
-Arguments ZV {_ _}.
-Arguments SV {_ _ _} _.
+Derive Signature for ValueP.
 
-Arguments Constant {Γ ty} _.
-Arguments EUnit {Γ}.
-Arguments ETrue {Γ}.
-Arguments EFalse {Γ}.
-Arguments If {Γ τ} _ _ _.
-Arguments Pair {Γ τ1 τ2} _ _.
-Arguments Fst {Γ τ1 τ2} _.
-Arguments Snd {Γ τ1 τ2} _.
-Arguments Seq {Γ τ τ'} _ _.
-Arguments VAR {Γ τ} _.
-Arguments LAM {Γ dom cod} _.
-Arguments APP {Γ dom cod} _ _.
+End Exp.
 
-Arguments ValueP {Γ τ} _.
-Arguments ConstantP {Γ ty} _.
-Arguments UnitP {Γ}.
-Arguments TrueP {Γ}.
-Arguments FalseP {Γ}.
-Arguments PairP {Γ τ1 τ2 x y} _ _.
-Arguments ClosureP {Γ dom cod} _.
+Arguments ZV {A H _ _}.
+Arguments SV {A H _ _ _} _.
+
+Arguments Hosted {A H Γ τ} _.
+Arguments EUnit {A H Γ}.
+Arguments ETrue {A H Γ}.
+Arguments EFalse {A H Γ}.
+Arguments If {A H Γ τ} _ _ _.
+Arguments Pair {A H Γ τ1 τ2} _ _.
+Arguments Fst {A H Γ τ1 τ2} _.
+Arguments Snd {A H Γ τ1 τ2} _.
+Arguments Seq {A H Γ τ τ'} _ _.
+Arguments VAR {A H Γ τ} _.
+Arguments LAM {A H Γ dom cod} _.
+Arguments APP {A H Γ dom cod} _ _.
+
+Arguments ValueP {A H Γ τ} _.
+Arguments HostedP {A H Γ τ} _.
+Arguments TrueP {A H Γ}.
+Arguments FalseP {A H Γ}.
+Arguments PairP {A H Γ τ1 τ2 x y} _ _.
+Arguments ClosureP {A H Γ dom cod} _.
+
+Notation "Γ ⊢ τ" := (Exp Γ τ) (at level 100).

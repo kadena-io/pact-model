@@ -1,5 +1,6 @@
 Require Export
   Coq.Program.Program
+  ilist
   Ty
   Exp
   Ren
@@ -10,26 +11,39 @@ Set Equations With UIP.
 
 Generalizable All Variables.
 
-Import ListNotations.
-
 Section Sem.
 
-Definition SemPrim (p : PrimType) : Type :=
-  match p with
-  | PrimInteger => Z
-  | PrimDecimal => Q
-  | PrimTime    => UTCTime
-  | PrimString  => string
-  end.
+Import ListNotations.
 
-Fixpoint SemTy (τ : Ty) : Type :=
+Fixpoint SemTy `{HostTypes A} (τ : Ty) : Type :=
   match τ with
-  | TyPrim p        => SemPrim p
+  | TyHost τ        => HostTySem τ
   | TyUnit          => unit
   | TyBool          => bool
   | TyPair t1 t2    => SemTy t1 * SemTy t2
   | TyArrow dom cod => SemTy dom → SemTy cod
   end.
+
+Class HostExprsSem (A : Type) : Type := {
+  has_host_exprs :> HostExprs A;
+  HostExpSem {τ} : HostExp τ → SemTy τ;
+
+  CallHost {Γ dom cod} :
+    HostExp (dom ⟶ cod) → ∀ v : Exp Γ dom, ValueP v → Exp Γ cod;
+
+  GetBool {Γ} : HostExp TyBool → Exp Γ TyBool;
+  GetPair {Γ a b} : HostExp (TyPair a b) → Exp Γ (TyPair a b);
+
+(*
+  HostBoolExp {Γ} :
+    ∀ x : HostExp TyBool, Hosted (Γ:=Γ) x = ETrue ∨ Hosted (Γ:=Γ) x = EFalse;
+  HostPairExp {Γ a b} :
+    HostExp (TyPair a b) → { e : Exp Γ (TyPair a b) | ValueP e }
+*)
+}.
+
+Context {A : Type}.
+Context `{HostExprsSem A}.
 
 Definition SemEnv Γ : Type := ilist SemTy Γ.
 
@@ -46,7 +60,7 @@ Equations RenSem {Γ Γ'} (r : Ren Γ Γ') (se : SemEnv Γ) : SemEnv Γ' :=
 
 Lemma RenSem_inil (r : Ren [] []) :
   RenSem r () = ().
-Proof. now dependent elimination r. Qed.
+Proof. now dependent destruction r. Qed.
 
 Lemma RenSem_idRen {Γ} (se : SemEnv Γ) :
   RenSem idRen se = se.
@@ -88,17 +102,9 @@ Proof.
       now rewrite <- IHΓ; simp RcR; simp RenSem.
 Qed.
 
-Definition SemLit `(l : Literal ty) : SemPrim ty :=
-  match l with
-  | LString  s => s
-  | LInteger z => z
-  | LDecimal q => q
-  | LTime    t => t
-  end.
-
 Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
-  | Constant lit  => λ _, SemLit lit
+  | Hosted x      => λ _, HostExpSem x
   | EUnit         => λ _, tt
   | ETrue         => λ _, true
   | EFalse        => λ _, false

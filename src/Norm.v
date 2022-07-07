@@ -1,7 +1,8 @@
 Require Import
   Coq.Unicode.Utf8
+  Coq.Program.Program
+  Coq.Relations.Relation_Definitions
   Coq.Lists.List
-  Coq.Logic.Classical
   Ty
   Exp
   Sub
@@ -13,7 +14,23 @@ Set Equations With UIP.
 
 Generalizable All Variables.
 
+Ltac reduce :=
+  repeat (lazymatch goal with
+          | [ H : existT _ _ _ = existT _ _ _ |- _ ] =>
+              apply inj_pair2 in H; subst
+          | [ H : _ ∧ _ |- _ ] => destruct H
+          | [ H : _ * _ |- _ ] => destruct H
+          | [ H : ∃ _, _ |- _ ] => destruct H
+          end; subst).
+
+Ltac inv H := inversion H; subst; clear H; reduce.
+
+Section Norm.
+
 Import ListNotations.
+
+Context {A : Type}.
+Context `{L : HostLang A}.
 
 Definition normal_form {X : Type} (R : relation X) (t : X) : Prop :=
   ¬ ∃ t', R t t'.
@@ -26,9 +43,9 @@ Proof.
   dependent induction v;
   inv H; intro; reduce;
   try now inversion H.
-  inv H.
-  - now eapply IHv1; eauto.
-  - now eapply IHv2; eauto.
+  - inv H.
+    + now eapply IHv1; eauto.
+    + now eapply IHv2; eauto.
 Qed.
 
 Ltac normality :=
@@ -79,12 +96,20 @@ Proof.
   intro.
   dependent induction x; try solve [ now inv H ].
   - inv H.
+    + now apply GetBool_irr in H3.
     + now eapply If_loop_true; eauto.
     + now eapply If_loop_false; eauto.
     + now firstorder.
+  - inv H; auto.
+    + now apply GetPair_irr in H4.
+    + now inv H5.
+  - inv H; auto.
+    + now apply GetPair_irr in H4.
+    + now inv H5.
   - inv H.
     now eapply Seq_loop; eauto.
   - inv H.
+    + now eapply CallHost_irr; eauto.
     + now eapply App_Lam_loop; eauto.
     + now eapply IHx1; eauto.
     + now eapply IHx2; eauto.
@@ -106,7 +131,7 @@ Definition deterministic {X : Type} (R : relation X) :=
   ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
 
 Theorem step_deterministic Γ τ :
-  deterministic (@Step Γ τ).
+  deterministic (@Step _ _ Γ τ).
 Proof.
   repeat intro.
   generalize dependent y2.
@@ -116,6 +141,7 @@ Proof.
   - inv H3; now invert_step.
   - inv H4; now invert_step.
   - inv H3; now invert_step.
+  - now pose proof (proof_irrelevance _ H H1); subst.
 Qed.
 
 Theorem strong_progress {τ} (e : Exp [] τ) :
@@ -127,32 +153,35 @@ Proof.
   - now left; constructor.
   - now left; constructor.
   - right.
-    destruct (IHe1 _ JMeq_refl JMeq_refl); reduce.
+    destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
     + inv H.
+      * now exists (If (GetBool x) e2 e3); constructor.
       * now exists e2; constructor.
       * now exists e3; constructor.
     + now exists (If x e2 e3); constructor.
-  - destruct (IHe1 _ JMeq_refl JMeq_refl); reduce.
-    + destruct (IHe2 _ JMeq_refl JMeq_refl); reduce.
+  - destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
+    + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
       * left.
         now constructor.
       * right.
         now exists (Pair e1 x); constructor.
-    + destruct (IHe2 _ JMeq_refl JMeq_refl); reduce.
+    + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
       * right.
         now exists (Pair x e2); constructor.
       * right.
         now exists (Pair x e2); constructor.
-  - destruct (IHe _ JMeq_refl JMeq_refl); reduce.
+  - destruct (IHe _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
     + right.
       inv H.
-      now exists x; constructor.
+      * now exists (Fst (GetPair x)); constructor.
+      * now exists x; constructor.
     + right.
       now exists (Fst x); constructor.
-  - destruct (IHe _ JMeq_refl JMeq_refl); reduce.
+  - destruct (IHe _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
     + right.
       inv H.
-      now exists y; constructor.
+      * now exists (Snd (GetPair x)); constructor.
+      * now exists y; constructor.
     + right.
       now exists (Snd x); constructor.
   - right.
@@ -161,17 +190,20 @@ Proof.
   - left.
     now constructor.
   - right.
-    destruct (IHe1 _ JMeq_refl JMeq_refl); clear IHe1.
-    + destruct (IHe2 _ JMeq_refl JMeq_refl); clear IHe2.
+    destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe1.
+    + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe2.
       * dependent elimination e1; inv H.
-        exists (SubExp {|| e2 ||} e9).
-        now constructor.
+        ** now exists (CallHost h e2 H0); constructor.
+        ** exists (SubExp {|| e2 ||} e9).
+           now constructor.
       * dependent elimination e1; inv H.
-        exists (APP (LAM e9) x).
-        constructor; auto.
-        now constructor.
+        ** exists (APP (Hosted h) x); constructor; auto.
+           now constructor.
+        ** exists (APP (LAM e9) x).
+           constructor; auto.
+           now constructor.
     + reduce.
-      destruct (IHe2 _ JMeq_refl JMeq_refl); clear IHe2.
+      destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe2.
       * exists (APP x e2).
         now constructor.
       * reduce.
@@ -279,7 +311,7 @@ Definition normalizing {X : Type} (R : relation X) :=
   ∀ t, ∃ t', (multi R) t t' ∧ normal_form R t'.
 
 Equations R {Γ τ} (e : Γ ⊢ τ) : Prop :=
-  R (τ:=TyPrim _) e := halts e;
+  R (τ:=TyHost _) e := halts e;
   R (τ:=TyUnit)   e := halts e;
   R (τ:=TyBool)   e := halts e;
   R (τ:=_ × _)    e := halts e ∧ R (Fst e) ∧ R (Snd e);
@@ -395,14 +427,19 @@ Lemma RenExp_Step {Γ Γ' τ} {e e' : Exp Γ τ} (σ : Ren Γ' Γ) :
 Proof.
   intros.
   induction e; simpl; invert_step.
-  - now inv H; constructor; intuition.
+  - inv H; constructor; intuition.
+    now apply GetBool_preserves_renaming.
   - inv H; simpl;
     constructor; intuition;
     now apply RenExp_ValueP.
-  - inv H; constructor; intuition;
-    now apply RenExp_ValueP.
-  - inv H; constructor; intuition;
-    now apply RenExp_ValueP.
+  - inv H; constructor; intuition.
+    + now apply GetPair_preserves_renaming.
+    + now apply RenExp_ValueP.
+    + now apply RenExp_ValueP.
+  - inv H; constructor; intuition.
+    + now apply GetPair_preserves_renaming.
+    + now apply RenExp_ValueP.
+    + now apply RenExp_ValueP.
   - inv H; constructor; intuition;
     now apply RenExp_ValueP.
   - inv H; simpl; try constructor; intuition.
@@ -422,14 +459,19 @@ Lemma SubExp_Step {Γ Γ' τ} {e e' : Exp Γ τ} (σ : Sub Γ' Γ) :
 Proof.
   intros.
   induction e; simpl; invert_step.
-  - now inv H; constructor; intuition.
+  - inv H; constructor; intuition.
+    now apply GetBool_preserves_substitution.
   - inv H; simpl;
     constructor; intuition;
     now apply SubExp_ValueP.
-  - inv H; constructor; intuition;
-    now apply SubExp_ValueP.
-  - inv H; constructor; intuition;
-    now apply SubExp_ValueP.
+  - inv H; constructor; intuition.
+    + now apply GetPair_preserves_substitution.
+    + now apply SubExp_ValueP.
+    + now apply SubExp_ValueP.
+  - inv H; constructor; intuition.
+    + now apply GetPair_preserves_substitution.
+    + now apply SubExp_ValueP.
+    + now apply SubExp_ValueP.
   - inv H; constructor; intuition;
     now apply SubExp_ValueP.
   - inv H; simpl; try constructor; intuition.
@@ -485,6 +527,7 @@ Proof.
   - admit.
   (* Fst *)
   - inv H.
+    + admit.
     + destruct (IHe _ _ _ H3); reduce.
       exists (Fst x).
       split; now constructor.
@@ -593,3 +636,5 @@ Abort.
 (*
 strongNorm t = coe (SN & Tm-idₛ t) (SN*-SN (fth t idₛᴾ))
 *)
+
+End Norm.

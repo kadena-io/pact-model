@@ -17,14 +17,19 @@ Set Primitive Projections.
 Set Universe Polymorphism.
 Unset Transparent Obligations.
 
+Section Cat.
+
 Import ListNotations.
+
+Context {A : Type}.
+Context `{L : HostExprsSem A}.
 
 Program Definition Pact Γ : Category := {|
   obj     := Ty;
   hom     := λ A B : Ty, Exp Γ (A ⟶ B);
   homset  := λ _ _, {| equiv := λ f g, SemExp f = SemExp g |};
-  id      := @Ren.identity Γ;
-  compose := @Ren.composition Γ
+  id      := @Ren.identity _ _ Γ;
+  compose := @Ren.composition _ _ Γ
 |}.
 Next Obligation. equivalence; congruence. Qed.
 Next Obligation.
@@ -207,3 +212,4 @@ Next Obligation.
   now setoid_rewrite RenSem_skip1.
 Qed.
 
+End Cat.

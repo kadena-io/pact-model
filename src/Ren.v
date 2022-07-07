@@ -8,9 +8,12 @@ Set Equations With UIP.
 
 Generalizable All Variables.
 
+Section Ren.
+
 Import ListNotations.
 
-Section Ren.
+Context {A : Type}.
+Context `{HostExprs A}.
 
 Inductive Ren : Env → Env → Type :=
   | NoRen : Ren [] []
@@ -110,7 +113,7 @@ Qed.
 
 Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
-  | Constant lit  => Constant lit
+  | Hosted x      => Hosted x
   | EUnit         => EUnit
   | ETrue         => ETrue
   | EFalse        => EFalse

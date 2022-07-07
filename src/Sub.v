@@ -9,16 +9,21 @@ Set Equations With UIP.
 
 Generalizable All Variables.
 
+Section Sub.
+
 Import ListNotations.
+
+Context {A : Type}.
+Context `{HostExprs A}.
 
 Inductive Sub (Γ : Env) : Env → Type :=
   | NoSub : Sub Γ []
   | Push {Γ' τ} : Exp Γ τ → Sub Γ Γ' → Sub Γ (τ :: Γ').
 
-Derive Signature NoConfusion for Sub.
+#[global] Arguments NoSub {Γ}.
+#[global] Arguments Push {Γ Γ' τ} _ _.
 
-Arguments NoSub {Γ}.
-Arguments Push {Γ Γ' τ} _ _.
+Derive Signature NoConfusion for Sub.
 
 Equations ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') : Sub Γ Γ'' :=
   ScR NoSub      δ := NoSub;
@@ -50,7 +55,7 @@ Equations SubVar {Γ Γ' τ} (s : Sub Γ Γ') (v : Var Γ' τ) : Exp Γ τ :=
 
 Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
-  | Constant lit  => Constant lit
+  | Hosted x      => Hosted x
   | EUnit         => EUnit
   | ETrue         => ETrue
   | EFalse        => EFalse
@@ -287,5 +292,7 @@ Proof.
   rewrite RcS_idRen.
   now rewrite IHσ.
 Qed.
+
+End Sub.
 
 Notation "{|| e ; .. ; f ||}" := (Push e .. (Push f idSub) ..).

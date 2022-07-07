@@ -73,13 +73,14 @@ Proof. repeat intro; subst; contradiction. Qed.
 (* [ValueP] is an inductive proposition that indicates whether an expression
    represents a value, i.e., that it does reduce any further. *)
 Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
-  | HostedP {τ} (x : HostExp τ) : ValueP Γ (Hosted Γ x)
+  | HostedP {ty} (x : HostExp (TyHost ty)) : ValueP Γ (Hosted Γ x)
   | UnitP : ValueP Γ (EUnit Γ)
   | TrueP : ValueP Γ (ETrue Γ)
   | FalseP : ValueP Γ (EFalse Γ)
   | PairP {τ1 τ2} {x : Exp Γ τ1} {y : Exp Γ τ2} :
     ValueP Γ x → ValueP Γ y → ValueP Γ (Pair Γ x y)
-  | ClosureP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (LAM Γ e).
+  | LambdaP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (LAM Γ e)
+  | FunctionP {dom cod} (f : HostExp (dom ⟶ cod)) : ValueP Γ (Hosted Γ f).
 
 Derive Signature for ValueP.
 
@@ -102,10 +103,11 @@ Arguments LAM {A H Γ dom cod} _.
 Arguments APP {A H Γ dom cod} _ _.
 
 Arguments ValueP {A H Γ τ} _.
-Arguments HostedP {A H Γ τ} _.
+Arguments HostedP {A H Γ ty} _.
 Arguments TrueP {A H Γ}.
 Arguments FalseP {A H Γ}.
 Arguments PairP {A H Γ τ1 τ2 x y} _ _.
-Arguments ClosureP {A H Γ dom cod} _.
+Arguments LambdaP {A H Γ dom cod} _.
+Arguments FunctionP {A H Γ dom cod} _.
 
 Notation "Γ ⊢ τ" := (Exp Γ τ) (at level 100).

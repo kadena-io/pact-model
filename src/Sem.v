@@ -31,15 +31,10 @@ Class HostExprsSem (A : Type) : Type := {
   CallHost {Γ dom cod} :
     HostExp (dom ⟶ cod) → ∀ v : Exp Γ dom, ValueP v → Exp Γ cod;
 
-  GetBool {Γ} : HostExp TyBool → Exp Γ TyBool;
-  GetPair {Γ a b} : HostExp (TyPair a b) → Exp Γ (TyPair a b);
-
-(*
-  HostBoolExp {Γ} :
-    ∀ x : HostExp TyBool, Hosted (Γ:=Γ) x = ETrue ∨ Hosted (Γ:=Γ) x = EFalse;
-  HostPairExp {Γ a b} :
-    HostExp (TyPair a b) → { e : Exp Γ (TyPair a b) | ValueP e }
-*)
+  GetBool {Γ} :
+    HostExp TyBool → { v : Exp Γ TyBool | ValueP v };
+  GetPair {Γ a b} :
+    HostExp (TyPair a b) → { v : Exp Γ (TyPair a b) | ValueP v };
 }.
 
 Context {A : Type}.

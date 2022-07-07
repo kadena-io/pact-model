@@ -25,6 +25,10 @@ Inductive Sub (Γ : Env) : Env → Type :=
 
 Derive Signature NoConfusion for Sub.
 
+Equations get `(s : Sub Γ' Γ) `(v : Var Γ τ) : Exp Γ' τ :=
+  get (Push x _)   ZV    := x;
+  get (Push _ xs) (SV v) := get xs v.
+
 Equations ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') : Sub Γ Γ'' :=
   ScR NoSub      δ := NoSub;
   ScR (Push t σ) δ := Push (RenExp δ t) (ScR σ δ).

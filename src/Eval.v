@@ -29,8 +29,13 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
   | ST_Seq Γ τ τ' (e1 : Exp Γ τ') (e2 : Exp Γ τ) :
     Seq e1 e2 ---> e2
 
-  | ST_IfHost Γ (b : HostExp TyBool) τ (t e : Exp Γ τ) :
-    If (Hosted b) t e ---> If (GetBool b) t e
+  | ST_HostUnit Γ (u : HostExp TyUnit) :
+    Hosted u ---> EUnit (Γ:=Γ)
+  | ST_HostBool Γ (b : HostExp TyBool) :
+    Hosted b ---> ` (GetBool (Γ:=Γ) b)
+  | ST_HostPair Γ τ1 τ2 (p : HostExp (TyPair τ1 τ2)) :
+    Hosted p ---> ` (GetPair (Γ:=Γ) p)
+
   | ST_IfTrue Γ τ (t e : Exp Γ τ) :
     If ETrue t e ---> t
   | ST_IfFalse Γ τ (t e : Exp Γ τ) :
@@ -47,8 +52,6 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
     y ---> y' →
     Pair x y ---> Pair x y'
 
-  | ST_FstHost Γ τ1 τ2 (p : HostExp (TyPair τ1 τ2)) :
-    Fst (Hosted p) ---> Fst (GetPair (Γ:=Γ) p)
   | ST_Fst1 Γ τ1 τ2 (p p' : Exp Γ (TyPair τ1 τ2)) :
     p ---> p' →
     Fst p ---> Fst p'
@@ -57,8 +60,6 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
     ValueP v2 →
     Fst (Pair v1 v2) ---> v1
 
-  | ST_SndHost Γ τ1 τ2 (p : HostExp (TyPair τ1 τ2)) :
-    Snd (Hosted p) ---> Snd (GetPair (Γ:=Γ) p)
   | ST_Snd1 Γ τ1 τ2 (p p' : Exp Γ (TyPair τ1 τ2)) :
     p ---> p' →
     Snd p ---> Snd p'
@@ -113,32 +114,36 @@ Class HostLang (A : Type) : Type := {
     APP (Hosted f) (SubExp σ v) ---> SubExp σ (CallHost f v H);
 
 
+  Unit_sound (u : HostExp TyUnit) :
+    HostExpSem u = ();
+
+
   GetBool_sound {Γ} (b : HostExp TyBool) se :
-    HostExpSem b = SemExp (GetBool (Γ:=Γ) b) se;
+    HostExpSem b = SemExp (` (GetBool (Γ:=Γ) b)) se;
 
   GetBool_irr {Γ} (b : HostExp TyBool) :
-    ¬ (Hosted b = GetBool (Γ:=Γ) b);
+    ¬ (` (GetBool (Γ:=Γ) b) = Hosted b);
 
   GetBool_preserves_renaming {Γ Γ'} (b : HostExp TyBool) (σ : Ren Γ Γ') :
-    RenExp σ (Hosted b) ---> RenExp σ (GetBool b);
+    RenExp σ (Hosted b) ---> RenExp σ (` (GetBool b));
 
   GetBool_preserves_substitution {Γ Γ'} (b : HostExp TyBool) (σ : Sub Γ Γ') :
-    SubExp σ (Hosted b) ---> SubExp σ (GetBool b);
+    SubExp σ (Hosted b) ---> SubExp σ (` (GetBool b));
 
 
   GetPair_sound {Γ τ1 τ2} (p : HostExp (TyPair τ1 τ2)) se :
-    HostExpSem p = SemExp (GetPair (Γ:=Γ) p) se;
+    HostExpSem p = SemExp (` (GetPair (Γ:=Γ) p)) se;
 
   GetPair_irr {Γ τ1 τ2} (p : HostExp (TyPair τ1 τ2)) :
-    ¬ (Hosted p = GetPair (Γ:=Γ) p);
+    ¬ (` (GetPair (Γ:=Γ) p) = Hosted p);
 
   GetPair_preserves_renaming {Γ Γ' τ1 τ2} (p : HostExp (TyPair τ1 τ2))
                              (σ : Ren Γ Γ') :
-    RenExp σ (Hosted p) ---> RenExp σ (GetPair p);
+    RenExp σ (Hosted p) ---> RenExp σ (` (GetPair p));
 
   GetPair_preserves_substitution {Γ Γ' τ1 τ2} (p : HostExp (TyPair τ1 τ2))
                                  (σ : Sub Γ Γ') :
-    SubExp σ (Hosted p) ---> SubExp σ (GetPair p);
+    SubExp σ (Hosted p) ---> SubExp σ (` (GetPair p));
 }.
 
 Section Sound.
@@ -153,8 +158,8 @@ Proof.
   dependent induction H; simpl; auto;
   extensionality se;
   try now rewrite IHStep.
+  - now erewrite Unit_sound; eauto.
   - now erewrite GetBool_sound; eauto.
-  - now erewrite GetPair_sound; eauto.
   - now erewrite GetPair_sound; eauto.
   - now apply CallHost_sound.
   - rewrite <- SemExp_SubSem.

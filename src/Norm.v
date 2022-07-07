@@ -399,11 +399,54 @@ Lemma msubst_R : ∀ Γ (env : ExpEnv Γ) τ (t : Exp Γ τ),
 Proof.
 *)
 
+Lemma RenExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Ren Γ' Γ) :
+  ValueP v → ValueP (RenExp σ v).
+Proof.
+  induction v; simpl; intros; try constructor;
+  now inv H; intuition.
+Qed.
+
 Lemma SubExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Sub Γ' Γ) :
   ValueP v → ValueP (SubExp σ v).
 Proof.
   induction v; simpl; intros; try constructor;
   now inv H; intuition.
+Qed.
+
+Lemma RenExp_Step {Γ Γ' τ} {e e' : Exp Γ τ} (σ : Ren Γ' Γ) :
+  e ---> e' → RenExp σ e ---> RenExp σ e'.
+Proof.
+  intros.
+  induction e; simpl; invert_step.
+  - now inv H; constructor; intuition.
+  - inv H; simpl;
+    constructor; intuition;
+    now apply RenExp_ValueP.
+  - inv H; constructor; intuition;
+    now apply RenExp_ValueP.
+  - inv H; constructor; intuition;
+    now apply RenExp_ValueP.
+  - inv H; constructor; intuition;
+    now apply RenExp_ValueP.
+  - inv H; simpl; try constructor; intuition.
+    rewrite <- SubExp_ScR.
+    simp ScR.
+    rewrite <- RcS_idSub.
+    pose proof (SubExp_RcS (Keep σ) (Push (RenExp σ e1) idSub) e2).
+    simp RcS in H.
+    rewrite H.
+    constructor.
+    now apply RenExp_ValueP.
+  - inv H; simpl; try constructor; intuition.
+    + rewrite <- SubExp_ScR.
+      simp ScR.
+      rewrite <- RcS_idSub.
+      pose proof (SubExp_RcS (Keep σ) (Push (RenExp σ e2) idSub) e0).
+      simp RcS in H.
+      rewrite H.
+      constructor.
+      now apply RenExp_ValueP.
+    + now apply RenExp_ValueP.
 Qed.
 
 Lemma SubExp_Step {Γ Γ' τ} {e e' : Exp Γ τ} (σ : Sub Γ' Γ) :
@@ -453,39 +496,66 @@ Proof.
 Qed.
 
 (*
-Expₑ~> :
-  ∀ {Γ Γ' τ}{t : Exp Γ τ}{σ : Ren Γ' Γ}{t'}
-  → Expₑ σ t ~> t' → ∃ λ t'' → (t ~> t'') × (Expₑ σ t'' ≡ t')
-Expₑ~> {t = var x} ()
-Expₑ~> {t = lam t} (lam step) with Expₑ~> step
-... | t'' , (p , refl) = lam t'' , lam p , refl
-Expₑ~> {t = app (var v) a} (app₁ ())
-Expₑ~> {t = app (var v) a} (app₂ step) with Expₑ~> step
-... | t'' , (p , refl) = app (var v) t'' , app₂ p , refl
-Expₑ~> {t = app (lam f) a} {σ} (β _ _) =
-  SubExp (idₛ , a) f , β _ _ ,
-      Tm-ₛ∘ₑ (idₛ , a) σ f ⁻¹
-    ◾ (λ x →  SubExp (x , Expₑ σ a) f) & (idrₑₛ σ ⁻¹)
-    ◾ Tm-ₑ∘ₛ (keep σ) (idₛ , Expₑ σ a) f
-Expₑ~> {t = app (lam f) a}     (app₁ (lam step)) with Expₑ~> step
-... | t'' , (p , refl) = app (lam t'') a , app₁ (lam p) , refl
-Expₑ~> {t = app (lam f) a}     (app₂ step) with Expₑ~> step
-... | t'' , (p , refl) = app (lam f) t'' , app₂ p , refl
-Expₑ~> {t = app (app f a) a'}  (app₁ step) with Expₑ~> step
-... | t'' , (p , refl) = app t'' a' , app₁ p , refl
-Expₑ~> {t = app (app f a) a''} (app₂ step) with Expₑ~> step
-... | t'' , (p , refl) = app (app f a) t'' , app₂ p , refl
+Equations RenExp_Step {Γ Γ' τ} {e : Exp Γ τ} {σ : Ren Γ' Γ} {e'}
+          (S : RenExp σ e ---> e') :
+  ∃ e'', e ---> e'' ∧ RenExp σ e'' = e' :=
+  RenExp_Step (e:=APP (VAR v) a)     (ST_App2 _ _ _ _ _ _ _ step)       with RenExp_Step step := {
+    | exist _ e'' (conj p eq_refl) => exist _ (APP (VAR v) e'') (conj (ST_App2 _ _ _ _ _ _ _  p) eq_refl)
+  };
+  RenExp_Step (e:=APP (LAM f) a) (σ:=σ) (ST_AppAbs _ _ _ _ _ _) := _;
+    (* SubExp (idₛ , a) f , β _ _ , Tm-ₛ∘ₑ (idₛ , a) σ f ⁻¹ ◾ (λ x →  SubExp (x , RenExp σ a) f) & (idrₑₛ σ ⁻¹) ◾ Tm-ₑ∘ₛ (keep σ) (idₛ , RenExp σ a) f *)
+  RenExp_Step (e:=APP (LAM f) a)     (ST_App1 _ _ _ _ _ _ (LAM step)) with RenExp_Step step := {
+    | exist _ e'' (conj p eq_refl) => exist _ (APP (LAM e'') a) (conj (app₁ (lam p)) eq_refl)
+  };
+  RenExp_Step (e:=APP (LAM f) a)     (ST_App2 _ _ _ _ _ _ _ step)       with RenExp_Step step := {
+    | exist _ e'' (conj p eq_refl) => exist _ (APP (LAM f) e'') (conj (app₂ p) eq_refl)
+  };
+  RenExp_Step (e:=APP (APP f a) a')  (ST_App1 _ _ _ _ _ _ step)       with RenExp_Step step := {
+    | exist _ e'' (conj p eq_refl) => exist _ (APP e'' a') (conj (app₁ p) eq_refl)
+  };
+  RenExp_Step (e:=APP (APP f a) a'') (ST_App2 _ _ _ _ _ _ _ step)       with RenExp_Step step := {
+    | exist _ e'' (conj p eq_refl) => exist _ (APP (APP f a) e'') (conj (ST_App2 _ _ _ _ _ _ _ p) eq_refl)
+  }.
+*)
 
+Lemma RenExp_Step_trans {Γ Γ' τ} {e : Exp Γ τ} {σ : Ren Γ' Γ} {e'} :
+  RenExp σ e ---> e' →
+  ∃ e'', e ---> e'' ∧ RenExp σ e'' = e'.
+Proof.
+  intros.
+  generalize dependent Γ'.
+  induction e; simpl; intros; try solve [ inv H ].
+  (* If *)
+  - admit.
+  (* Pair *)
+  - admit.
+  (* Fst *)
+  - inv H.
+    + destruct (IHe _ _ _ H3); reduce.
+      exists (Fst x).
+      split; now constructor.
+    + admit.
+  (* Snd *)
+  - admit.
+  (* Seq *)
+  - admit.
+  (* Let *)
+  - admit.
+  (* App *)
+  - admit.
+Admitted.
+
+(*
 -- Strong normalization
 --------------------------------------------------------------------------------
 
 -- strong normalization predicate
 data SN {Γ τ} (t : Exp Γ τ) : Set where
-  sn : (∀ {t'} → t ~> t' → SN t') → SN t
+  sn : (∀ {t'} → t ---> t' → SN t') → SN t
 
 -- SN annotated all the way down with a predicate on terms
 data SN* {τ} (P : ∀ {Γ} → Exp Γ τ → Set) {Γ}(t : Exp Γ τ) : Set where
-  sn* : P t → (∀ {t'} → t ~> t' → SN* P t') → SN* P t
+  sn* : P t → (∀ {t'} → t ---> t' → SN* P t') → SN* P t
 
 SN*-SN : ∀ {Γ τ}{P : ∀ {Γ} → Exp Γ τ → Set}{t : Exp Γ τ} → SN* P t → SN t
 SN*-SN (sn* p q) = sn (λ st → SN*-SN (q st))
@@ -500,7 +570,7 @@ Expᴾ _ = ⊤
 P : ∀ {τ Γ} → Exp Γ τ → Set
 P = SN* Expᴾ
 
-Expᴾₑ : ∀ {Γ Γ' τ}(σ : Ren Γ Γ'){t : Exp Γ' τ} → Expᴾ t → Expᴾ (Expₑ σ t)
+Expᴾₑ : ∀ {Γ Γ' τ}(σ : Ren Γ Γ'){t : Exp Γ' τ} → Expᴾ t → Expᴾ (RenExp σ t)
 Expᴾₑ σ {lam t} tᴾ =
   λ δ {u} uᴾ → coe (P & ((λ x → SubExp (u :: x) t) &
                    ((assₛₑₑ idₛ σ δ ⁻¹ ◾ (_ₛ∘ₑ δ) & idrₑₛ σ ⁻¹) ◾ assₑₛₑ σ idₛ δ)
@@ -509,16 +579,16 @@ Expᴾₑ σ {lam t} tᴾ =
 Expᴾₑ σ {var _} tᴾ = tt
 Expᴾₑ σ {app _ _} tᴾ = tt
 
-P~> : ∀ {Γ τ}{t t' : Exp Γ τ} → t ~> t' → P t → P t'
-P~> st (sn* p q) = q st
+P---> : ∀ {Γ τ}{t t' : Exp Γ τ} → t ---> t' → P t → P t'
+P---> st (sn* p q) = q st
 
-Pₑ : ∀ {Γ Γ' τ}(σ : Ren Γ Γ'){t : Exp Γ' τ} → P t → P (Expₑ σ t)
+Pₑ : ∀ {Γ Γ' τ}(σ : Ren Γ Γ'){t : Exp Γ' τ} → P t → P (RenExp σ t)
 Pₑ σ (sn* p q) =
-  sn* (Expᴾₑ σ p) λ st → case Expₑ~> st of λ {(t'' , st' , refl) → Pₑ σ (q st')}
+  sn* (Expᴾₑ σ p) λ st → case RenExp_Step st of λ {(t'' , st' , refl) → Pₑ σ (q st')}
 
 P-lam : ∀ {Γ τ B}{t : Exp (τ :: Γ) B} → Expᴾ (lam t) → P t → P (lam t)
 P-lam lamtᴾ (sn* p q) =
-  sn* lamtᴾ (λ {(lam st) → P-lam (λ σ uᴾ → P~> (SubExp_Step _ st) (lamtᴾ σ uᴾ) ) (q st)})
+  sn* lamtᴾ (λ {(lam st) → P-lam (λ σ uᴾ → P---> (SubExp_Step _ st) (lamtᴾ σ uᴾ) ) (q st)})
 
 P-app : ∀ {Γ τ B}{t : Exp Γ (τ ⟶ B)}{u : Exp Γ τ} → P t → P u → P (app t u)
 P-app =
@@ -532,8 +602,8 @@ P-app =
   where
     ind-help : ∀ {Γ τ B}(R : Exp Γ τ → Exp Γ B → Set)
              → (∀ {t u} → P t → P u
-                 → (∀ {t'} → t ~> t' → R t' u)
-                 → (∀ {u'} → u ~> u' → R t u')
+                 → (∀ {t'} → t ---> t' → R t' u)
+                 → (∀ {u'} → u ---> u' → R t u')
                 → R t u)
              → ∀ {t u} → P t → P u → R t u
     ind-help R f (sn* tp tq) (sn* up uq) =

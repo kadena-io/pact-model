@@ -151,7 +151,6 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   step (MkΣ Nil _ (FN f)) := f VNil;
   step (MkΣ (Cons x xs) ρ (FN f)) :=
     MkΣ x ρ (FN (λ v1, MkΣ xs ρ (FN (λ v2, f (VCons v1 v2)))));
-  (* jww (2022-07-07): Need Car and Cdr here *)
 
   (* A sequence just evaluates the second, for now *)
   step (MkΣ (Seq e1 e2) ρ κ) := MkΣ e2 ρ κ;

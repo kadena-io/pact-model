@@ -113,7 +113,9 @@ Qed.
 
 Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
-  | Hosted x      => Hosted x
+  | HostedExp x   => HostedExp x
+  | HostedVal x   => HostedVal x
+  | HostedFun x   => HostedFun x
   | EUnit         => EUnit
   | ETrue         => ETrue
   | EFalse        => EFalse

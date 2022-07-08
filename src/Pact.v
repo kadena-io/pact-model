@@ -58,54 +58,60 @@ Equations Pact_HostExpSem `(e : PactExp τ) : SemTy (H:=Pact_HostTypes) τ :=
   Pact_HostExpSem (PInteger z) := z;
   Pact_HostExpSem FAdd         := λ '(x, y), x + y.
 
-Fail Equations PactF
-          {Γ : Env (H:=Pact_HostExprs)}
-          {dom cod : Ty (H:=Pact_HostTypes)}
-          (e : PactExp (dom ⟶ cod))
-          (v : Exp (H:=Pact_HostExprs) Γ dom)
-          (V : ValueP (H:=Pact_HostExprs) v) : Exp Γ cod :=
-  PactF (dom:=?(ℤ × ℤ)) (cod:=?(ℤ))
-        FAdd (Pair (Hosted (PInteger x)) (Hosted (PInteger y))) :=
-    Hosted (H:=Pact_HostExprs) (PInteger (x + y)).
-
-Definition PactF {Γ} `(e : PactExp (dom ⟶ cod))
+Definition fun1 {Γ} `(f : SemTy dom → SemTy cod) (e : PactExp (dom ⟶ cod))
            (v : Exp (H:=Pact_HostExprs) Γ dom) (V : ValueP v) : Exp Γ cod.
 Proof.
   dependent destruction e.
   - inv V.
     inv X;  inv x0; rename H into x.
     inv X0; inv x0; rename H into y.
-    exact (Hosted (H:=Pact_HostExprs) (PInteger (x + y))).
+    exact (HostedVal (H:=Pact_HostExprs) (PInteger (f (x, y)))).
+Defined.
+
+Fail Equations PactF {Γ : Env (H:=Pact_HostExprs)}
+          {dom cod : Ty (H:=Pact_HostTypes)}
+          (e : PactExp (dom ⟶ cod)) :
+  ∀ v : Exp (H:=Pact_HostExprs) Γ dom,
+    ValueP (H:=Pact_HostExprs) v → Exp Γ cod :=
+  PactF FAdd := fun1 (Pact_HostExpSem FAdd).
+
+Definition PactF {Γ : Env (H:=Pact_HostExprs)}
+           {dom cod : Ty (H:=Pact_HostTypes)}
+           (e : PactExp (dom ⟶ cod)) :
+  ∀ v : Exp (H:=Pact_HostExprs) Γ dom,
+    ValueP (H:=Pact_HostExprs) v → Exp Γ cod.
+Proof.
+  inversion e; subst.
+  - apply fun1; simpl; auto.
+    exact (Pact_HostExpSem FAdd).
 Defined.
 
 Program Instance Pact_HostExprsSem : HostExprsSem Pact := {|
   has_host_exprs := Pact_HostExprs;
   HostExpSem := @Pact_HostExpSem;
   CallHost := @PactF;
-  GetBool := λ _ x, exist _ _ _;
-  GetPair := λ _ _ _ x, exist _ _ _;
+  Reduce := λ _ _ x, existT _ _ _;
 |}.
-Next Obligation. now inv X0. Defined.
-Next Obligation. now inv x. Defined.
-Next Obligation. now inv x. Defined.
-Next Obligation. now inv x. Defined.
-Next Obligation. now inv x. Defined.
-Next Obligation. now inv x. Defined.
-Next Obligation. now inv H. Defined.
+Next Obligation.
+  inv x.
+  - exact (HostedVal (H:=Pact_HostExprs) (PInteger H1)).
+  - exact (HostedFun (H:=Pact_HostExprs) FAdd).
+Defined.
+Next Obligation.
+  now destruct x; simpl; constructor.
+Qed.
 
 Program Instance Pact_HostLang : HostLang Pact := {|
   has_host_exprs_sem := Pact_HostExprsSem;
 |}.
 Next Obligation.
-  dependent destruction f; simp Pact_HostExpSem.
+  dependent destruction f.
   dependent elimination H; reduce.
   dependent elimination v0; reduce.
   dependent elimination v1; reduce.
   dependent elimination x0; reduce.
   dependent elimination x; reduce.
-  simpl; simp Pact_HostExpSem.
-  pose proof Pact_HostExpSem_equation_2.
-  now simpl in H; rewrite H.
+  now simp Pact_HostExpSem.
 Qed.
 Next Obligation. Admitted.
 Next Obligation. Admitted.
@@ -114,17 +120,8 @@ Next Obligation. Admitted.
 Next Obligation. Admitted.
 Next Obligation. Admitted.
 Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
 
-Definition num {Γ} (z : Z) : Exp Γ ℤ := Hosted (PInteger z).
+Definition num {Γ} (z : Z) : Exp Γ ℤ := HostedVal (PInteger z).
 Arguments num {Γ} z /.
 
 Example exp_constant :
@@ -148,7 +145,7 @@ Example exp_app :
 Proof. reflexivity. Qed.
 
 Example exp_call_FAdd :
-  run 10 (APP (Hosted FAdd) (Pair (num 123) (num 456))) =
+  run 10 (APP (HostedFun FAdd) (Pair (num 123) (num 456))) =
     MkΣ (num 579) Empty MT.
 Proof. reflexivity. Qed.
 

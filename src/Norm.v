@@ -102,9 +102,7 @@ Proof.
   intro.
   dependent induction x; try solve [ now inv H ].
   - inv H.
-    + now apply GetBool_irr in H6.
-    + now apply GetPair_irr in H6.
-    + now apply GetList_irr in H6.
+    + now apply Reduce_irr in H4.
   - inv H.
     + now eapply If_loop_true; eauto.
     + now eapply If_loop_false; eauto.
@@ -159,13 +157,10 @@ Theorem strong_progress {τ} (e : Exp [] τ) :
   ValueP e + { e' | e ---> e' }.
 Proof.
   dependent induction e.
-  - destruct τ.
-    + now left; constructor.
-    + right; now exists EUnit; constructor.
-    + right; now exists (projT1 (GetBool h)); constructor.
-    + right; now exists (projT1 (GetList h)); constructor.
-    + right; now exists (projT1 (GetPair h)); constructor.
-    + now left; constructor.
+  - destruct τ;
+    right; now exists (projT1 (Reduce h)); constructor.
+  - now left; constructor.
+  - now left; constructor.
   - now left; constructor.
   - now left; constructor.
   - now left; constructor.
@@ -219,11 +214,11 @@ Proof.
     destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe1.
     + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe2.
       * dependent elimination e1; inv v.
-        ** now exists (CallHost h e2 v0); constructor.
+        ** now exists (CallHost h1 e2 v0); constructor.
         ** exists (SubExp {|| e2 ||} e11).
            now constructor.
       * dependent elimination e1; inv v.
-        ** exists (APP (Hosted h) x); constructor; auto.
+        ** exists (APP (HostedFun h1) x); constructor; auto.
            now constructor.
         ** exists (APP (LAM e11) x).
            constructor; auto.
@@ -456,13 +451,8 @@ Lemma RenExp_Step {Γ Γ' τ} {e e' : Exp Γ τ} (σ : Ren Γ' Γ) :
 Proof.
   intros.
   induction e; simpl; invert_step.
-  - destruct τ.
-    + now inv H.
-    + now inv H; constructor.
-    + inv H; now apply GetBool_preserves_renaming.
-    + inv H; now apply GetList_preserves_renaming.
-    + inv H; now apply GetPair_preserves_renaming.
-    + now inv H.
+  - destruct τ;
+    inv H; now apply Reduce_preserves_renaming.
   - now inv H; constructor; intuition.
   - inv H; simpl;
     constructor; intuition;
@@ -493,13 +483,8 @@ Lemma SubExp_Step {Γ Γ' τ} {e e' : Exp Γ τ} (σ : Sub Γ' Γ) :
 Proof.
   intros.
   induction e; simpl; invert_step.
-  - destruct τ.
-    + now inv H.
-    + now inv H; constructor.
-    + inv H; now apply GetBool_preserves_substitution.
-    + inv H; now apply GetList_preserves_substitution.
-    + inv H; now apply GetPair_preserves_substitution.
-    + now inv H.
+  - destruct τ;
+    inv H; now apply Reduce_preserves_substitution.
   - now inv H; constructor; intuition.
   - inv H; simpl;
     constructor; intuition;

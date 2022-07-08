@@ -49,7 +49,7 @@ Equations keepAll Γ : Ren Γ [] :=
   keepAll (x :: xs) := Drop (keepAll xs).
 
 Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
-  valueToExp (HostValue x)             := existT _ (Hosted x) (HostedP x);
+  valueToExp (HostValue x)             := existT _ (HostedVal x) (HostedValP x);
   valueToExp VUnit                     := existT _ EUnit (UnitP []);
   valueToExp VTrue                     := existT _ (ETrue) TrueP;
   valueToExp VFalse                    := existT _ (EFalse) FalseP;
@@ -63,7 +63,7 @@ Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
     let '(existT _ v2 H2) := valueToExp xs in
     existT _ (Cons v1 v2) (ConsP H1 H2);
   valueToExp (ClosureExp (Lambda e ρ)) := existT _ (LAM (msubst e ρ)) (LambdaP _);
-  valueToExp (ClosureExp (Func f))     := existT _ (Hosted f) (FunctionP f)
+  valueToExp (ClosureExp (Func f))     := existT _ (HostedFun f) (HostedFunP f)
 }
 where msubst {Γ ty τ} (e : (ty :: Γ) ⊢ τ) (s : ValEnv Γ) : [ty] ⊢ τ := {
   msubst e Empty      := e;
@@ -75,15 +75,15 @@ where msubst {Γ ty τ} (e : (ty :: Γ) ⊢ τ) (s : ValEnv Γ) : [ty] ⊢ τ :=
 }.
 
 Equations render `(v : Exp Γ τ) {V : ValueP v} (ρ : ValEnv Γ) : Value τ :=
-  render (τ:=TyHost _) (Hosted x) ρ := HostValue x;
-  render (τ:=_ ⟶ _)   (Hosted x) ρ := ClosureExp (Func x);
-  render EUnit                    ρ := VUnit;
-  render ETrue                    ρ := VTrue;
-  render EFalse                   ρ := VFalse;
-  render (Pair x y)               ρ := VPair (render x ρ) (render y ρ);
-  render Nil                      ρ := VNil;
-  render (Cons x xs)              ρ := VCons (render x ρ) (render xs ρ);
-  render (LAM e)                  ρ := ClosureExp (Lambda e ρ).
+  render (τ:=TyHost _) (HostedVal x) ρ := HostValue x;
+  render (τ:=_ ⟶ _)   (HostedFun x) ρ := ClosureExp (Func x);
+  render EUnit       ρ := VUnit;
+  render ETrue       ρ := VTrue;
+  render EFalse      ρ := VFalse;
+  render (Pair x y)  ρ := VPair (render x ρ) (render y ρ);
+  render Nil         ρ := VNil;
+  render (Cons x xs) ρ := VCons (render x ρ) (render xs ρ);
+  render (LAM e)     ρ := ClosureExp (Lambda e ρ).
 Next Obligation. now inv V. Qed.
 Next Obligation. now inv V. Qed.
 Next Obligation. now inv V. Qed.
@@ -129,12 +129,9 @@ Equations VSnd `(v : Value (TyPair τ1 τ2)) : Value τ2 :=
 
 Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   (* Constants *)
-  step (MkΣ (r:=TyHost _)   (Hosted x) ρ (FN f)) := f (HostValue x);
-  step (MkΣ (r:=TyUnit)     (Hosted x) ρ (FN f)) := f VUnit;
-  step (MkΣ (r:=TyBool)     (Hosted x) ρ κ)      := MkΣ (projT1 (GetBool x)) ρ κ;
-  step (MkΣ (r:=_ × _)      (Hosted x) ρ κ)      := MkΣ (projT1 (GetPair x)) ρ κ;
-  step (MkΣ (r:=TyList _)   (Hosted x) ρ κ)      := MkΣ (projT1 (GetList x)) ρ κ;
-  step (MkΣ (r:=dom ⟶ cod) (Hosted x) ρ (FN f)) := f (ClosureExp (Func x));
+  step (MkΣ (r:=TyHost _)   (HostedVal x) ρ (FN f)) := f (HostValue x);
+  step (MkΣ (r:=dom ⟶ cod) (HostedFun x) ρ (FN f)) := f (ClosureExp (Func x));
+  step (MkΣ (HostedExp x) ρ κ) := MkΣ (projT1 (Reduce x)) ρ κ;
 
   step (MkΣ EUnit  _ (FN f)) := f VUnit;
   step (MkΣ ETrue  _ (FN f)) := f VTrue;

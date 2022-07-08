@@ -28,47 +28,49 @@ Inductive Var : Env → Ty → Type :=
 Derive Signature NoConfusion for Var.
 
 Inductive Exp Γ : Ty → Type :=
-  | Hosted {τ}    : HostExp τ → Exp Γ τ
+  | HostedExp {τ}       : HostExp τ → Exp Γ τ
+  | HostedVal {ty}      : HostExp (TyHost ty) → Exp Γ (TyHost ty)
+  | HostedFun {dom cod} : HostExp (dom ⟶ cod) → Exp Γ (dom ⟶ cod)
 
-  | EUnit         : Exp Γ TyUnit
-  | ETrue         : Exp Γ TyBool
-  | EFalse        : Exp Γ TyBool
-  | If {τ}        : Exp Γ TyBool → Exp Γ τ → Exp Γ τ → Exp Γ τ
+  | EUnit               : Exp Γ TyUnit
+  | ETrue               : Exp Γ TyBool
+  | EFalse              : Exp Γ TyBool
+  | If {τ}              : Exp Γ TyBool → Exp Γ τ → Exp Γ τ → Exp Γ τ
 
-  | Pair {τ1 τ2}  : Exp Γ τ1 → Exp Γ τ2 → Exp Γ (TyPair τ1 τ2)
-  | Fst {τ1 τ2}   : Exp Γ (TyPair τ1 τ2) → Exp Γ τ1
-  | Snd {τ1 τ2}   : Exp Γ (TyPair τ1 τ2) → Exp Γ τ2
+  | Pair {τ1 τ2}        : Exp Γ τ1 → Exp Γ τ2 → Exp Γ (TyPair τ1 τ2)
+  | Fst {τ1 τ2}         : Exp Γ (TyPair τ1 τ2) → Exp Γ τ1
+  | Snd {τ1 τ2}         : Exp Γ (TyPair τ1 τ2) → Exp Γ τ2
 
-  | Nil {τ}       : Exp Γ (TyList τ)
-  | Cons {τ}      : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
+  | Nil {τ}             : Exp Γ (TyList τ)
+  | Cons {τ}            : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
 
-  | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
-
-  (* | Builtin {τ ty} : Exp Γ ty → Exp (ty :: Γ) τ → Exp Γ τ *)
+  | Seq {τ τ'}          : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
   (* These are the terms of the base lambda calculus *)
-  | VAR {τ}       : Var Γ τ → Exp Γ τ
-  | LAM {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
-  | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
+  | VAR {τ}             : Var Γ τ → Exp Γ τ
+  | LAM {dom cod}       : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
+  | APP {dom cod}       : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
 
 Derive Signature NoConfusionHom for Exp.
 
 Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   match e with
-  | Hosted _ x   => 1
-  | EUnit _      => 1
-  | ETrue _      => 1
-  | EFalse _     => 1
-  | If _ b t e   => 1 + Exp_size b + Exp_size t + Exp_size e
-  | Pair _ x y   => 1 + Exp_size x + Exp_size y
-  | Fst _ p      => 1 + Exp_size p
-  | Snd _ p      => 1 + Exp_size p
-  | Nil _        => 1
-  | Cons _ x xs  => 1 + Exp_size x + Exp_size xs
-  | Seq _ x y    => 1 + Exp_size x + Exp_size y
-  | VAR _ v      => 1
-  | LAM _ e      => 1 + Exp_size e
-  | APP _ e1 e2  => 1 + Exp_size e1 + Exp_size e2
+  | HostedExp _ x => 1
+  | HostedVal _ x => 1
+  | HostedFun _ x => 1
+  | EUnit _       => 1
+  | ETrue _       => 1
+  | EFalse _      => 1
+  | If _ b t e    => 1 + Exp_size b + Exp_size t + Exp_size e
+  | Pair _ x y    => 1 + Exp_size x + Exp_size y
+  | Fst _ p       => 1 + Exp_size p
+  | Snd _ p       => 1 + Exp_size p
+  | Nil _         => 1
+  | Cons _ x xs   => 1 + Exp_size x + Exp_size xs
+  | Seq _ x y     => 1 + Exp_size x + Exp_size y
+  | VAR _ v       => 1
+  | LAM _ e       => 1 + Exp_size e
+  | APP _ e1 e2   => 1 + Exp_size e1 + Exp_size e2
   end.
 
 Corollary Exp_size_preserved {Γ τ} (e1 e2 : Exp Γ τ) :
@@ -78,7 +80,8 @@ Proof. repeat intro; subst; contradiction. Qed.
 (* [ValueP] is an inductive proposition that indicates whether an expression
    represents a value, i.e., that it does reduce any further. *)
 Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Type :=
-  | HostedP {ty} (x : HostExp (TyHost ty)) : ValueP Γ (Hosted Γ x)
+  | HostedValP {ty} (x : HostExp (TyHost ty)) : ValueP Γ (HostedVal Γ x)
+  | HostedFunP {dom cod} (f : HostExp (dom ⟶ cod)) : ValueP Γ (HostedFun Γ f)
   | UnitP : ValueP Γ (EUnit Γ)
   | TrueP : ValueP Γ (ETrue Γ)
   | FalseP : ValueP Γ (EFalse Γ)
@@ -87,8 +90,7 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Type :=
   | NilP {τ} : ValueP Γ (Nil (τ:=τ) Γ)
   | ConsP {τ} (x : Exp Γ τ) xs :
     ValueP Γ x → ValueP Γ xs → ValueP Γ (Cons Γ x xs)
-  | LambdaP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (LAM Γ e)
-  | FunctionP {dom cod} (f : HostExp (dom ⟶ cod)) : ValueP Γ (Hosted Γ f).
+  | LambdaP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (LAM Γ e).
 
 Derive Signature for ValueP.
 
@@ -97,7 +99,9 @@ End Exp.
 Arguments ZV {A H _ _}.
 Arguments SV {A H _ _ _} _.
 
-Arguments Hosted {A H Γ τ} _.
+Arguments HostedExp {A H Γ τ} _.
+Arguments HostedVal {A H Γ ty} _.
+Arguments HostedFun {A H Γ dom cod} _.
 Arguments EUnit {A H Γ}.
 Arguments ETrue {A H Γ}.
 Arguments EFalse {A H Γ}.
@@ -113,13 +117,13 @@ Arguments LAM {A H Γ dom cod} _.
 Arguments APP {A H Γ dom cod} _ _.
 
 Arguments ValueP {A H Γ τ} _.
-Arguments HostedP {A H Γ ty} _.
+Arguments HostedValP {A H Γ ty} _.
+Arguments HostedFunP {A H Γ dom cod} _.
 Arguments TrueP {A H Γ}.
 Arguments FalseP {A H Γ}.
 Arguments PairP {A H Γ τ1 τ2 x y} _ _.
 Arguments NilP {A H Γ τ}.
 Arguments ConsP {A H Γ τ _ _} _ _.
 Arguments LambdaP {A H Γ dom cod} _.
-Arguments FunctionP {A H Γ dom cod} _.
 
 Notation "Γ ⊢ τ" := (Exp Γ τ) (at level 100).

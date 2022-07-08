@@ -59,7 +59,9 @@ Equations SubVar {Γ Γ' τ} (s : Sub Γ Γ') (v : Var Γ' τ) : Exp Γ τ :=
 
 Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
-  | Hosted x      => Hosted x
+  | HostedExp x   => HostedExp x
+  | HostedVal x   => HostedVal x
+  | HostedFun x   => HostedFun x
   | EUnit         => EUnit
   | ETrue         => ETrue
   | EFalse        => EFalse

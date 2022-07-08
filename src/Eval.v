@@ -29,14 +29,8 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
   | ST_Seq Γ τ τ' (e1 : Exp Γ τ') (e2 : Exp Γ τ) :
     Seq e1 e2 ---> e2
 
-  | ST_HostUnit Γ (u : HostExp TyUnit) :
-    Hosted u ---> EUnit (Γ:=Γ)
-  | ST_HostBool Γ (b : HostExp TyBool) :
-    Hosted b ---> projT1 (GetBool (Γ:=Γ) b)
-  | ST_HostPair Γ τ1 τ2 (p : HostExp (TyPair τ1 τ2)) :
-    Hosted p ---> projT1 (GetPair (Γ:=Γ) p)
-  | ST_HostList Γ τ (l : HostExp (TyList τ)) :
-    Hosted l ---> projT1 (GetList (Γ:=Γ) l)
+  | ST_Host Γ τ (h : HostExp τ) :
+    HostedExp h ---> projT1 (Reduce (Γ:=Γ) h)
 
   | ST_IfTrue Γ τ (t e : Exp Γ τ) :
     If ETrue t e ---> t
@@ -80,7 +74,7 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
 
   | ST_AppHost Γ dom cod (f : HostExp (dom ⟶ cod)) (v : Exp Γ dom) :
     ∀ H : ValueP v,
-    APP (Hosted f) v ---> CallHost f v H
+    APP (HostedFun f) v ---> CallHost f v H
 
   | ST_AppAbs Γ dom cod (e : Exp (dom :: Γ) cod) (v : Exp Γ dom) :
     ValueP v →
@@ -113,62 +107,28 @@ Class HostLang (A : Type) : Type := {
 
   CallHost_irr {Γ dom cod} (f : HostExp (dom ⟶ cod))
                (v : Exp Γ dom) (H : ValueP v) :
-    ¬ (CallHost f v H = APP (Hosted f) v);
+    ¬ (CallHost f v H = APP (HostedFun f) v);
 
   CallHost_preserves_renaming {Γ Γ' dom cod} (f : HostExp (dom ⟶ cod))
                (v : Exp Γ dom) (H : ValueP v) (σ : Ren Γ' Γ) :
-    APP (Hosted f) (RenExp σ v) ---> RenExp σ (CallHost f v H);
+    APP (HostedFun f) (RenExp σ v) ---> RenExp σ (CallHost f v H);
 
   CallHost_preserves_substitution {Γ Γ' dom cod} (f : HostExp (dom ⟶ cod))
                (v : Exp Γ dom) (H : ValueP v) (σ : Sub Γ' Γ) :
-    APP (Hosted f) (SubExp σ v) ---> SubExp σ (CallHost f v H);
+    APP (HostedFun f) (SubExp σ v) ---> SubExp σ (CallHost f v H);
 
 
-  Unit_sound (u : HostExp TyUnit) :
-    HostExpSem u = ();
+  Reduce_sound {Γ τ} (h : HostExp τ) se :
+    HostExpSem h = SemExp (projT1 (Reduce (Γ:=Γ) h)) se;
 
+  Reduce_irr {Γ τ} (h : HostExp τ) :
+    ¬ (projT1 (Reduce (Γ:=Γ) h) = HostedExp h);
 
-  GetBool_sound {Γ} (b : HostExp TyBool) se :
-    HostExpSem b = SemExp (projT1 (GetBool (Γ:=Γ) b)) se;
+  Reduce_preserves_renaming {Γ Γ' τ} (h : HostExp τ) (σ : Ren Γ Γ') :
+    RenExp σ (HostedExp h) ---> RenExp σ (projT1 (Reduce h));
 
-  GetBool_irr {Γ} (b : HostExp TyBool) :
-    ¬ (projT1 (GetBool (Γ:=Γ) b) = Hosted b);
-
-  GetBool_preserves_renaming {Γ Γ'} (b : HostExp TyBool) (σ : Ren Γ Γ') :
-    RenExp σ (Hosted b) ---> RenExp σ (projT1 (GetBool b));
-
-  GetBool_preserves_substitution {Γ Γ'} (b : HostExp TyBool) (σ : Sub Γ Γ') :
-    SubExp σ (Hosted b) ---> SubExp σ (projT1 (GetBool b));
-
-
-  GetPair_sound {Γ τ1 τ2} (p : HostExp (TyPair τ1 τ2)) se :
-    HostExpSem p = SemExp (projT1 (GetPair (Γ:=Γ) p)) se;
-
-  GetPair_irr {Γ τ1 τ2} (p : HostExp (TyPair τ1 τ2)) :
-    ¬ (projT1 (GetPair (Γ:=Γ) p) = Hosted p);
-
-  GetPair_preserves_renaming {Γ Γ' τ1 τ2} (p : HostExp (TyPair τ1 τ2))
-                             (σ : Ren Γ Γ') :
-    RenExp σ (Hosted p) ---> RenExp σ (projT1 (GetPair p));
-
-  GetPair_preserves_substitution {Γ Γ' τ1 τ2} (p : HostExp (TyPair τ1 τ2))
-                                 (σ : Sub Γ Γ') :
-    SubExp σ (Hosted p) ---> SubExp σ (projT1 (GetPair p));
-
-
-  GetList_sound {Γ τ} (p : HostExp (TyList τ)) se :
-    HostExpSem p = SemExp (projT1 (GetList (Γ:=Γ) p)) se;
-
-  GetList_irr {Γ τ} (p : HostExp (TyList τ)) :
-    ¬ (projT1 (GetList (Γ:=Γ) p) = Hosted p);
-
-  GetList_preserves_renaming {Γ Γ' τ} (p : HostExp (TyList τ))
-                             (σ : Ren Γ Γ') :
-    RenExp σ (Hosted p) ---> RenExp σ (projT1 (GetList p));
-
-  GetList_preserves_substitution {Γ Γ' τ} (p : HostExp (TyList τ))
-                                 (σ : Sub Γ Γ') :
-    SubExp σ (Hosted p) ---> SubExp σ (projT1 (GetList p));
+  Reduce_preserves_substitution {Γ Γ' τ} (h : HostExp τ) (σ : Sub Γ Γ') :
+    SubExp σ (HostedExp h) ---> SubExp σ (projT1 (Reduce h));
 }.
 
 Section Sound.
@@ -183,10 +143,7 @@ Proof.
   dependent induction H; simpl; auto;
   extensionality se;
   try now rewrite IHStep.
-  - now erewrite Unit_sound; eauto.
-  - now erewrite GetBool_sound; eauto.
-  - now erewrite GetPair_sound; eauto.
-  - now erewrite GetList_sound; eauto.
+  - now erewrite Reduce_sound; eauto.
   - now apply CallHost_sound.
   - rewrite <- SemExp_SubSem.
     f_equal; simpl.

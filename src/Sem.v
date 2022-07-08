@@ -32,12 +32,7 @@ Class HostExprsSem (A : Type) : Type := {
   CallHost {Γ dom cod} :
     HostExp (dom ⟶ cod) → ∀ v : Exp Γ dom, ValueP v → Exp Γ cod;
 
-  GetBool {Γ} :
-    HostExp TyBool → { v : Exp Γ TyBool & ValueP v };
-  GetPair {Γ a b} :
-    HostExp (TyPair a b) → { v : Exp Γ (TyPair a b) & ValueP v };
-  GetList {Γ τ} :
-    HostExp (TyList τ) → { v : Exp Γ (TyList τ) & ValueP v };
+  Reduce {Γ τ} : HostExp τ → { v : Exp Γ τ & ValueP v };
 }.
 
 Context {A : Type}.
@@ -102,7 +97,9 @@ Qed.
 
 Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
-  | Hosted x      => λ _, HostExpSem x
+  | HostedExp x   => λ _, HostExpSem x
+  | HostedVal x   => λ _, HostExpSem x
+  | HostedFun x   => λ _, HostExpSem x
   | EUnit         => λ _, tt
   | ETrue         => λ _, true
   | EFalse        => λ _, false

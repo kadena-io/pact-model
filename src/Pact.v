@@ -22,6 +22,8 @@ Open Scope Z_scope.
 
 Inductive Pact := PactLang.     (* this is just a type-level tag *)
 
+Derive NoConfusion for Pact.
+
 Inductive PactTy := TyInteger.
 
 Derive NoConfusion for PactTy.
@@ -34,11 +36,16 @@ Definition Pact_HostTypes : HostTypes Pact := {|
     end
 |}.
 
+Definition ℤ := TyHost (H:=Pact_HostTypes) TyInteger.
+Arguments ℤ /.
+(* Definition ℝ := TyHost TyDecimal. *)
+(* Definition 𝕋 := TyHost TyTime. *)
+(* Definition 𝕊 := TyHost TyString. *)
+Definition 𝔹 := TyBool (H:=Pact_HostTypes).
+
 Inductive PactExp : Ty (H:=Pact_HostTypes) → Type :=
-  | PInteger : Z → PactExp (TyHost (H:=Pact_HostTypes) TyInteger)
-  | FAdd : PactExp (TyHost (H:=Pact_HostTypes) TyInteger ×
-                    TyHost (H:=Pact_HostTypes) TyInteger
-                      ⟶ TyHost (H:=Pact_HostTypes) TyInteger).
+  | PInteger : Z → PactExp ℤ
+  | FAdd     : PactExp (ℤ × ℤ ⟶ ℤ).
 
 Derive Signature NoConfusion Subterm for PactExp.
 
@@ -47,47 +54,34 @@ Definition Pact_HostExprs : HostExprs Pact := {|
   HostExp := PactExp
 |}.
 
-Equations Pact_HostExpSem `(e : HostExp (HostExprs:=Pact_HostExprs) τ) : SemTy τ :=
+Equations Pact_HostExpSem `(e : PactExp τ) : SemTy (H:=Pact_HostTypes) τ :=
   Pact_HostExpSem (PInteger z) := z;
-  Pact_HostExpSem FAdd := λ '(x, y), x + y.
+  Pact_HostExpSem FAdd         := λ '(x, y), x + y.
 
-(*
-Definition PactF {dom cod : Ty (H:=@has_host_types _ Pact_HostExprs)}
-           `(e : PactExp (dom ⟶ cod))
-           `(v : Exp Γ dom) (V : ValueP v) : Exp Γ cod :=
-  match e with
-  | FAdd =>
-      match V with
-      | PairP (@HostedP _ ?(@has_host_types _ Pact_HostExprs) _ _ (PInteger x))
-              (HostedP (PInteger y)) => Hosted (PInteger (x + y))
-      | _ => !
-      end
-  | _ => !
-  end.
-*)
-
-Equations PactF {dom cod : Ty (H:=@has_host_types _ Pact_HostExprs)}
+Fail Equations PactF
+          {Γ : Env (H:=Pact_HostExprs)}
+          {dom cod : Ty (H:=Pact_HostTypes)}
           (e : PactExp (dom ⟶ cod))
-          `(v : Exp Γ dom) (V : ValueP v) : Exp Γ cod :=
-  PactF FAdd (Pair (Hosted (PInteger x)) (Hosted (PInteger y))) _ :=
-    Hosted (H:=Pact_HostExprs) (PInteger (x + y));
-  PactF FAdd _ _ := _.
-Next Obligation. now inv h. Defined.
-Next Obligation. now inv V. Defined.
-Next Obligation. now inv V. Defined.
-Next Obligation. now inv V. Defined.
-Next Obligation. now inv V. Defined.
-Next Obligation. now inv V. Defined.
-Next Obligation. now inv V. Defined.
-Next Obligation. now inv V. Defined.
-Next Obligation. now inv V. Defined.
-Next Obligation. now inv V. Defined.
-Next Obligation. now inv V. Defined.
+          (v : Exp (H:=Pact_HostExprs) Γ dom)
+          (V : ValueP (H:=Pact_HostExprs) v) : Exp Γ cod :=
+  PactF (dom:=?(ℤ × ℤ)) (cod:=?(ℤ))
+        FAdd (Pair (Hosted (PInteger x)) (Hosted (PInteger y))) :=
+    Hosted (H:=Pact_HostExprs) (PInteger (x + y)).
+
+Definition PactF {Γ} `(e : PactExp (dom ⟶ cod))
+           (v : Exp (H:=Pact_HostExprs) Γ dom) (V : ValueP v) : Exp Γ cod.
+Proof.
+  dependent destruction e.
+  - inv V.
+    inv X;  inv x0; rename H into x.
+    inv X0; inv x0; rename H into y.
+    exact (Hosted (H:=Pact_HostExprs) (PInteger (x + y))).
+Defined.
 
 Program Instance Pact_HostExprsSem : HostExprsSem Pact := {|
   has_host_exprs := Pact_HostExprs;
   HostExpSem := @Pact_HostExpSem;
-  CallHost := λ Γ dom cod f, @PactF dom cod f Γ;
+  CallHost := @PactF;
   GetBool := λ _ x, exist _ _ _;
   GetPair := λ _ _ _ x, exist _ _ _;
 |}.
@@ -103,15 +97,15 @@ Program Instance Pact_HostLang : HostLang Pact := {|
   has_host_exprs_sem := Pact_HostExprsSem;
 |}.
 Next Obligation.
-  dependent induction f; simp Pact_HostExpSem.
-  dependent elimination v; simp PactF; inversion H.
-  reduce.
-  simp PactF; simpl.
-  inv X; inv X0.
-  dependent elimination x.
-  dependent elimination x0.
-  simp PactF; simpl.
-  now simp Pact_HostExpSem.
+  dependent destruction f; simp Pact_HostExpSem.
+  dependent elimination H; reduce.
+  dependent elimination v0; reduce.
+  dependent elimination v1; reduce.
+  dependent elimination x0; reduce.
+  dependent elimination x; reduce.
+  simpl; simp Pact_HostExpSem.
+  pose proof Pact_HostExpSem_equation_2.
+  now simpl in H; rewrite H.
 Qed.
 Next Obligation. Admitted.
 Next Obligation. Admitted.
@@ -130,28 +124,32 @@ Next Obligation. Admitted.
 Next Obligation. Admitted.
 Next Obligation. Admitted.
 
+Definition num {Γ} (z : Z) : Exp Γ ℤ := Hosted (PInteger z).
+Arguments num {Γ} z /.
+
 Example exp_constant :
-  run 10 (Hosted (PInteger 123)) = MkΣ (Hosted (PInteger 123)) Empty MT.
+  run 10 (num 123) =
+    MkΣ (num 123) Empty MT.
 Proof. reflexivity. Qed.
 
 Example exp_pair :
-  run 20 (Pair (Hosted (PInteger 123))
-               (Hosted (PInteger 456))) =
-    MkΣ (Pair (Hosted (PInteger 123)) (Hosted (PInteger 456))) Empty MT.
+  run 20 (Pair (num 123) (num 456)) =
+    MkΣ (Pair (num 123) (num 456)) Empty MT.
 Proof. reflexivity. Qed.
 
 Example exp_lam τ :
-  run 10 (LAM (cod:=τ) (VAR ZV)) = MkΣ (LAM (VAR ZV)) Empty MT.
+  run 10 (LAM (cod:=τ) (VAR ZV)) =
+    MkΣ (LAM (VAR ZV)) Empty MT.
 Proof. reflexivity. Qed.
 
 Example exp_app :
-  run 10 (APP (LAM (VAR ZV)) (Hosted (PInteger 123))) =
-    MkΣ (Hosted (PInteger 123)) Empty MT.
+  run 10 (APP (LAM (VAR ZV)) (num 123)) =
+    MkΣ (num 123) Empty MT.
 Proof. reflexivity. Qed.
 
 Example exp_call_FAdd :
-  run 10 (APP (Hosted FAdd) (Pair (Hosted (PInteger 123)) (Hosted (PInteger 456)))) =
-    MkΣ (Hosted (PInteger 579)) Empty MT.
+  run 10 (APP (Hosted FAdd) (Pair (num 123) (num 456))) =
+    MkΣ (num 579) Empty MT.
 Proof. reflexivity. Qed.
 
 End Pact.

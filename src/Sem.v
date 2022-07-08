@@ -119,6 +119,19 @@ Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   | APP e1 e2     => λ se, SemExp e1 se (SemExp e2 se)
   end.
 
+(*
+Equations SemVal `{v : Exp Γ τ} (V : ValueP v) : SemTy τ :=
+  SemVal (HostedP x)    := HostExpSem x;
+  SemVal (UnitP _)      := tt;
+  SemVal TrueP          := true;
+  SemVal FalseP         := false;
+  SemVal (PairP Vx Vy)  := (SemVal Vx, SemVal Vy);
+  SemVal NilP           := nil;
+  SemVal (ConsP Vx Vxs) := SemVal Vx :: SemVal Vxs;
+  SemVal (LambdaP e)    := SemExp e ();
+  SemVal (FunctionP f)  := GetFunction f.
+*)
+
 Equations SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : SemEnv Γ' :=
   SubSem NoSub      _  := tt;
   SubSem (Push t σ) se := (SemExp t se, SubSem σ se).

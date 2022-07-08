@@ -2,7 +2,6 @@ Require Export
   Coq.Unicode.Utf8.
 
 From Equations Require Import Equations.
-Set Equations With UIP.
 
 Section Ty.
 
@@ -33,7 +32,7 @@ Inductive Ty : Type :=
   (* The arrow type is the only type in the base lambda calculus *)
   | TyArrow : Ty → Ty → Ty.
 
-Derive NoConfusion Subterm for Ty.
+Derive NoConfusion NoConfusionHom Subterm for Ty.
 
 End Ty.
 

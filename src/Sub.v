@@ -1,27 +1,16 @@
 Require Export
   Coq.Program.Equality
   Coq.Program.Program
+  Ltac
   Ty
   Exp
+  Value
   Ren.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
 
 Generalizable All Variables.
-
-Ltac reduce :=
-  repeat (lazymatch goal with
-          | [ H : existT _ _ _ = existT _ _ _ |- _ ] =>
-              apply inj_pair2 in H; subst
-          | [ H : _ ∧ _ |- _ ] => destruct H
-          | [ H : _ * _ |- _ ] => destruct H
-          | [ H : ∃ _, _ |- _ ] => destruct H
-          | [ H : { _ : _ | _ } |- _ ] => destruct H
-          | [ H : { _ : _ & _ } |- _ ] => destruct H
-          end; subst).
-
-Ltac inv H := inversion H; subst; clear H; reduce.
 
 Section Sub.
 

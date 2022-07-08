@@ -3,7 +3,6 @@ Require Export
   Coq.Lists.List.
 
 From Equations Require Import Equations.
-Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -94,7 +93,7 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Type :=
     ValueP Γ x → ValueP Γ xs → ValueP Γ (Cons Γ x xs)
   | LambdaP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (LAM Γ e).
 
-Derive Signature for ValueP.
+Derive Signature NoConfusion NoConfusionHom for ValueP.
 
 Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP _ v) :
   H1 = H2.
@@ -103,33 +102,6 @@ Proof.
   - now erewrite IHValueP1, IHValueP2; eauto.
   - now erewrite IHValueP1, IHValueP2; eauto.
 Qed.
-
-Inductive Value : Ty → Type :=
-  | HostValue {ty}         : HostExp (TyHost ty) → Value (TyHost ty)
-  | VUnit                  : Value TyUnit
-  | VTrue                  : Value TyBool
-  | VFalse                 : Value TyBool
-  | VPair {τ1 τ2}          : Value τ1 → Value τ2 → Value (TyPair τ1 τ2)
-  | VNil {τ}               : Value (TyList τ)
-  | VCons {τ}              : Value τ → Value (TyList τ) → Value (TyList τ)
-  | ClosureExp {dom cod}   : Closure dom cod → Value (dom ⟶ cod)
-
-with Closure : Ty → Ty → Type :=
-  | Lambda {dom cod}   : Exp [dom] cod → Closure dom cod
-  | Func {dom cod}     : HostExp (dom ⟶ cod) → Closure dom cod.
-
-Derive Signature NoConfusion for Value.
-Derive Signature NoConfusion Subterm for Closure.
-
-Inductive ValEnv : Env → Type :=
-  | Empty : ValEnv []
-  | Val {Γ τ} : Value τ → ValEnv Γ → ValEnv (τ :: Γ).
-
-Derive Signature NoConfusion for ValEnv.
-
-Equations get_value `(s : ValEnv Γ) `(v : Var Γ τ) : Value τ :=
-  get_value (Val x _)  (ZV _ _)     := x;
-  get_value (Val _ xs) (SV _ _ _ v) := get_value xs v.
 
 End Exp.
 
@@ -163,4 +135,5 @@ Arguments NilP {A H Γ τ}.
 Arguments ConsP {A H Γ τ _ _} _ _.
 Arguments LambdaP {A H Γ dom cod} _.
 
+Notation "Γ ∋ τ" := (Var Γ τ) (at level 100).
 Notation "Γ ⊢ τ" := (Exp Γ τ) (at level 100).

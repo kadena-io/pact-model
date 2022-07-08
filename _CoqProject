@@ -1,9 +1,12 @@
 -R src Kadena
+src/Ltac.v
+src/ilist.v
 src/EnsemblesExt.v
 src/Group.v
-src/ilist.v
 src/Ty.v
 src/Exp.v
+src/Value.v
+src/Trace.v
 src/Ren.v
 src/Sub.v
 src/Sem.v

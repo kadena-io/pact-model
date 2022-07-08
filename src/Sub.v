@@ -338,7 +338,7 @@ Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
 Equations msubst {Γ ty τ} (e : Exp (ty :: Γ) τ) (s : ValEnv Γ) : Exp [ty] τ := {
   msubst e Empty      := e;
   msubst e (Val x xs) :=
-    let r := DropAll _ in
+    let r := DropAll in
     let v := RenExp r (projT1 (valueToExp x)) in
     let s := Keepₛ {|| v ||} in
     msubst (SubExp s e) xs
@@ -365,6 +365,20 @@ Proof.
   - now destruct (valueToExp v1), (valueToExp v2); subst.
   - now destruct c; simp valueToExp; simp expToValue.
 Qed.
+
+Lemma RenExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Ren Γ' Γ) :
+  ValueP v → ValueP (RenExp σ v).
+Proof.
+  intros.
+  now induction X; simpl; intros; try constructor.
+Defined.
+
+Lemma SubExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Sub Γ' Γ) :
+  ValueP v → ValueP (SubExp σ v).
+Proof.
+  intros.
+  now induction X; simpl; intros; try constructor.
+Defined.
 
 End Sub.
 

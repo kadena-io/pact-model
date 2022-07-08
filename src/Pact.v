@@ -102,20 +102,85 @@ Program Instance Pact_HostLang : HostLang Pact := {|
 |}.
 Next Obligation.
   dependent destruction f.
-  dependent elimination H; reduce.
-  dependent elimination v0; reduce.
-  dependent elimination v1; reduce.
-  dependent elimination x0; reduce.
-  dependent elimination x; reduce.
-  now simp Pact_HostExpSem.
+  (* FAdd *)
+  - dependent elimination H; reduce.
+    dependent elimination v0; reduce.
+    dependent elimination v1; reduce.
+    dependent elimination x0; reduce.
+    dependent elimination x; reduce.
+    now simp Pact_HostExpSem.
 Qed.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
+Next Obligation.
+  dependent destruction f.
+  (* FAdd *)
+  - dependent elimination H; reduce.
+    dependent elimination v0; reduce.
+    dependent elimination v1; reduce.
+    dependent elimination x0; reduce.
+    dependent elimination x; reduce.
+    simpl in H0.
+    unfold solution_right in H0.
+    unfold eq_rect_r in H0.
+    unfold eq_rect in H0.
+    simpl in H0.
+    now inversion H0.
+Qed.
+Next Obligation.
+  dependent destruction f.
+  (* FAdd *)
+  - pose proof (ST_AppHost Γ' _ _ FAdd (RenExp σ v) (RenExp_ValueP σ H)).
+    dependent elimination H; reduce.
+    dependent elimination v0; reduce.
+    dependent elimination v1; reduce.
+    dependent elimination x0; reduce.
+    dependent elimination x; reduce.
+    simpl in *.
+    unfold solution_right in H0.
+    unfold eq_rect_r in H0.
+    unfold eq_rect in H0.
+    simpl in H0.
+    now apply H0.
+Qed.
+Next Obligation.
+  dependent destruction f.
+  (* FAdd *)
+  - pose proof (ST_AppHost Γ' _ _ FAdd (SubExp σ v) (SubExp_ValueP σ H)).
+    dependent elimination H; reduce.
+    dependent elimination v0; reduce.
+    dependent elimination v1; reduce.
+    dependent elimination x0; reduce.
+    dependent elimination x; reduce.
+    simpl in *.
+    unfold solution_right in H0.
+    unfold eq_rect_r in H0.
+    unfold eq_rect in H0.
+    simpl in H0.
+    now apply H0.
+Qed.
+Next Obligation.
+  dependent destruction h.
+  (* PInteger *)
+  - now simpl.
+  - now simpl.
+Qed.
+Next Obligation.
+  dependent destruction h.
+  (* PInteger *)
+  - now simpl.
+  - now simpl.
+Qed.
+Next Obligation.
+  dependent destruction h.
+  (* PInteger *)
+  - now constructor.
+  - now constructor.
+Qed.
+Next Obligation.
+  dependent destruction h.
+  (* PInteger *)
+  - now constructor.
+  - now constructor.
+Qed.
 
 Definition num {Γ} (z : Z) : Exp Γ ℤ := HostedVal (PInteger z).
 Arguments num {Γ} z /.

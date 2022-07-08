@@ -31,6 +31,10 @@ Fixpoint idRen {Γ} : Ren Γ Γ :=
 Lemma Keep_idRen {Γ τ} : Keep (τ:=τ) (@idRen Γ) = idRen.
 Proof. now induction Γ. Qed.
 
+Equations DropAll Γ : Ren Γ [] :=
+  DropAll []        := NoRen;
+  DropAll (x :: xs) := Drop (DropAll xs).
+
 Corollary NoRen_idRen : NoRen = idRen.
 Proof. reflexivity. Qed.
 

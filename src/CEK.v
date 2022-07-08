@@ -18,77 +18,6 @@ Import ListNotations.
 Context {A : Type}.
 Context `{L : HostLang A}.
 
-Inductive Value : Ty → Type :=
-  | HostValue {ty}         : HostExp (TyHost ty) → Value (TyHost ty)
-  | VUnit                  : Value TyUnit
-  | VTrue                  : Value TyBool
-  | VFalse                 : Value TyBool
-  | VPair {τ1 τ2}          : Value τ1 → Value τ2 → Value (TyPair τ1 τ2)
-  | VNil {τ}               : Value (TyList τ)
-  | VCons {τ}              : Value τ → Value (TyList τ) → Value (TyList τ)
-  | ClosureExp {dom cod}   : Closure dom cod → Value (dom ⟶ cod)
-
-with Closure : Ty → Ty → Type :=
-  | Lambda {Γ dom cod} : Exp (dom :: Γ) cod → ValEnv Γ → Closure dom cod
-  | Func {dom cod}     : HostExp (dom ⟶ cod) → Closure dom cod
-
-with ValEnv : Env → Type :=
-  | Empty : ValEnv []
-  | Val {Γ τ} : Value τ → ValEnv Γ → ValEnv (τ :: Γ).
-
-Derive Signature NoConfusion for Value.
-Derive Signature NoConfusion Subterm for Closure.
-Derive Signature NoConfusion for ValEnv.
-
-Equations get_value `(s : ValEnv Γ) `(v : Var Γ τ) : Value τ :=
-  get_value (Val x _)   ZV    := x;
-  get_value (Val _ xs) (SV v) := get_value xs v.
-
-Equations keepAll Γ : Ren Γ [] :=
-  keepAll []        := NoRen;
-  keepAll (x :: xs) := Drop (keepAll xs).
-
-Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
-  valueToExp (HostValue x)             := existT _ (HostedVal x) (HostedValP x);
-  valueToExp VUnit                     := existT _ EUnit (UnitP []);
-  valueToExp VTrue                     := existT _ (ETrue) TrueP;
-  valueToExp VFalse                    := existT _ (EFalse) FalseP;
-  valueToExp (VPair x y)               :=
-    let '(existT _ v1 H1) := valueToExp x in
-    let '(existT _ v2 H2) := valueToExp y in
-    existT _ (Pair v1 v2) (PairP H1 H2);
-  valueToExp VNil                      := existT _ Nil NilP;
-  valueToExp (VCons x xs)              :=
-    let '(existT _ v1 H1) := valueToExp x in
-    let '(existT _ v2 H2) := valueToExp xs in
-    existT _ (Cons v1 v2) (ConsP H1 H2);
-  valueToExp (ClosureExp (Lambda e ρ)) := existT _ (LAM (msubst e ρ)) (LambdaP _);
-  valueToExp (ClosureExp (Func f))     := existT _ (HostedFun f) (HostedFunP f)
-}
-where msubst {Γ ty τ} (e : (ty :: Γ) ⊢ τ) (s : ValEnv Γ) : [ty] ⊢ τ := {
-  msubst e Empty      := e;
-  msubst e (Val x xs) :=
-    let r := keepAll _ in
-    let v := RenExp r (projT1 (valueToExp x)) in
-    let s := Keepₛ {|| v ||} in
-    msubst (SubExp s e) xs
-}.
-
-Equations render `(v : Exp Γ τ) {V : ValueP v} (ρ : ValEnv Γ) : Value τ :=
-  render (τ:=TyHost _) (HostedVal x) ρ := HostValue x;
-  render (τ:=_ ⟶ _)   (HostedFun x) ρ := ClosureExp (Func x);
-  render EUnit       ρ := VUnit;
-  render ETrue       ρ := VTrue;
-  render EFalse      ρ := VFalse;
-  render (Pair x y)  ρ := VPair (render x ρ) (render y ρ);
-  render Nil         ρ := VNil;
-  render (Cons x xs) ρ := VCons (render x ρ) (render xs ρ);
-  render (LAM e)     ρ := ClosureExp (Lambda e ρ).
-Next Obligation. now inv V. Qed.
-Next Obligation. now inv V. Qed.
-Next Obligation. now inv V. Qed.
-Next Obligation. now inv V. Qed.
-
 Inductive Kont : Ty → Ty → Type :=
   | MT {a}   : Kont a a
   | FN {a b} : (Value a → Σ b) → Kont a b
@@ -111,8 +40,8 @@ Definition inject {τ : Ty} (e : Exp [] τ) : Σ τ := MkΣ e Empty MT.
 
 Equations with_closure `(a : Exp Γ dom) `(ρ : ValEnv Γ)
           `(κ : Kont cod τ) `(f : Value (dom ⟶ cod)) : Σ τ :=
-  with_closure a ρ κ (ClosureExp (Lambda e ρ')) :=
-    MkΣ a ρ (FN (λ v, MkΣ e (Val v ρ') κ));
+  with_closure a ρ κ (ClosureExp (Lambda e)) :=
+    MkΣ a ρ (FN (λ v, MkΣ e (Val v Empty) κ));
   with_closure a ρ κ (ClosureExp (Func f)) :=
     MkΣ a ρ (FN (λ v, let '(existT _ x H) := valueToExp v in
                       MkΣ (CallHost f x H) Empty κ)).
@@ -162,7 +91,7 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   };
 
   (* If a lambda is passed, call it with the continuation *)
-  step (MkΣ (LAM e) ρ (FN f)) := f (ClosureExp (Lambda e ρ));
+  step (MkΣ (LAM e) ρ (FN f)) := f (ClosureExp (Lambda (msubst e ρ)));
 
   (* Application evaluates the lambda and then the argument *)
   step (MkΣ (APP e1 e2) ρ κ) := MkΣ e1 ρ (FN (with_closure e2 ρ κ));

@@ -1,5 +1,6 @@
 Require Export
   Coq.Program.Equality
+  Coq.Program.Program
   Ty
   Exp
   Ren.
@@ -8,6 +9,19 @@ From Equations Require Import Equations.
 Set Equations With UIP.
 
 Generalizable All Variables.
+
+Ltac reduce :=
+  repeat (lazymatch goal with
+          | [ H : existT _ _ _ = existT _ _ _ |- _ ] =>
+              apply inj_pair2 in H; subst
+          | [ H : _ ∧ _ |- _ ] => destruct H
+          | [ H : _ * _ |- _ ] => destruct H
+          | [ H : ∃ _, _ |- _ ] => destruct H
+          | [ H : { _ : _ | _ } |- _ ] => destruct H
+          | [ H : { _ : _ & _ } |- _ ] => destruct H
+          end; subst).
+
+Ltac inv H := inversion H; subst; clear H; reduce.
 
 Section Sub.
 
@@ -299,6 +313,57 @@ Proof.
   simp RcS.
   rewrite RcS_idRen.
   now rewrite IHσ.
+Qed.
+
+Notation "{|| e ; .. ; f ||}" := (Push e .. (Push f idSub) ..).
+
+Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
+  valueToExp (HostValue x)             := existT _ (HostedVal x) (HostedValP x);
+  valueToExp VUnit                     := existT _ EUnit (UnitP []);
+  valueToExp VTrue                     := existT _ (ETrue) TrueP;
+  valueToExp VFalse                    := existT _ (EFalse) FalseP;
+  valueToExp (VPair x y)               :=
+    let '(existT _ v1 H1) := valueToExp x in
+    let '(existT _ v2 H2) := valueToExp y in
+    existT _ (Pair v1 v2) (PairP H1 H2);
+  valueToExp VNil                      := existT _ Nil NilP;
+  valueToExp (VCons x xs)              :=
+    let '(existT _ v1 H1) := valueToExp x in
+    let '(existT _ v2 H2) := valueToExp xs in
+    existT _ (Cons v1 v2) (ConsP H1 H2);
+  valueToExp (ClosureExp (Lambda e))   := existT _ (LAM e) (LambdaP _);
+  valueToExp (ClosureExp (Func f))     := existT _ (HostedFun f) (HostedFunP f)
+}.
+
+Equations msubst {Γ ty τ} (e : Exp (ty :: Γ) τ) (s : ValEnv Γ) : Exp [ty] τ := {
+  msubst e Empty      := e;
+  msubst e (Val x xs) :=
+    let r := DropAll _ in
+    let v := RenExp r (projT1 (valueToExp x)) in
+    let s := Keepₛ {|| v ||} in
+    msubst (SubExp s e) xs
+}.
+
+Equations expToValue `{v : Exp [] τ} (V : ValueP v) : Value τ :=
+  expToValue (HostedValP x) := HostValue x;
+  expToValue (HostedFunP x) := ClosureExp (Func x);
+  expToValue (UnitP _)      := VUnit;
+  expToValue TrueP          := VTrue;
+  expToValue FalseP         := VFalse;
+  expToValue (PairP X Y)    := VPair (expToValue X) (expToValue Y);
+  expToValue NilP           := VNil;
+  expToValue (ConsP X XS)   := VCons (expToValue X) (expToValue XS);
+  expToValue (LambdaP e)    := ClosureExp (Lambda e).
+
+Lemma expToValue_valueToExp `(v : Value τ) :
+  let '(existT _ e H) := valueToExp v in
+  expToValue H = v.
+Proof.
+  induction v;
+  simp valueToExp; simp expToValue; auto.
+  - now destruct (valueToExp v1), (valueToExp v2); subst.
+  - now destruct (valueToExp v1), (valueToExp v2); subst.
+  - now destruct c; simp valueToExp; simp expToValue.
 Qed.
 
 End Sub.

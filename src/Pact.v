@@ -82,24 +82,20 @@ Definition PactF {Γ : Env (H:=Pact_HostExprs)}
     ValueP (H:=Pact_HostExprs) v → Exp Γ cod.
 Proof.
   inversion e; subst.
-  - apply fun1; simpl; auto.
-    exact (Pact_HostExpSem FAdd).
+  - apply fun1; auto.
+    now apply (Pact_HostExpSem FAdd).
 Defined.
 
-Program Instance Pact_HostExprsSem : HostExprsSem Pact := {|
+Instance Pact_HostExprsSem : HostExprsSem Pact := {|
   has_host_exprs := Pact_HostExprs;
   HostExpSem := @Pact_HostExpSem;
   CallHost := @PactF;
-  Reduce := λ _ _ x, existT _ _ _;
+  Reduce := λ _ _ x,
+    match x with
+    | PInteger x => existT _ (HostedVal (H:=Pact_HostExprs) (PInteger x)) (HostedValP _)
+    | FAdd       => existT _ (HostedFun (H:=Pact_HostExprs) FAdd) (HostedFunP _)
+    end
 |}.
-Next Obligation.
-  inv x.
-  - exact (HostedVal (H:=Pact_HostExprs) (PInteger H1)).
-  - exact (HostedFun (H:=Pact_HostExprs) FAdd).
-Defined.
-Next Obligation.
-  now destruct x; simpl; constructor.
-Qed.
 
 Program Instance Pact_HostLang : HostLang Pact := {|
   has_host_exprs_sem := Pact_HostExprsSem;

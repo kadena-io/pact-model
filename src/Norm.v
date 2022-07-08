@@ -15,19 +15,6 @@ Set Equations With UIP.
 
 Generalizable All Variables.
 
-Ltac reduce :=
-  repeat (lazymatch goal with
-          | [ H : existT _ _ _ = existT _ _ _ |- _ ] =>
-              apply inj_pair2 in H; subst
-          | [ H : _ ∧ _ |- _ ] => destruct H
-          | [ H : _ * _ |- _ ] => destruct H
-          | [ H : ∃ _, _ |- _ ] => destruct H
-          | [ H : { _ : _ | _ } |- _ ] => destruct H
-          | [ H : { _ : _ & _ } |- _ ] => destruct H
-          end; subst).
-
-Ltac inv H := inversion H; subst; clear H; reduce.
-
 Section Norm.
 
 Import ListNotations.
@@ -130,14 +117,6 @@ Ltac invert_step :=
 
 Definition deterministic {X : Type} (R : relation X) :=
   ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
-
-Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP v) :
-  H1 = H2.
-Proof.
-  induction H1; dependent elimination H2; auto.
-  - now erewrite IHValueP1, IHValueP2; eauto.
-  - now erewrite IHValueP1, IHValueP2; eauto.
-Qed.
 
 Theorem step_deterministic Γ τ :
   deterministic (@Step _ _ Γ τ).

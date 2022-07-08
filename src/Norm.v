@@ -12,7 +12,6 @@ Require Import
   Eval.
 
 From Equations Require Import Equations.
-Set Equations With UIP.
 
 Generalizable All Variables.
 

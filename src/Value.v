@@ -29,14 +29,14 @@ with Closure : Ty → Ty → Type :=
   | Lambda {dom cod}   : Exp [dom] cod → Closure dom cod
   | Func {dom cod}     : HostExp (dom ⟶ cod) → Closure dom cod.
 
-Derive Signature NoConfusion for Value.
-Derive Signature NoConfusion Subterm for Closure.
+Derive Signature NoConfusion NoConfusionHom for Value.
+Derive Signature NoConfusion NoConfusionHom Subterm for Closure.
 
 Inductive ValEnv : Env → Type :=
   | Empty : ValEnv []
   | Val {Γ τ} : Value τ → ValEnv Γ → ValEnv (τ :: Γ).
 
-Derive Signature NoConfusion for ValEnv.
+Derive Signature NoConfusion NoConfusionHom for ValEnv.
 
 Equations get_value `(s : ValEnv Γ) `(v : Var Γ τ) : Value τ :=
   get_value (Val x _)  ZV     := x;

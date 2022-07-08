@@ -9,7 +9,6 @@ Require Export
   CEK.
 
 From Equations Require Import Equations.
-Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -22,11 +21,11 @@ Open Scope Z_scope.
 
 Inductive Pact := PactLang.     (* this is just a type-level tag *)
 
-Derive NoConfusion for Pact.
+Derive NoConfusion NoConfusionHom for Pact.
 
 Inductive PactTy := TyInteger.
 
-Derive NoConfusion for PactTy.
+Derive NoConfusion NoConfusionHom for PactTy.
 
 Definition Pact_HostTypes : HostTypes Pact := {|
   HostTy := PactTy;
@@ -56,7 +55,7 @@ Definition Pact_HostExprs : HostExprs Pact := {|
 
 Equations Pact_HostExpSem `(e : PactExp τ) : SemTy (H:=Pact_HostTypes) τ :=
   Pact_HostExpSem (PInteger z) := z;
-  Pact_HostExpSem FAdd         := λ '(x, y), x + y.
+  Pact_HostExpSem FAdd         := uncurry Z.add.
 
 Definition fun1 {Γ} `(f : SemTy dom → SemTy cod) (e : PactExp (dom ⟶ cod))
            (v : Exp (H:=Pact_HostExprs) Γ dom) (V : ValueP v) : Exp Γ cod.
@@ -73,7 +72,7 @@ Fail Equations PactF {Γ : Env (H:=Pact_HostExprs)}
           (e : PactExp (dom ⟶ cod)) :
   ∀ v : Exp (H:=Pact_HostExprs) Γ dom,
     ValueP (H:=Pact_HostExprs) v → Exp Γ cod :=
-  PactF FAdd := fun1 (Pact_HostExpSem FAdd).
+  PactF FAdd := fun1 Z.add.
 
 Definition PactF {Γ : Env (H:=Pact_HostExprs)}
            {dom cod : Ty (H:=Pact_HostTypes)}
@@ -82,8 +81,7 @@ Definition PactF {Γ : Env (H:=Pact_HostExprs)}
     ValueP (H:=Pact_HostExprs) v → Exp Γ cod.
 Proof.
   inversion e; subst.
-  - apply fun1; auto.
-    now apply (Pact_HostExpSem FAdd).
+  - now apply fun1; auto; apply (uncurry Z.add).
 Defined.
 
 Instance Pact_HostExprsSem : HostExprsSem Pact := {|

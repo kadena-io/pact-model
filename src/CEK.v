@@ -7,7 +7,6 @@ Require Export
   Norm.
 
 From Equations Require Import Equations.
-Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -31,7 +30,7 @@ with Σ : Ty → Type :=
         (knt  : Kont r τ) : Σ τ.
 
 Derive Signature NoConfusion Subterm for Kont.
-Derive Signature NoConfusion Subterm for Σ.
+Derive Signature NoConfusion NoConfusionHom Subterm for Σ.
 
 (* Inject the expression into a [Σ] whose final continuation will receive the
    results of the evaluation. Therefore, the resulting [env] will be a

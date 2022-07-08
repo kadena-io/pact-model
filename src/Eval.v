@@ -10,7 +10,6 @@ Require Import
   Sem.
 
 From Equations Require Import Equations.
-Set Equations With UIP.
 
 Section Eval.
 

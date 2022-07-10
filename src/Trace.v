@@ -2,7 +2,8 @@ Require Export
   Coq.Program.Equality
   Ltac
   Ty
-  Exp.
+  Exp
+  Value.
 
 From Equations Require Import Equations.
 

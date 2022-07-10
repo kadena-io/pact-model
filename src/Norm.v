@@ -225,199 +225,60 @@ Inductive SN_Sub : ∀ {Γ Γ'}, Sub Γ' Γ → Prop :=
   | Push_SN {Γ Γ' τ} (e : Exp Γ' τ) (s : Sub Γ' Γ) :
     SN e → SN_Sub s → SN_Sub (Push e s).
 
-Lemma msubst_SN {Γ Γ'} (env : Sub Γ' Γ) τ (e : Exp Γ τ) :
+Lemma SubExp_Push {Γ Γ' τ ty} (x : Exp Γ' ty) (s : Sub Γ' Γ) (e : Exp (ty :: Γ) τ) :
+  SubExp (Push x s) e = SubExp {||x||} (SubExp (Keepₛ s) e).
+Proof.
+Admitted.
+
+Lemma SubExp_SN {Γ Γ'} (env : Sub Γ' Γ) τ (e : Exp Γ τ) :
   SN_Sub env →
   SN (SubExp env e).
 Proof.
   generalize dependent env.
-  induction e; intros.
+  induction e; intros; simpl.
   - admit.
   - admit.
   - admit.
-  - rewrite msubst_EUnit.
-    now eexists; repeat constructor.
-  - rewrite msubst_ETrue.
-    now eexists; repeat constructor.
-  - rewrite msubst_EFalse.
-    now eexists; repeat constructor.
-  - rewrite msubst_If.
-    admit.
-  - rewrite msubst_Pair.
-    admit.
-  - rewrite msubst_Fst.
-    now destruct (IHe env H).
-  - rewrite msubst_Snd.
-    now destruct (IHe env H).
-  - rewrite msubst_Nil.
-    now eexists; repeat constructor.
-  - rewrite msubst_Cons.
-    admit.
-  - rewrite msubst_Car.
-    admit.
-  - rewrite msubst_Cdr.
-    admit.
-  - rewrite msubst_Seq.
-    admit.
+  - now eexists; repeat constructor.
+  - now eexists; repeat constructor.
+  - now eexists; repeat constructor.
+  - admit.
+  - admit.
+  - now destruct (IHe env H).
+  - now destruct (IHe env H).
+  - now eexists; repeat constructor.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
   - induction env.
     + now inv v.
     + inv H.
-      dependent induction v.
-      * now rewrite msubst_VAR_ZV.
-      * rewrite msubst_VAR_SV.
-        now apply IHenv.
-  - rewrite msubst_LAM.
-    admit.
-  - rewrite msubst_APP.
-    now apply IHe1, IHe2.
+      now dependent elimination v; simp SubVar.
+  - eexists.
+    + now eexists; repeat constructor.
+    + intros.
+      destruct (SN_halts H0) as [v [P [Q]]].
+      apply (multistep_preserves_SN' (e':=SubExp (Push v env) e)); auto.
+      eapply multi_trans; eauto.
+      * eapply multistep_App2; eauto.
+        now constructor.
+      * apply multi_R; auto.
+        rewrite SubExp_Push.
+        now apply ST_AppAbs.
+      * apply IHe.
+        constructor; auto.
+        now eapply multistep_preserves_SN; eauto.
+  - now apply IHe1, IHe2.
 Admitted.
 
-(*
-Equations RenExp_Step {Γ Γ' τ} {e : Exp Γ τ} {σ : Ren Γ' Γ} {e'}
-          (S : RenExp σ e ---> e') :
-  ∃ e'', e ---> e'' ∧ RenExp σ e'' = e' :=
-  RenExp_Step (e:=APP (VAR v) a)     (ST_App2 _ _ _ _ _ _ _ step)       with RenExp_Step step := {
-    | exist _ e'' (conj p eq_refl) => exist _ (APP (VAR v) e'') (conj (ST_App2 _ _ _ _ _ _ _  p) eq_refl)
-  };
-  RenExp_Step (e:=APP (LAM f) a) (σ:=σ) (ST_AppAbs _ _ _ _ _ _) := _;
-    (* SubExp (idₛ , a) f , β _ _ , Tm-ₛ∘ₑ (idₛ , a) σ f ⁻¹ ◾ (λ x →  SubExp (x , RenExp σ a) f) & (idrₑₛ σ ⁻¹) ◾ Tm-ₑ∘ₛ (keep σ) (idₛ , RenExp σ a) f *)
-  RenExp_Step (e:=APP (LAM f) a)     (ST_App1 _ _ _ _ _ _ (LAM step)) with RenExp_Step step := {
-    | exist _ e'' (conj p eq_refl) => exist _ (APP (LAM e'') a) (conj (app₁ (lam p)) eq_refl)
-  };
-  RenExp_Step (e:=APP (LAM f) a)     (ST_App2 _ _ _ _ _ _ _ step)       with RenExp_Step step := {
-    | exist _ e'' (conj p eq_refl) => exist _ (APP (LAM f) e'') (conj (app₂ p) eq_refl)
-  };
-  RenExp_Step (e:=APP (APP f a) a')  (ST_App1 _ _ _ _ _ _ step)       with RenExp_Step step := {
-    | exist _ e'' (conj p eq_refl) => exist _ (APP e'' a') (conj (app₁ p) eq_refl)
-  };
-  RenExp_Step (e:=APP (APP f a) a'') (ST_App2 _ _ _ _ _ _ _ step)       with RenExp_Step step := {
-    | exist _ e'' (conj p eq_refl) => exist _ (APP (APP f a) e'') (conj (ST_App2 _ _ _ _ _ _ _ p) eq_refl)
-  }.
-*)
-
-Lemma RenExp_Step_trans {Γ Γ' τ} {e : Exp Γ τ} {σ : Ren Γ' Γ} {e'} :
-  RenExp σ e ---> e' →
-  ∃ e'', e ---> e'' ∧ RenExp σ e'' = e'.
+Theorem strong_normalization {τ} (e : Exp [] τ) : SN e.
 Proof.
   intros.
-  generalize dependent Γ'.
-  induction e; simpl; intros; try solve [ inv H ].
-(*
-  (* Hosted *)
-  -
-  (* If *)
-  -
-  (* Pair *)
-  -
-  (* Fst *)
-  - inv H.
-    + destruct (IHe _ _ _ H3); reduce.
-      exists (Fst x).
-      split; now constructor.
-    +
-  (* Snd *)
-  -
-  (* Seq *)
-  -
-  (* App *)
-  -
-*)
-Admitted.
-
-(*
--- Strong normalization
---------------------------------------------------------------------------------
-
--- SN annotated all the way down with a predicate on terms
-data SN* {τ} (P : ∀ {Γ} → Exp Γ τ → Set) {Γ}(t : Exp Γ τ) : Set where
-  sn* : P t → (∀ {t'} → t ---> t' → SN* P t') → SN* P t
-
-SN*-SN : ∀ {Γ τ}{P : ∀ {Γ} → Exp Γ τ → Set}{t : Exp Γ τ} → SN* P t → SN t
-SN*-SN (sn* p q) = sn (λ st → SN*-SN (q st))
-
-
-Expᴾ : ∀ {τ Γ} → Exp Γ τ → Set
-Expᴾ {Γ = Γ} (lam t) =
-  ∀ {Γ'}(σ : Ren Γ' Γ){u} → SN* Expᴾ u → SN* Expᴾ (SubExp (idₛ ₛ∘ₑ σ , u) t)
-Expᴾ _ = ⊤
-
--- the actual induction predicate used in the "fundamental theorem"
-P : ∀ {τ Γ} → Exp Γ τ → Set
-P = SN* Expᴾ
-
-Expᴾₑ : ∀ {Γ Γ' τ}(σ : Ren Γ Γ'){t : Exp Γ' τ} → Expᴾ t → Expᴾ (RenExp σ t)
-Expᴾₑ σ {lam t} tᴾ =
-  λ δ {u} uᴾ → coe (P & ((λ x → SubExp (u :: x) t) &
-                   ((assₛₑₑ idₛ σ δ ⁻¹ ◾ (_ₛ∘ₑ δ) & idrₑₛ σ ⁻¹) ◾ assₑₛₑ σ idₛ δ)
-                     ◾ Tm-ₑ∘ₛ _ _ t))
-                   (tᴾ (σ ∘ₑ δ) uᴾ)
-Expᴾₑ σ {var _} tᴾ = tt
-Expᴾₑ σ {app _ _} tᴾ = tt
-
-P---> : ∀ {Γ τ}{t t' : Exp Γ τ} → t ---> t' → P t → P t'
-P---> st (sn* p q) = q st
-
-Pₑ : ∀ {Γ Γ' τ}(σ : Ren Γ Γ'){t : Exp Γ' τ} → P t → P (RenExp σ t)
-Pₑ σ (sn* p q) =
-  sn* (Expᴾₑ σ p) λ st → case RenExp_Step st of λ {(t'' , st' , refl) → Pₑ σ (q st')}
-
-P-lam : ∀ {Γ τ B}{t : Exp (τ :: Γ) B} → Expᴾ (lam t) → P t → P (lam t)
-P-lam lamtᴾ (sn* p q) =
-  sn* lamtᴾ (λ {(lam st) → P-lam (λ σ uᴾ → P---> (SubExp_Step _ st) (lamtᴾ σ uᴾ) ) (q st)})
-
-P-app : ∀ {Γ τ B}{t : Exp Γ (τ ⟶ B)}{u : Exp Γ τ} → P t → P u → P (app t u)
-P-app =
-  ind-help
-    (λ t u → P (app t u))
-    (λ { {t} {u} (sn* tp tq) uᴾ f g →
-      sn* tt (λ {(β t t')  → coe ((λ x → P (SubExp (u :: x) t)) & (idrₑₛ _ ⁻¹ ◾ idlₑₛ _))
-                                (tp idRen uᴾ) ;
-                (app₁ st) → f st ;
-                (app₂ st) → g st})})
-  where
-    ind-help : ∀ {Γ τ B}(SN : Exp Γ τ → Exp Γ B → Set)
-             → (∀ {t u} → P t → P u
-                 → (∀ {t'} → t ---> t' → SN t' u)
-                 → (∀ {u'} → u ---> u' → SN t u')
-                → SN t u)
-             → ∀ {t u} → P t → P u → SN t u
-    ind-help SN f (sn* tp tq) (sn* up uq) =
-      f (sn* tp tq) (sn* up uq)
-        (λ st → ind-help SN f (tq st) (sn* up uq))
-        (λ st → ind-help SN f (sn* tp tq) (uq st))
-
-data Subᴾ {Γ} : ∀ {Γ'} → Sub Γ Γ' → Set where
-  NoSubᴾ : Subᴾ NoSub
-  _,_ : ∀ {τ Γ'}{σ : Sub Γ Γ'}{t : Exp Γ τ}(σᴾ : Subᴾ σ)(tᴾ : P t) → Subᴾ (t :: σ)
-
-Subᴾₑ : ∀ {Γ Γ' Γ''}{σ : Sub Γ' Γ''}(δ : Ren Γ Γ') → Subᴾ σ → Subᴾ (σ ₛ∘ₑ δ)
-Subᴾₑ σ NoSub    = NoSubᴾ
-Subᴾₑ σ (δ , tᴾ) = Subᴾₑ σ δ , Pₑ σ tᴾ
-
--- "fundamental theorem"
-fth : ∀ {Γ τ}(t : Exp Γ τ) → ∀ {Γ'}{σ : Sub Γ' Γ} → Subᴾ σ → P (SubExp σ t)
-fth (var ZV) (σᴾ , tᴾ) = tᴾ
-fth (var (SV x)) (σᴾ , tᴾ) = fth (var x) σᴾ
-fth (lam t) {Γ'}{σ} σᴾ =
-  P-lam (λ δ {u} uᴾ →
-          coe (P & ((λ x → SubExp (u :: x) t)&
-                       ((((_ₛ∘ₑ δ) & (idrₛ σ ⁻¹) ◾ assₛₛₑ σ idₛ δ)
-                       ◾ (σ ∘ₛ_) & idlₑₛ (idₛ ₛ∘ₑ δ) ⁻¹)
-                       ◾ assₛₑₛ σ skip1 (idₛ ₛ∘ₑ δ , u) ⁻¹) ◾ Tm-∘ₛ _ _ t))
-              (fth t (Subᴾₑ δ σᴾ , uᴾ)))
-        (fth t (Subᴾₑ skip1 σᴾ , sn* tt (λ ())))
-fth (app t u) σᴾ = P-app (fth t σᴾ) (fth u σᴾ)
-
-idₛᴾ : ∀ {Γ} → Subᴾ (idₛ {Γ})
-idₛᴾ {[]}     = NoSubᴾ
-idₛᴾ {τ :: Γ} = Subᴾₑ skip1 idₛᴾ , sn* tt (λ ())
-
-*)
-
-Theorem strong_normalization {Γ τ} (e : Exp Γ τ) : SN e.
-Proof.
-  intros.
-  replace e with (msubst idSub e) by reflexivity.
-  now apply msubst_SN.
+  replace e with (SubExp (Γ:=[]) NoSub e).
+    apply SubExp_SN.
+    now constructor.
+  now rewrite NoSub_idSub, SubExp_idSub.
 Qed.
 
 End Norm.

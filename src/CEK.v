@@ -76,6 +76,9 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   step (MkΣ Nil _ (FN f)) := f VNil;
   step (MkΣ (Cons x xs) ρ (FN f)) :=
     MkΣ x ρ (FN (λ v1, MkΣ xs ρ (FN (λ v2, f (VCons v1 v2)))));
+  step (MkΣ (Car d xs) ρ κ) :=
+    MkΣ xs ρ (FN (λ v, _));
+  step (MkΣ (Cdr xs) ρ κ) := MkΣ xs ρ κ;
 
   (* A sequence just evaluates the second, for now *)
   step (MkΣ (Seq e1 e2) ρ κ) := MkΣ e2 ρ κ;

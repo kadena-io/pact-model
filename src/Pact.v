@@ -188,9 +188,54 @@ Example exp_constant :
     MkΣ (num 123) Empty MT.
 Proof. reflexivity. Qed.
 
+Example exp_if_true :
+  run 20 (If ETrue (num 123) (num 456)) =
+    MkΣ (num 123) Empty MT.
+Proof. reflexivity. Qed.
+
+Example exp_if_false :
+  run 20 (If EFalse (num 123) (num 456)) =
+    MkΣ (num 456) Empty MT.
+Proof. reflexivity. Qed.
+
 Example exp_pair :
   run 20 (Pair (num 123) (num 456)) =
     MkΣ (Pair (num 123) (num 456)) Empty MT.
+Proof. reflexivity. Qed.
+
+Example exp_fst:
+  run 20 (Fst (Pair (num 123) (num 456))) =
+    MkΣ (num 123) Empty MT.
+Proof. reflexivity. Qed.
+
+Example exp_snd :
+  run 20 (Snd (Pair (num 123) (num 456))) =
+    MkΣ (num 456) Empty MT.
+Proof. reflexivity. Qed.
+
+Example exp_list :
+  run 20 (Cons (num 123) (Cons (num 456) Nil)) =
+    MkΣ (Cons (num 123) (Cons (num 456) Nil)) Empty MT.
+Proof. reflexivity. Qed.
+
+Example exp_car:
+  run 20 (Car (num 0) (Cons (num 123) (Cons (num 456) Nil))) =
+    MkΣ (num 123) Empty MT.
+Proof. reflexivity. Qed.
+
+Example exp_car_nil:
+  run 20 (Car (num 0) Nil) =
+    MkΣ (num 0) Empty MT.
+Proof. reflexivity. Qed.
+
+Example exp_cdr :
+  run 20 (Cdr (Cons (num 123) (Cons (num 456) Nil))) =
+    MkΣ (Cons (num 456) Nil) Empty MT.
+Proof. reflexivity. Qed.
+
+Example exp_cdr_nil :
+  run 20 (Cdr (τ:=TyHost TyInteger) Nil) =
+    MkΣ Nil Empty MT.
 Proof. reflexivity. Qed.
 
 Example exp_lam τ :

@@ -403,10 +403,10 @@ Lemma SubExp_VAR_SV {Γ τ τ'} (s : Sub [] Γ) (x : Exp [] τ') (v : Var Γ τ)
   SubExp (Push x s) (VAR (SV v)) = SubExp s (VAR v).
 Proof. now simpl; simp SubVar. Qed.
 
-Equations vsubst {Γ τ} (e : Exp Γ τ) (s : ValEnv Γ) : Exp [] τ :=
+Equations vsubst {Γ τ ty} (e : Exp (ty :: Γ) τ) (s : ValEnv Γ) : Exp [ty] τ :=
   vsubst e Empty      := e;
   vsubst e (Val x xs) :=
-    vsubst (SubExp {|| RenExp DropAll (projT1 (valueToExp x)) ||} e) xs.
+    vsubst (SubExp (Keepₛ {|| RenExp DropAll (projT1 (valueToExp x)) ||}) e) xs.
 
 Equations expToValue `{v : Exp [] τ} (V : ValueP v) : Value τ :=
   expToValue (HostedValP x) := HostValue x;

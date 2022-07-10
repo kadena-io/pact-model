@@ -327,6 +327,17 @@ Qed.
 
 Notation "{|| e ; .. ; f ||}" := (Push e .. (Push f idSub) ..).
 
+Lemma SubExp_Push {Γ Γ' τ ty} (x : Exp Γ' ty) (s : Sub Γ' Γ) (e : Exp (ty :: Γ) τ) :
+  SubExp (Push x s) e = SubExp {|| x ||} (SubExp (Keepₛ s) e).
+Proof.
+  rewrite <- SubExp_ScS.
+  unfold Keepₛ, Dropₛ; simpl.
+  simp SubVar.
+  rewrite ScS_ScR.
+  rewrite RcS_skip1.
+  now rewrite ScS_idSub_right.
+Qed.
+
 Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
   valueToExp (HostValue x)             := existT _ (HostedVal x) (HostedValP x);
   valueToExp VUnit                     := existT _ EUnit (UnitP []);

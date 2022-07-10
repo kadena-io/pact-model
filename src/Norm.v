@@ -225,11 +225,6 @@ Inductive SN_Sub : ∀ {Γ Γ'}, Sub Γ' Γ → Prop :=
   | Push_SN {Γ Γ' τ} (e : Exp Γ' τ) (s : Sub Γ' Γ) :
     SN e → SN_Sub s → SN_Sub (Push e s).
 
-Lemma SubExp_Push {Γ Γ' τ ty} (x : Exp Γ' ty) (s : Sub Γ' Γ) (e : Exp (ty :: Γ) τ) :
-  SubExp (Push x s) e = SubExp {||x||} (SubExp (Keepₛ s) e).
-Proof.
-Admitted.
-
 Lemma SubExp_SN {Γ Γ'} (env : Sub Γ' Γ) τ (e : Exp Γ τ) :
   SN_Sub env →
   SN (SubExp env e).

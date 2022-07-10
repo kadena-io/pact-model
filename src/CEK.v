@@ -90,7 +90,7 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   };
 
   (* If a lambda is passed, call it with the continuation *)
-  step (MkΣ (LAM e) ρ (FN f)) := f (ClosureExp (Lambda (msubst e ρ)));
+  step (MkΣ (LAM e) ρ (FN f)) := f (ClosureExp (Lambda (vsubst e ρ)));
 
   (* Application evaluates the lambda and then the argument *)
   step (MkΣ (APP e1 e2) ρ κ) := MkΣ e1 ρ (FN (with_closure e2 ρ κ));

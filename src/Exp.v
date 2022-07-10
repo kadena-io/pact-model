@@ -44,6 +44,8 @@ Inductive Exp Γ : Ty → Type :=
 
   | Nil {τ}             : Exp Γ (TyList τ)
   | Cons {τ}            : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
+  | Car {τ}             : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ τ
+  | Cdr {τ}             : Exp Γ (TyList τ) → Exp Γ (TyList τ)
 
   | Seq {τ τ'}          : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
@@ -68,6 +70,8 @@ Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   | Snd _ p       => 1 + Exp_size p
   | Nil _         => 1
   | Cons _ x xs   => 1 + Exp_size x + Exp_size xs
+  | Car _ d xs    => 1 + Exp_size d + Exp_size xs
+  | Cdr _ xs      => 1 + Exp_size xs
   | Seq _ x y     => 1 + Exp_size x + Exp_size y
   | VAR _ v       => 1
   | LAM _ e       => 1 + Exp_size e
@@ -77,31 +81,6 @@ Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
 Corollary Exp_size_preserved {Γ τ} (e1 e2 : Exp Γ τ) :
   Exp_size e1 ≠ Exp_size e2 → e1 ≠ e2.
 Proof. repeat intro; subst; contradiction. Qed.
-
-(* [ValueP] is an inductive proposition that indicates whether an expression
-   represents a value, i.e., that it does reduce any further. *)
-Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Type :=
-  | HostedValP {ty} (x : HostExp (TyHost ty)) : ValueP Γ (HostedVal Γ x)
-  | HostedFunP {dom cod} (f : HostExp (dom ⟶ cod)) : ValueP Γ (HostedFun Γ f)
-  | UnitP : ValueP Γ (EUnit Γ)
-  | TrueP : ValueP Γ (ETrue Γ)
-  | FalseP : ValueP Γ (EFalse Γ)
-  | PairP {τ1 τ2} {x : Exp Γ τ1} {y : Exp Γ τ2} :
-    ValueP Γ x → ValueP Γ y → ValueP Γ (Pair Γ x y)
-  | NilP {τ} : ValueP Γ (Nil (τ:=τ) Γ)
-  | ConsP {τ} (x : Exp Γ τ) xs :
-    ValueP Γ x → ValueP Γ xs → ValueP Γ (Cons Γ x xs)
-  | LambdaP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (LAM Γ e).
-
-Derive Signature NoConfusion NoConfusionHom for ValueP.
-
-Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP _ v) :
-  H1 = H2.
-Proof.
-  induction H1; dependent elimination H2; auto.
-  - now erewrite IHValueP1, IHValueP2; eauto.
-  - now erewrite IHValueP1, IHValueP2; eauto.
-Qed.
 
 End Exp.
 
@@ -120,20 +99,12 @@ Arguments Fst {A H Γ τ1 τ2} _.
 Arguments Snd {A H Γ τ1 τ2} _.
 Arguments Nil {A H Γ τ}.
 Arguments Cons {A H Γ τ} _ _.
+Arguments Car {A H Γ τ} _ _.
+Arguments Cdr {A H Γ τ} _.
 Arguments Seq {A H Γ τ τ'} _ _.
 Arguments VAR {A H Γ τ} _.
 Arguments LAM {A H Γ dom cod} _.
 Arguments APP {A H Γ dom cod} _ _.
 
-Arguments ValueP {A H Γ τ} _.
-Arguments HostedValP {A H Γ ty} _.
-Arguments HostedFunP {A H Γ dom cod} _.
-Arguments TrueP {A H Γ}.
-Arguments FalseP {A H Γ}.
-Arguments PairP {A H Γ τ1 τ2 x y} _ _.
-Arguments NilP {A H Γ τ}.
-Arguments ConsP {A H Γ τ _ _} _ _.
-Arguments LambdaP {A H Γ dom cod} _.
-
-Notation "Γ ∋ τ" := (Var Γ τ) (at level 100).
-Notation "Γ ⊢ τ" := (Exp Γ τ) (at level 100).
+Notation "Γ ∋ τ" := (Var Γ τ) (at level 10).
+Notation "Γ ⊢ τ" := (Exp Γ τ) (at level 10).

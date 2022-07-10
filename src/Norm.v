@@ -22,10 +22,24 @@ Import ListNotations.
 Context {A : Type}.
 Context `{L : HostLang A}.
 
-Definition normal_form {X : Type} (R : relation X) (t : X) : Prop :=
+Definition normal_form `(R : relation X) (t : X) : Prop :=
   ¬ ∃ t', R t t'.
 
-Theorem value_is_nf {Γ τ} (v : Exp Γ τ) :
+Definition normalizing `(R : relation X) : Prop :=
+  ∀ t, ∃ t', multi R t t' ∧ normal_form R t'.
+
+Definition deterministic `(R : relation X) : Prop :=
+  ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
+
+Definition halts {Γ τ} (e : Exp Γ τ) : Prop :=
+  ∃ e', e --->* e' ∧ inhabited (ValueP e').
+
+Notation " e '⇓' " := (halts e) (at level 11).
+
+Definition normal_form_of {Γ τ} (e e' : Exp Γ τ) : Prop :=
+  (e --->* e' ∧ normal_form Step e').
+
+Lemma value_is_nf {Γ τ} (v : Exp Γ τ) :
   ValueP v → normal_form Step v.
 Proof.
   intros.
@@ -39,6 +53,31 @@ Proof.
   - inv H.
     + now eapply IHv1; eauto.
     + now eapply IHv2; eauto.
+Qed.
+
+Lemma nf_is_value {τ} (v : Exp [] τ) :
+  normal_form Step v → ValueP v.
+Proof.
+  intros.
+  destruct (strong_progress v); auto.
+  reduce.
+  destruct H.
+  now exists x.
+Qed.
+
+Theorem nf_same_as_value {τ} (v : Exp [] τ) :
+  iffT (normal_form Step v) (ValueP v).
+Proof.
+  split.
+  - now apply nf_is_value.
+  - now apply value_is_nf.
+Qed.
+
+Lemma value_halts {Γ τ} (v : Exp Γ τ) : ValueP v → halts v.
+Proof.
+  intros.
+  unfold halts.
+  now induction X; eexists; repeat constructor.
 Qed.
 
 Ltac normality :=
@@ -55,9 +94,6 @@ Ltac invert_step :=
   end;
   try solve [ f_equal; intuition eauto | normality ].
 
-Definition deterministic {X : Type} (R : relation X) :=
-  ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
-
 Theorem step_deterministic Γ τ :
   deterministic (@Step _ _ Γ τ).
 Proof.
@@ -69,35 +105,31 @@ Proof.
   - inv H3; now invert_step.
   - inv H4; now invert_step.
   - inv H3; now invert_step.
+  - inv H4; now invert_step.
+  - inv H3; now invert_step.
+  - inv H5; now invert_step.
+  - inv H4; now invert_step.
   - now f_equal; apply ValueP_irrelevance.
 Qed.
 
-Corollary nf_is_value {τ} (v : Exp [] τ) :
-  normal_form Step v → ValueP v.
+Theorem normal_forms_unique Γ τ :
+  deterministic (normal_form_of (Γ:=Γ) (τ:=τ)).
 Proof.
-  intros.
-  destruct (strong_progress v); auto.
-  reduce.
-  destruct H.
-  now exists x.
-Qed.
-
-Corollary nf_same_as_value {τ} (v : Exp [] τ) :
-  iffT (normal_form Step v) (ValueP v).
-Proof.
-  split.
-  - now apply nf_is_value.
-  - now apply value_is_nf.
-Qed.
-
-Definition halts {Γ τ} (e : Exp Γ τ) : Prop :=
-  ∃ e', e --->* e' ∧ inhabited (ValueP e').
-
-Lemma value_halts {Γ τ} (v : Exp Γ τ) : ValueP v → halts v.
-Proof.
-  intros.
-  unfold halts.
-  now induction X; eexists; repeat constructor.
+  unfold deterministic, normal_form_of.
+  intros x y1 y2 P1 P2.
+  destruct P1 as [P11 P12].
+  destruct P2 as [P21 P22].
+  generalize dependent y2.
+  induction P11; intros.
+  - inversion P21; auto.
+    induction P12.
+    now exists y.
+  - apply IHP11; auto.
+    inv P21.
+    + destruct P22.
+      now exists y.
+    + assert (y = y0) by now apply step_deterministic with x.
+      now subst.
 Qed.
 
 Lemma step_preserves_halting {Γ τ} (e e' : Exp Γ τ) :
@@ -120,48 +152,22 @@ Proof.
     now eapply multi_step; eauto.
 Qed.
 
-Definition normal_form_of {Γ τ} (e e' : Exp Γ τ) :=
-  (e --->* e' ∧ normal_form Step e').
+(** [SN] is a logical predicate that establishes the evidence needing to show
+    halting. *)
 
-Theorem normal_forms_unique Γ τ :
-  deterministic (normal_form_of (Γ:=Γ) (τ:=τ)).
-Proof.
-  unfold deterministic, normal_form_of.
-  intros x y1 y2 P1 P2.
-  destruct P1 as [P11 P12].
-  destruct P2 as [P21 P22].
-  generalize dependent y2.
-  induction P11; intros.
-  - inversion P21; auto.
-    induction P12.
-    now exists y.
-  - apply IHP11; auto.
-    inv P21.
-    + destruct P22.
-      now exists y.
-    + assert (y = y0) by now apply step_deterministic with x.
-      now subst.
-Qed.
+Equations SN {Γ τ} (e : Γ ⊢ τ) : Prop :=
+  SN (τ:=_ ⟶ _) f := f ⇓ ∧ (∀ x, SN x → SN (APP f x));
+  SN (τ:=_ × _) p := p ⇓ ∧ SN (Fst p) ∧ SN (Snd p);
+  SN e := e ⇓.
 
-Definition normalizing {X : Type} (R : relation X) :=
-  ∀ t, ∃ t', (multi R) t t' ∧ normal_form R t'.
+Lemma SN_halts {Γ τ} {e : Γ ⊢ τ} : SN e → halts e.
+Proof. intros; induction τ; simp SN in H; now reduce. Qed.
 
-Equations R {Γ τ} (e : Γ ⊢ τ) : Prop :=
-  R (τ:=TyHost _) e := halts e; (* jww (2022-07-07): should be an obligation *)
-  R (τ:=TyUnit)   e := halts e;
-  R (τ:=TyBool)   e := halts e;
-  R (τ:=TyList _) e := halts e; (* jww (2022-07-07): NYI *)
-  R (τ:=_ × _)    e := halts e ∧ R (Fst e) ∧ R (Snd e);
-  R (τ:=_ ⟶ _)   e := halts e ∧ ∀ e', R e' → R (APP e e').
-
-Lemma R_halts {Γ τ} {e : Γ ⊢ τ} : R e → halts e.
-Proof. intros; induction τ; simp R in H; now reduce. Qed.
-
-Lemma step_preserves_R {Γ τ} {e e' : Γ ⊢ τ} :
-  (e ---> e') → R e → R e'.
+Lemma step_preserves_SN {Γ τ} {e e' : Γ ⊢ τ} :
+  (e ---> e') → SN e → SN e'.
 Proof.
   intros.
-  induction τ; simp R in *;
+  induction τ; simp SN in *;
   pose proof H as H1;
   apply step_preserves_halting in H1; intuition.
   - eapply IHτ1; eauto.
@@ -172,20 +178,20 @@ Proof.
     now constructor.
 Qed.
 
-Lemma multistep_preserves_R {Γ τ} {e e' : Γ ⊢ τ} :
-  (e --->* e') → R e → R e'.
+Lemma multistep_preserves_SN {Γ τ} {e e' : Γ ⊢ τ} :
+  (e --->* e') → SN e → SN e'.
 Proof.
   intros.
   induction H; auto.
   apply IHmulti.
-  now eapply step_preserves_R; eauto.
+  now eapply step_preserves_SN; eauto.
 Qed.
 
-Lemma step_preserves_R' {Γ τ} {e e' : Γ ⊢ τ} :
-  (e ---> e') → R e' → R e.
+Lemma step_preserves_SN' {Γ τ} {e e' : Γ ⊢ τ} :
+  (e ---> e') → SN e' → SN e.
 Proof.
   intros.
-  induction τ; simp R in *;
+  induction τ; simp SN in *;
   pose proof H as H1;
   apply step_preserves_halting in H1; intuition.
   - eapply IHτ1; eauto.
@@ -196,54 +202,74 @@ Proof.
     now constructor.
 Qed.
 
-Lemma multistep_preserves_R' {Γ τ} {e e' : Γ ⊢ τ} :
-  (e --->* e') → R e' → R e.
+Lemma multistep_preserves_SN' {Γ τ} {e e' : Γ ⊢ τ} :
+  (e --->* e') → SN e' → SN e.
 Proof.
   intros.
   induction H; auto.
-  now eapply step_preserves_R'; eauto.
+  now eapply step_preserves_SN'; eauto.
 Qed.
-
-Inductive SN {Γ τ} (e : Exp Γ τ) : Type :=
-  | IsSN {e'} : e ---> e' → SN e' → SN e.
-
-(*
-Equations msubst {Γ Γ' τ} (e : Γ' ⊢ τ) (ss : Sub Γ Γ') : [] ⊢ τ :=
-  msubst e NoSub       := e;
-  msubst e (Push x xs) := msubst (SubExp {|| x ||} e) xs.
-
-Definition mupdate := app.
-
-Lemma msubst_closed `(e : [] ⊢ τ) ss :
-  msubst e ss = e.
-Proof.
-  dependent induction ss.
-  now simp msubst.
-Qed.
-
-Inductive instantiation : ∀ Γ, ExpEnv Γ → Prop :=
-  | V_nil :
-      instantiation [] Nil
-  | V_cons {Γ τ} (v : Γ ⊢ τ) ee :
-      ValueP v → R v →
-      instantiation Γ ee →
-      instantiation (τ :: Γ) (Cons v ee).
 
 Lemma multistep_App2 {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :
   ValueP v → (e --->* e') → APP v e --->* APP v e'.
 Proof.
   intros.
-  induction H0.
+  induction H.
   - now apply multi_refl.
   - eapply multi_step; eauto.
     now constructor.
 Qed.
 
-Lemma msubst_R : ∀ Γ (env : ExpEnv Γ) τ (t : Exp Γ τ),
-  instantiation Γ env →
-  R (msubst t env).
+Inductive SN_Sub : ∀ {Γ Γ'}, Sub Γ' Γ → Prop :=
+  | NoSub_SN {Γ} : SN_Sub (NoSub (Γ:=Γ))
+  | Push_SN {Γ Γ' τ} (e : Exp Γ' τ) (s : Sub Γ' Γ) :
+    SN e → SN_Sub s → SN_Sub (Push e s).
+
+Lemma msubst_SN {Γ Γ'} (env : Sub Γ' Γ) τ (e : Exp Γ τ) :
+  SN_Sub env →
+  SN (SubExp env e).
 Proof.
-*)
+  generalize dependent env.
+  induction e; intros.
+  - admit.
+  - admit.
+  - admit.
+  - rewrite msubst_EUnit.
+    now eexists; repeat constructor.
+  - rewrite msubst_ETrue.
+    now eexists; repeat constructor.
+  - rewrite msubst_EFalse.
+    now eexists; repeat constructor.
+  - rewrite msubst_If.
+    admit.
+  - rewrite msubst_Pair.
+    admit.
+  - rewrite msubst_Fst.
+    now destruct (IHe env H).
+  - rewrite msubst_Snd.
+    now destruct (IHe env H).
+  - rewrite msubst_Nil.
+    now eexists; repeat constructor.
+  - rewrite msubst_Cons.
+    admit.
+  - rewrite msubst_Car.
+    admit.
+  - rewrite msubst_Cdr.
+    admit.
+  - rewrite msubst_Seq.
+    admit.
+  - induction env.
+    + now inv v.
+    + inv H.
+      dependent induction v.
+      * now rewrite msubst_VAR_ZV.
+      * rewrite msubst_VAR_SV.
+        now apply IHenv.
+  - rewrite msubst_LAM.
+    admit.
+  - rewrite msubst_APP.
+    now apply IHe1, IHe2.
+Admitted.
 
 (*
 Equations RenExp_Step {Γ Γ' τ} {e : Exp Γ τ} {σ : Ren Γ' Γ} {e'}
@@ -348,16 +374,16 @@ P-app =
                 (app₁ st) → f st ;
                 (app₂ st) → g st})})
   where
-    ind-help : ∀ {Γ τ B}(R : Exp Γ τ → Exp Γ B → Set)
+    ind-help : ∀ {Γ τ B}(SN : Exp Γ τ → Exp Γ B → Set)
              → (∀ {t u} → P t → P u
-                 → (∀ {t'} → t ---> t' → R t' u)
-                 → (∀ {u'} → u ---> u' → R t u')
-                → R t u)
-             → ∀ {t u} → P t → P u → R t u
-    ind-help R f (sn* tp tq) (sn* up uq) =
+                 → (∀ {t'} → t ---> t' → SN t' u)
+                 → (∀ {u'} → u ---> u' → SN t u')
+                → SN t u)
+             → ∀ {t u} → P t → P u → SN t u
+    ind-help SN f (sn* tp tq) (sn* up uq) =
       f (sn* tp tq) (sn* up uq)
-        (λ st → ind-help R f (tq st) (sn* up uq))
-        (λ st → ind-help R f (sn* tp tq) (uq st))
+        (λ st → ind-help SN f (tq st) (sn* up uq))
+        (λ st → ind-help SN f (sn* tp tq) (uq st))
 
 data Subᴾ {Γ} : ∀ {Γ'} → Sub Γ Γ' → Set where
   NoSubᴾ : Subᴾ NoSub
@@ -389,9 +415,9 @@ idₛᴾ {τ :: Γ} = Subᴾₑ skip1 idₛᴾ , sn* tt (λ ())
 
 Theorem strong_normalization {Γ τ} (e : Exp Γ τ) : SN e.
 Proof.
-Abort.
-(*
-strongNorm t = coe (SN & Tm-idₛ t) (SN*-SN (fth t idₛᴾ))
-*)
+  intros.
+  replace e with (msubst idSub e) by reflexivity.
+  now apply msubst_SN.
+Qed.
 
 End Norm.

@@ -17,35 +17,6 @@ Context `{HostExprs A}.
 
 Open Scope Ty_scope.
 
-(*
-Inductive Value : Ty → Type :=
-  | HostValue {ty}         : HostExp (TyHost ty) → Value (TyHost ty)
-  | VUnit                  : Value TyUnit
-  | VTrue                  : Value TyBool
-  | VFalse                 : Value TyBool
-  | VPair {τ1 τ2}          : Value τ1 → Value τ2 → Value (TyPair τ1 τ2)
-  | VNil {τ}               : Value (TyList τ)
-  | VCons {τ}              : Value τ → Value (TyList τ) → Value (TyList τ)
-  | ClosureExp {dom cod}   : Closure dom cod → Value (dom ⟶ cod)
-
-with Closure : Ty → Ty → Type :=
-  | Lambda {dom cod}   : Exp [dom] cod → Closure dom cod
-  | Func {dom cod}     : HostExp (dom ⟶ cod) → Closure dom cod.
-
-Derive Signature NoConfusion for Value.
-Derive Signature NoConfusion Subterm for Closure.
-
-Inductive ValEnv : Env → Type :=
-  | Empty : ValEnv []
-  | Val {Γ τ} : Value τ → ValEnv Γ → ValEnv (τ :: Γ).
-
-Derive Signature NoConfusion for ValEnv.
-
-Equations get_value `(s : ValEnv Γ) `(v : Var Γ τ) : Value τ :=
-  get_value (Val x _)  (ZV _ _)     := x;
-  get_value (Val _ xs) (SV _ _ _ v) := get_value xs v.
-*)
-
 Inductive Closed : Ty → Type :=
   | Closure {Γ τ} : Exp Γ τ → ClEnv Γ → Closed τ
   | Clapp {dom cod} : Closed (dom ⟶ cod) → Closed dom → Closed cod
@@ -246,11 +217,11 @@ Definition invariant {Γ u v} (ctx : EvalContext u v) (env : ClEnv Γ) : Type :=
 Definition termination {u} (t : Exp [] u) : Trace t NoCl MT.
 Proof.
   dependent induction t.
-  14: {
+  16: {
     unshelve eapply TLookup; [constructor|].
     now dependent elimination v.
   }
-  14: {
+  16: {
     now apply TDone.
   }
 Abort.

@@ -41,7 +41,7 @@ Fixpoint idSub {Γ} : Sub Γ Γ :=
   | τ :: Γ => Push (VAR ZV) (ScR (@idSub Γ) skip1)
   end.
 
-Corollary NoSub_idSub : NoSub = @idSub [].
+Corollary NoSub_idSub : NoSub (Γ:=[]) = idSub.
 Proof. reflexivity. Qed.
 
 Equations RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') : Sub Γ Γ'' :=
@@ -54,6 +54,10 @@ Definition Dropₛ {Γ Γ' τ} (s : Sub Γ Γ') : Sub (τ :: Γ) Γ' :=
 
 Definition Keepₛ {Γ Γ' τ} (s : Sub Γ Γ') : Sub (τ :: Γ) (τ :: Γ') :=
   Push (VAR ZV) (Dropₛ s).
+
+Corollary Keepₛ_idSub {Γ τ} :
+  Keepₛ (Γ:=Γ) (Γ':=Γ) (τ:=τ) idSub = idSub.
+Proof. reflexivity. Qed.
 
 Equations SubVar {Γ Γ' τ} (s : Sub Γ Γ') (v : Var Γ' τ) : Exp Γ τ :=
   SubVar (Push t σ) ZV     := t;
@@ -73,6 +77,8 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | Snd p         => Snd (SubExp s p)
   | Nil           => Nil
   | Cons x xs     => Cons (SubExp s x) (SubExp s xs)
+  | Car d xs      => Car (SubExp s d) (SubExp s xs)
+  | Cdr xs        => Cdr (SubExp s xs)
   | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
 
   | VAR v         => SubVar s v
@@ -141,6 +147,10 @@ Proof.
   simp RcS.
   now rewrite RcS_idRen.
 Qed.
+
+Lemma RcS_DropAll {Γ Γ'} (σ : Sub Γ' Γ) :
+  RcS DropAll σ = NoSub.
+Proof. now induction σ; simp RcS. Qed.
 
 Lemma SubVar_RcS {Γ Γ' Γ'' τ} (σ : Ren Γ' Γ'') (δ : Sub Γ Γ') (v : Var Γ'' τ) :
   SubVar (RcS σ δ) v = SubVar δ (RenVar σ v).
@@ -303,6 +313,18 @@ Proof.
   now rewrite IHσ.
 Qed.
 
+Lemma ScS_Keepₛ {Γ Γ' Γ'' τ} (f : Sub Γ' Γ'') (g : Sub Γ Γ') :
+  ScS (Keepₛ (τ:=τ) f) (Keepₛ g) = Keepₛ (ScS f g).
+Proof.
+  simpl.
+  unfold Keepₛ, Dropₛ.
+  rewrite ScS_ScR.
+  f_equal.
+  rewrite ScR_ScS.
+  f_equal.
+  now rewrite RcS_skip1.
+Qed.
+
 Notation "{|| e ; .. ; f ||}" := (Push e .. (Push f idSub) ..).
 
 Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
@@ -323,14 +345,147 @@ Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
   valueToExp (ClosureExp (Func f))     := existT _ (HostedFun f) (HostedFunP f)
 }.
 
-Equations msubst {Γ ty τ} (e : Exp (ty :: Γ) τ) (s : ValEnv Γ) : Exp [ty] τ := {
-  msubst e Empty      := e;
-  msubst e (Val x xs) :=
-    let r := DropAll in
-    let v := RenExp r (projT1 (valueToExp x)) in
-    let s := Keepₛ {|| v ||} in
-    msubst (SubExp s e) xs
-}.
+Definition msubst {Γ τ} (s : Sub [] Γ) (e : Exp Γ τ) : Exp [] τ := SubExp s e.
+Arguments msubst {_ _} _ _ /.
+
+(*
+Equations msubst {Γ τ} (s : Sub [] Γ) (e : Exp Γ τ) : Exp [] τ :=
+  msubst NoSub       e := e;
+  msubst (Push x xs) e := msubst xs (SubExp {|| RenExp DropAll x ||} e).
+*)
+
+Corollary msubst_closed `(s : Sub [] []) `(e : [] ⊢ τ) :
+  msubst s e = e.
+Proof.
+  dependent elimination s.
+  simpl.
+  rewrite NoSub_idSub.
+  now rewrite SubExp_idSub.
+Qed.
+
+Lemma msubst_SubExp `(s : Sub [] Γ) (s' : Sub Γ []) `(e : [] ⊢ τ) :
+  msubst s (SubExp s' e) = e.
+Proof.
+  induction s; simp msubst.
+  - dependent elimination s'.
+    now rewrite NoSub_idSub, SubExp_idSub.
+  - rewrite <- SubExp_ScS.
+    now rewrite IHs.
+Qed.
+
+Lemma msubst_RenExp `(s : Sub [] Γ) (r' : Ren Γ []) `(e : [] ⊢ τ) :
+  msubst s (RenExp r' e) = e.
+Proof.
+  induction s; simp msubst.
+  - dependent destruction r'.
+    now rewrite NoRen_idRen, RenExp_idRen.
+  - rewrite <- SubExp_RcS.
+    now rewrite msubst_SubExp.
+Qed.
+
+Lemma msubst_EUnit {Γ} (s : Sub [] Γ) :
+  msubst s EUnit = EUnit.
+Proof. now induction s. Qed.
+
+Lemma msubst_ETrue {Γ} (s : Sub [] Γ) :
+  msubst s ETrue = ETrue.
+Proof. now induction s. Qed.
+
+Lemma msubst_EFalse {Γ} (s : Sub [] Γ) :
+  msubst s EFalse = EFalse.
+Proof. now induction s. Qed.
+
+Lemma msubst_If {Γ τ} (s : Sub [] Γ) b (t e : Exp Γ τ) :
+  msubst s (If b t e) = If (msubst s b) (msubst s t) (msubst s e).
+Proof. now induction s; simp msubst. Qed.
+
+Lemma msubst_Pair {Γ τ1 τ2} (s : Sub [] Γ) (x : Exp Γ τ1) (y : Exp Γ τ2) :
+  msubst s (Pair x y) = Pair (msubst s x) (msubst s y).
+Proof. now induction s; simp msubst. Qed.
+
+Lemma msubst_Fst {Γ τ1 τ2} (s : Sub [] Γ) (p : Exp Γ (τ1 × τ2)) :
+  msubst s (Fst p) = Fst (msubst s p).
+Proof. now induction s; simp msubst. Qed.
+
+Lemma msubst_Snd {Γ  τ1 τ2} (s : Sub [] Γ) (p : Exp Γ (τ1 × τ2)) :
+  msubst s (Snd p) = Snd (msubst s p).
+Proof. now induction s; simp msubst. Qed.
+
+Lemma msubst_Nil {Γ τ} (s : Sub [] Γ) :
+  msubst s (Nil (τ:=τ)) = Nil.
+Proof. now induction s; simp msubst. Qed.
+
+Lemma msubst_Cons {Γ τ} (s : Sub [] Γ) x (xs : Exp Γ (TyList τ)) :
+  msubst s (Cons x xs) = Cons (msubst s x) (msubst s xs).
+Proof. now induction s; simp msubst. Qed.
+
+Lemma msubst_Car {Γ τ} (s : Sub [] Γ) d (xs : Exp Γ (TyList τ)) :
+  msubst s (Car d xs) = Car (msubst s d) (msubst s xs).
+Proof. now induction s; simp msubst. Qed.
+
+Lemma msubst_Cdr {Γ τ} (s : Sub [] Γ) (xs : Exp Γ (TyList τ)) :
+  msubst s (Cdr xs) = Cdr (msubst s xs).
+Proof. now induction s; simp msubst. Qed.
+
+Lemma msubst_Seq {Γ τ1 τ2} (s : Sub [] Γ) (e1 : Exp Γ τ1) (e2 : Exp Γ τ2) :
+  msubst s (Seq e1 e2) = Seq (msubst s e1) (msubst s e2).
+Proof. now induction s; simp msubst. Qed.
+
+Lemma msubst_VAR_ZV {Γ τ} (s : Sub [] Γ) (x : Exp [] τ) :
+  msubst (Push x s) (VAR ZV) = x.
+Proof.
+  simp msubst; simpl; simp SubVar.
+  generalize dependent x.
+  induction s; intros.
+  - rewrite msubst_closed.
+    now rewrite RenExp_DropAll.
+  - simp msubst.
+    rewrite <- SubExp_RcS.
+    rewrite RcS_DropAll.
+    now apply msubst_SubExp.
+Qed.
+
+Lemma msubst_VAR_SV {Γ τ τ'} (s : Sub [] Γ) (x : Exp [] τ') (v : Var Γ τ) :
+  msubst (Push x s) (VAR (SV v)) = msubst s (VAR v).
+Proof.
+  simp msubst; simpl; simp SubVar.
+  generalize dependent x.
+  generalize dependent v.
+  induction s; intros.
+  - now inv v.
+  - simp msubst.
+    now rewrite SubVar_idSub.
+Qed.
+
+Lemma msubst_LAM {Γ dom cod} (s : Sub [] Γ) (e : Exp (dom :: Γ) cod) :
+  msubst s (LAM e) = LAM (SubExp (Keepₛ s) e).
+Proof.
+  induction s; simp msubst.
+  - rewrite NoSub_idSub.
+    rewrite Keepₛ_idSub.
+    now rewrite SubExp_idSub.
+  - simpl.
+    rewrite IHs; clear IHs.
+    rewrite <- SubExp_ScS.
+    rewrite ScS_Keepₛ.
+    simpl.
+    f_equal.
+    rewrite <- SubExp_RcS.
+    rewrite RcS_DropAll.
+    rewrite ScS_idSub_left.
+    rewrite NoSub_idSub.
+    now rewrite SubExp_idSub.
+Qed.
+
+Lemma msubst_APP {Γ dom cod} (s : Sub [] Γ)
+      (f : Exp Γ (dom ⟶ cod)) (x : Exp Γ dom) :
+  msubst s (APP f x) = APP (msubst s f) (msubst s x).
+Proof. now induction s; simp msubst. Qed.
+
+Equations vsubst {Γ τ} (e : Exp Γ τ) (s : ValEnv Γ) : Exp [] τ :=
+  vsubst e Empty      := e;
+  vsubst e (Val x xs) :=
+    vsubst (SubExp {|| RenExp DropAll (projT1 (valueToExp x)) ||} e) xs.
 
 Equations expToValue `{v : Exp [] τ} (V : ValueP v) : Value τ :=
   expToValue (HostedValP x) := HostValue x;

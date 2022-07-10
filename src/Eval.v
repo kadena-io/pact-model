@@ -73,6 +73,32 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
     xs ---> xs' →
     Cons x xs ---> Cons x xs'
 
+  | ST_Car1 Γ τ (d d' : Exp Γ τ) (l : Exp Γ (TyList τ)) :
+    d ---> d' →
+    Car d l ---> Car d' l
+  | ST_Car2 Γ τ (d : Exp Γ τ) (l l' : Exp Γ (TyList τ)) :
+    ValueP d →
+    l ---> l' →
+    Car d l ---> Car d l'
+  | ST_CarNil Γ τ (d : Exp Γ τ) :
+    ValueP d →
+    Car d Nil ---> d
+  | ST_CarCons Γ τ (d x : Exp Γ τ) (xs : Exp Γ (TyList τ)) :
+    ValueP d →
+    ValueP x →
+    ValueP xs →
+    Car d (Cons x xs) ---> x
+
+  | ST_Cdr1 Γ τ (l l' : Exp Γ (TyList τ)) :
+    l ---> l' →
+    Cdr l ---> Cdr l'
+  | ST_CdrNil Γ τ :
+    Cdr (Nil (Γ:=Γ) (τ:=τ)) ---> Nil
+  | ST_CdrCons Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) :
+    ValueP x →
+    ValueP xs →
+    Cdr (Cons x xs) ---> xs
+
   | ST_AppHost Γ dom cod (f : HostExp (dom ⟶ cod)) (v : Exp Γ dom) :
     ∀ H : ValueP v,
     APP (HostedFun f) v ---> CallHost f v H
@@ -94,14 +120,14 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
 
 Derive Signature for Step.
 
-Inductive multi {X : Type} (R : relation X) : relation X :=
+Inductive multi `(R : relation X) : relation X :=
   | multi_refl (x : X) : multi R x x
   | multi_step (x y z : X) :
       R x y → multi R y z → multi R x z.
 
 Derive Signature for multi.
 
-Theorem multi_R (X : Type) (R : relation X) (x y : X) :
+Theorem multi_R `(R : relation X) (x y : X) :
   R x y → multi R x y.
 Proof.
   intros.
@@ -109,7 +135,7 @@ Proof.
   now constructor.
 Qed.
 
-Theorem multi_trans (X : Type) (R : relation X) (x y z : X) :
+Theorem multi_trans `(R : relation X) (x y z : X) :
   multi R x y →
   multi R y z →
   multi R x z.
@@ -120,7 +146,7 @@ Proof.
 Qed.
 
 #[export]
-Program Instance multi_PreOrder (X : Type) (R : relation X) :
+Program Instance multi_PreOrder `(R : relation X) :
   PreOrder (multi R).
 Next Obligation. now constructor. Qed.
 Next Obligation. now eapply multi_trans; eauto. Qed.
@@ -308,7 +334,7 @@ Import ListNotations.
 Theorem strong_progress {τ} (e : Exp [] τ) :
   ValueP e + { e' | e ---> e' }.
 Proof.
-  dependent induction e.
+  dependent induction e; reduce.
   - destruct τ;
     right; now exists (projT1 (Reduce h)); constructor.
   - now left; constructor.
@@ -317,66 +343,82 @@ Proof.
   - now left; constructor.
   - now left; constructor.
   - right.
-    destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
+    destruct IHe1; reduce.
     + inv v.
       * now exists e2; constructor.
       * now exists e3; constructor.
     + reduce.
       now exists (If x e2 e3); constructor.
-  - destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
-    + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
+  - destruct IHe1; reduce.
+    + destruct IHe2; reduce.
       * left.
         now constructor.
       * right; reduce.
         now exists (Pair e1 x); constructor.
-    + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
+    + destruct IHe2; reduce.
       * right; reduce.
         now exists (Pair x e2); constructor.
       * right; reduce.
         now exists (Pair x e2); constructor.
-  - destruct (IHe _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
+  - destruct IHe; reduce.
     + right.
       inv v; reduce.
       * now exists x; constructor.
     + right; reduce.
       now exists (Fst x); constructor.
-  - destruct (IHe _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); reduce.
+  - destruct IHe; reduce.
     + right.
       inv v.
       * now exists y; constructor.
     + right; reduce.
       now exists (Snd x); constructor.
   - now left; constructor.
-  - destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe1.
-    + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe2.
+  - destruct IHe1.
+    + destruct IHe2.
       * now left; constructor.
       * right; reduce.
         now exists (Cons e1 x); constructor.
-    + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe2.
+    + destruct IHe2.
       * right; reduce.
         now exists (Cons x e2); constructor.
       * right; reduce.
         now exists (Cons x0 e2); constructor.
+  - destruct IHe1.
+    + destruct IHe2.
+      * right.
+        inv v0.
+        ** now eexists; constructor.
+        ** now eexists; constructor.
+      * right; reduce.
+        now exists (Car e1 x); constructor.
+    + destruct IHe2.
+      * right; reduce.
+        now exists (Car x e2); constructor.
+      * right; reduce.
+        now exists (Car x0 e2); constructor.
+  - destruct IHe.
+    + right.
+      inv v; now eexists; constructor.
+    + right; reduce.
+      now exists (Cdr x); constructor.
   - right.
     now exists e2; constructor.
   - now inversion v.
   - left.
     now constructor.
   - right.
-    destruct (IHe1 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe1.
-    + destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe2.
+    destruct IHe1.
+    + destruct IHe2.
       * dependent elimination e1; inv v.
         ** now exists (CallHost h1 e2 v0); constructor.
-        ** exists (SubExp {|| e2 ||} e11).
-           now constructor.
+        ** now eexists (SubExp {|| e2 ||} _); constructor.
       * dependent elimination e1; inv v.
         ** exists (APP (HostedFun h1) x); constructor; auto.
            now constructor.
-        ** exists (APP (LAM e11) x).
-           constructor; auto.
+        ** eexists (APP (LAM _) x); constructor; eauto.
            now constructor.
     + reduce.
-      destruct (IHe2 _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl); clear IHe2.
+      destruct IHe2.
       * exists (APP x e2).
         now constructor.
       * reduce.

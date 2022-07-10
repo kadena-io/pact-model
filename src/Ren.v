@@ -37,6 +37,9 @@ Equations DropAll {Γ} : Ren Γ [] :=
 Corollary NoRen_idRen : NoRen = idRen.
 Proof. reflexivity. Qed.
 
+Corollary DropAll_nil_idRen : DropAll (Γ:=[]) = idRen.
+Proof. reflexivity. Qed.
+
 Definition skip1 {Γ τ} : Ren (τ :: Γ) Γ := Drop idRen.
 
 Equations RcR {Γ Γ' Γ''} (r : Ren Γ' Γ'') (r' : Ren Γ Γ') : Ren Γ Γ'' :=
@@ -128,6 +131,8 @@ Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | Snd p         => Snd (RenExp r p)
   | Nil           => Nil
   | Cons x xs     => Cons (RenExp r x) (RenExp r xs)
+  | Car d xs      => Car (RenExp r d) (RenExp r xs)
+  | Cdr xs        => Cdr (RenExp r xs)
   | Seq exp1 exp2 => Seq (RenExp r exp1) (RenExp r exp2)
 
   | VAR v         => VAR (RenVar r v)
@@ -150,6 +155,13 @@ Proof.
   rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto.
   - now rewrite RenVar_idRen.
   - now rewrite Keep_idRen, IHe.
+Qed.
+
+Lemma RenExp_DropAll {τ} (e : Exp [] τ) :
+  RenExp DropAll e = e.
+Proof.
+  rewrite DropAll_nil_idRen.
+  now rewrite RenExp_idRen.
 Qed.
 
 Lemma RenExp_RcR {τ Γ Γ' Γ''} (σ : Ren Γ' Γ'') (δ : Ren Γ Γ') (e : Exp Γ'' τ) :

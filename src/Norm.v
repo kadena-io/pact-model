@@ -152,15 +152,14 @@ Proof.
     now eapply multi_step; eauto.
 Qed.
 
-(** [SN] is a logical predicate that establishes the evidence needing to show
-    halting. *)
-
 Section Log.
 
 Context {Γ : Env}.
 
 Variable P : ∀ {τ}, Exp Γ τ → Prop.
 
+(** [ExpP] is a logical predicate that permits type-directed induction on
+    expressions. *)
 Equations ExpP `(e : Exp Γ τ) : Prop :=
   ExpP (τ:=_ ⟶ _)   f := P f ∧ (∀ x, ExpP x → ExpP (APP f x));
   ExpP (τ:=_ × _)    p := P p ∧ ExpP (Fst p) ∧ ExpP (Snd p);

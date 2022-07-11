@@ -59,6 +59,10 @@ Equations VCdr `(v : Value (TyList r)) {Γ} (ρ : ValEnv Γ)
   VCdr VNil         ρ κ := MkΣ Nil ρ κ;
   VCdr (VCons _ xs) _ κ := MkΣ (projT1 (valueToExp xs)) Empty κ.
 
+Equations VIsNil `(v : Value (TyList r)) `(κ : Kont TyBool τ) : Σ τ :=
+  VIsNil VNil        κ := MkΣ ETrue  Empty κ;
+  VIsNil (VCons _ _) κ := MkΣ EFalse Empty κ.
+
 Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   (* Constants *)
   step (MkΣ (r:=TyHost _)   (HostedVal x) ρ (FN f)) := f (HostValue x);
@@ -86,6 +90,8 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
     MkΣ xs ρ (FN (λ l, VCar l d ρ κ));
   step (MkΣ (Cdr xs) ρ κ) :=
     MkΣ xs ρ (FN (λ l, VCdr l ρ κ));
+  step (MkΣ (IsNil xs) ρ κ) :=
+    MkΣ xs ρ (FN (λ l, VIsNil l κ));
 
   (* A sequence just evaluates the second, for now *)
   step (MkΣ (Seq e1 e2) ρ κ) := MkΣ e2 ρ κ;

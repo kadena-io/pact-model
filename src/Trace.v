@@ -218,11 +218,11 @@ Definition invariant {Γ u v} (ctx : EvalContext u v) (env : ClEnv Γ) : Type :=
 Definition termination {u} (t : Exp [] u) : Trace t NoCl MT.
 Proof.
   dependent induction t.
-  16: {
+  17: {
     unshelve eapply TLookup; [constructor|].
     now dependent elimination v.
   }
-  16: {
+  17: {
     now apply TDone.
   }
 Abort.

@@ -133,6 +133,7 @@ Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | Cons x xs     => Cons (RenExp r x) (RenExp r xs)
   | Car d xs      => Car (RenExp r d) (RenExp r xs)
   | Cdr xs        => Cdr (RenExp r xs)
+  | IsNil xs      => IsNil (RenExp r xs)
   | Seq exp1 exp2 => Seq (RenExp r exp1) (RenExp r exp2)
 
   | VAR v         => VAR (RenVar r v)

@@ -110,25 +110,16 @@ Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   | Cons x xs     => λ se, SemExp x se :: SemExp xs se
   | Car d xs      => λ se, hd (SemExp d se) (SemExp xs se)
   | Cdr xs        => λ se, tl (SemExp xs se)
+  | IsNil xs      => λ se, match SemExp xs se with
+                           | [] => true
+                           | _ :: _ => false
+                           end
   | Seq exp1 exp2 => λ se, SemExp exp2 se
 
   | VAR v         => SemVar v
   | LAM e         => λ se x, SemExp e (x, se)
   | APP e1 e2     => λ se, SemExp e1 se (SemExp e2 se)
   end.
-
-(*
-Equations SemVal `{v : Exp Γ τ} (V : ValueP v) : SemTy τ :=
-  SemVal (HostedP x)    := HostExpSem x;
-  SemVal (UnitP _)      := tt;
-  SemVal TrueP          := true;
-  SemVal FalseP         := false;
-  SemVal (PairP Vx Vy)  := (SemVal Vx, SemVal Vy);
-  SemVal NilP           := nil;
-  SemVal (ConsP Vx Vxs) := SemVal Vx :: SemVal Vxs;
-  SemVal (LambdaP e)    := SemExp e ();
-  SemVal (FunctionP f)  := GetFunction f.
-*)
 
 Equations SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : SemEnv Γ' :=
   SubSem NoSub      _  := tt;
@@ -149,6 +140,7 @@ Proof.
   - now rewrite IHe.
   - now rewrite IHe1, IHe2.
   - now rewrite IHe1, IHe2.
+  - now rewrite IHe.
   - now rewrite IHe.
   - now rewrite SemVar_RenSem.
   - extensionality z.
@@ -223,6 +215,7 @@ Proof.
   - now rewrite IHe.
   - now rewrite IHe1, IHe2.
   - now rewrite IHe1, IHe2.
+  - now rewrite IHe.
   - now rewrite IHe.
   - now rewrite SemVar_SubSem.
   - extensionality z.

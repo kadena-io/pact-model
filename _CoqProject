@@ -5,6 +5,7 @@ src/EnsemblesExt.v
 src/Group.v
 src/Ty.v
 src/Exp.v
+src/Pat.v
 src/Value.v
 src/Trace.v
 src/Ren.v

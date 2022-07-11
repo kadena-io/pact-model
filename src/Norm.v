@@ -6,6 +6,7 @@ Require Import
   Ty
   Exp
   Sub
+  (* Log *)
   Sem
   Multi.
 
@@ -107,6 +108,8 @@ Proof.
   - inv H3; now invert_step.
   - inv H5; now invert_step.
   - inv H4; now invert_step.
+  - inv H5; now invert_step.
+  - inv H4; now invert_step.
   - now f_equal; apply ValueP_irrelevance.
 Qed.
 
@@ -191,6 +194,14 @@ Proof.
   induction τ; simpl in *; simp SN in *;
   pose proof H as H1;
   apply step_preserves_halting in H1; intuition.
+  (* - admit. *)
+  (* - right. *)
+  (*   reduce. *)
+  (*   destruct H4. *)
+  (*   exists x; split; auto. *)
+  (*   split; intuition. *)
+  (*   eapply IHτ; eauto. *)
+  (*   now constructor. *)
   - eapply IHτ1; eauto.
     now constructor.
   - eapply IHτ2; eauto.
@@ -215,6 +226,14 @@ Proof.
   induction τ; simpl in *; simp SN in *;
   pose proof H as H1;
   apply step_preserves_halting in H1; intuition.
+  (* - admit. *)
+  (* - right. *)
+  (*   reduce. *)
+  (*   destruct H1. *)
+  (*   exists x; split; auto. *)
+  (*   split; intuition. *)
+  (*   eapply IHτ; eauto. *)
+  (*   now constructor. *)
   - eapply IHτ1; eauto.
     now constructor.
   - eapply IHτ2; eauto.
@@ -301,6 +320,16 @@ Proof.
     + exists xs.
       split.
       * now eapply multistep_CdrCons; eauto.
+      * now repeat constructor.
+  - destruct (SN_halts (IHe env H)) as [v [P [Q]]].
+    inv Q.
+    + exists ETrue.
+      split.
+      * now apply multistep_IsNilNil.
+      * now repeat constructor.
+    + exists EFalse.
+      split.
+      * now eapply multistep_IsNilCons; eauto.
       * now repeat constructor.
   - eapply step_preserves_SN'; eauto.
     now constructor.

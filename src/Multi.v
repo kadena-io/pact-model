@@ -227,26 +227,21 @@ Proof.
     now constructor.
 Qed.
 
-(*
-Lemma multistep_CdrCons {Γ τ} {e1 e1' : Γ ⊢ τ} {e2 e2' : Γ ⊢ (TyList τ)} :
-  ValueP e1' → (e1 --->* e1') →
-  ValueP e2' → (e2 --->* e2') → Cdr (Cons e1 e2) --->* e2'.
+Lemma multistep_IsNil1 {Γ τ} {xs xs' : Γ ⊢ (TyList τ)} :
+  (xs --->* xs') → IsNil xs --->* IsNil xs'.
+Proof. now simpl_multistep. Qed.
+
+Lemma multistep_IsNilNil {Γ τ} {xs : Γ ⊢ (TyList τ)} :
+  (xs --->* Nil) → IsNil xs --->* ETrue.
 Proof.
   intros.
-  induction H; intros.
-  - induction H0; intros.
-    + apply multi_R.
-      now constructor.
-    + rewrite <- IHmulti; auto.
-      apply multistep_Cdr1.
-      apply multistep_Cons2; eauto.
-      now apply multi_R.
-  - rewrite <- IHmulti; auto.
-    apply multistep_Cdr1; auto.
-    apply multistep_Cons1; auto.
-    now apply multi_R.
+  dependent induction H.
+  - apply multi_R.
+    now constructor.
+  - rewrite <- IHmulti; eauto.
+    apply multi_R.
+    now constructor.
 Qed.
-*)
 
 Lemma multistep_App2 {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :
   ValueP v → (e --->* e') → APP v e --->* APP v e'.
@@ -256,8 +251,8 @@ End Multi.
 
 Notation " t '--->*' t' " := (multi Step t t') (at level 40).
 
-(** The following two definitions fail with a typeclass instance mismatch when
-    defined within the section above. *)
+(** The following two definitions cannot be completed, due to a typeclass
+    instance mismatch, when defined within the section above. *)
 
 Lemma multistep_CarCons {A : Type} {S : HostExprsSem A}
       {Γ τ} {d e1 : Γ ⊢ τ} {e2 xs : Γ ⊢ (TyList τ)} :
@@ -290,5 +285,21 @@ Proof.
                         eq_refl JMeq_refl JMeq_refl JMeq_refl).
     rewrite <- IHmulti.
     apply multistep_Cdr1.
+    now apply multi_R.
+Qed.
+
+Lemma multistep_IsNilCons {A : Type} {S : HostExprsSem A}
+      {Γ τ} {e1 : Γ ⊢ τ} {e2 xs : Γ ⊢ (TyList τ)} :
+  ValueP e1 → ValueP e2 →
+  (xs --->* Cons e1 e2) → IsNil xs --->* EFalse.
+Proof.
+  intros.
+  dependent induction H.
+  - apply multi_R.
+    now constructor.
+  - specialize (IHmulti _ _ _ _ _ y X X0
+                        eq_refl JMeq_refl JMeq_refl JMeq_refl).
+    rewrite <- IHmulti.
+    apply multistep_IsNil1.
     now apply multi_R.
 Qed.

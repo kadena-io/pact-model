@@ -237,6 +237,16 @@ Example exp_cdr_nil :
     MkΣ Nil Empty MT.
 Proof. reflexivity. Qed.
 
+Example exp_isnil_cons :
+  run 20 (IsNil (Cons (num 123) (Cons (num 456) Nil))) =
+    MkΣ EFalse Empty MT.
+Proof. reflexivity. Qed.
+
+Example exp_isnil_nil :
+  run 20 (IsNil (τ:=TyHost TyInteger) Nil) =
+    MkΣ ETrue Empty MT.
+Proof. reflexivity. Qed.
+
 Example exp_lam τ :
   run 10 (LAM (cod:=τ) (VAR ZV)) =
     MkΣ (LAM (VAR ZV)) Empty MT.

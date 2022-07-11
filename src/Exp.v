@@ -46,6 +46,7 @@ Inductive Exp Γ : Ty → Type :=
   | Cons {τ}            : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
   | Car {τ}             : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ τ
   | Cdr {τ}             : Exp Γ (TyList τ) → Exp Γ (TyList τ)
+  | IsNil {τ}           : Exp Γ (TyList τ) → Exp Γ TyBool
 
   | Seq {τ τ'}          : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
@@ -72,6 +73,7 @@ Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   | Cons _ x xs   => 1 + Exp_size x + Exp_size xs
   | Car _ d xs    => 1 + Exp_size d + Exp_size xs
   | Cdr _ xs      => 1 + Exp_size xs
+  | IsNil _ xs    => 1 + Exp_size xs
   | Seq _ x y     => 1 + Exp_size x + Exp_size y
   | VAR _ v       => 1
   | LAM _ e       => 1 + Exp_size e
@@ -101,6 +103,7 @@ Arguments Nil {A H Γ τ}.
 Arguments Cons {A H Γ τ} _ _.
 Arguments Car {A H Γ τ} _ _.
 Arguments Cdr {A H Γ τ} _.
+Arguments IsNil {A H Γ τ} _.
 Arguments Seq {A H Γ τ τ'} _ _.
 Arguments VAR {A H Γ τ} _.
 Arguments LAM {A H Γ dom cod} _.

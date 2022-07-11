@@ -79,6 +79,7 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | Cons x xs     => Cons (SubExp s x) (SubExp s xs)
   | Car d xs      => Car (SubExp s d) (SubExp s xs)
   | Cdr xs        => Cdr (SubExp s xs)
+  | IsNil xs      => IsNil (SubExp s xs)
   | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
 
   | VAR v         => SubVar s v

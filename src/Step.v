@@ -98,6 +98,16 @@ Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
     ValueP xs →
     Cdr (Cons x xs) ---> xs
 
+  | ST_IsNil1 Γ τ (l l' : Exp Γ (TyList τ)) :
+    l ---> l' →
+    IsNil l ---> IsNil l'
+  | ST_IsNilNil Γ τ :
+    IsNil (Nil (Γ:=Γ) (τ:=τ)) ---> ETrue
+  | ST_IsNilCons Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) :
+    ValueP x →
+    ValueP xs →
+    IsNil (Cons x xs) ---> EFalse
+
   | ST_AppHost Γ dom cod (f : HostExp (dom ⟶ cod)) (v : Exp Γ dom) :
     ∀ H : ValueP v,
     APP (HostedFun f) v ---> CallHost f v H
@@ -355,6 +365,14 @@ Proof.
       inv v; now eexists; constructor.
     + right; reduce.
       now exists (Cdr x); constructor.
+  - right.
+    destruct IHe.
+    + inv v.
+      * now exists ETrue; constructor.
+      * now exists EFalse; constructor.
+    + reduce.
+      exists (IsNil x).
+      now constructor.
   - right.
     now exists e2; constructor.
   - now inversion v.

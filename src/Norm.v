@@ -194,14 +194,6 @@ Proof.
   induction τ; simpl in *; simp SN in *;
   pose proof H as H1;
   apply step_preserves_halting in H1; intuition.
-  (* - admit. *)
-  (* - right. *)
-  (*   reduce. *)
-  (*   destruct H4. *)
-  (*   exists x; split; auto. *)
-  (*   split; intuition. *)
-  (*   eapply IHτ; eauto. *)
-  (*   now constructor. *)
   - eapply IHτ1; eauto.
     now constructor.
   - eapply IHτ2; eauto.
@@ -226,14 +218,6 @@ Proof.
   induction τ; simpl in *; simp SN in *;
   pose proof H as H1;
   apply step_preserves_halting in H1; intuition.
-  (* - admit. *)
-  (* - right. *)
-  (*   reduce. *)
-  (*   destruct H1. *)
-  (*   exists x; split; auto. *)
-  (*   split; intuition. *)
-  (*   eapply IHτ; eauto. *)
-  (*   now constructor. *)
   - eapply IHτ1; eauto.
     now constructor.
   - eapply IHτ2; eauto.
@@ -369,52 +353,5 @@ Proof.
   pose proof (Exp_SN e).
   induction τ; now simpl in H.
 Qed.
-
-(*
-jww (2022-07-11): An attempt using a logical predicate
-
-Lemma SubExp_SN' {Γ Γ'} (env : Sub Γ' Γ) τ (e : Exp Γ τ) :
-  SubP (λ _ e, ¬ (e ---> e)) env →
-  ExpP (λ _ e, ¬ (e ---> e)) (SubExp env e).
-Proof.
-  generalize dependent env.
-  induction e; intros; simpl.
-  - admit.
-  - admit.
-  - admit.
-  - now simp ExpP; intro H'; inversion H'.
-  - now simp ExpP; intro H'; inversion H'.
-  - now simp ExpP; intro H'; inversion H'.
-  - admit.
-  - admit.
-  - now destruct (IHe env H).
-  - now destruct (IHe env H).
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - induction env.
-    + now inv v.
-    + simpl in *.
-      inv H.
-      now dependent elimination v; simp SubVar.
-  - eexists.
-    + now intro; inv H0.
-    + intros.
-      destruct (SN_halts H0) as [v [P [Q]]].
-      apply (multistep_preserves_SN' (e':=SubExp (Push v env) e)); auto.
-      eapply multi_trans; eauto.
-      * eapply multistep_App2; eauto.
-        now constructor.
-      * apply multi_R; auto.
-        rewrite SubExp_Push.
-        now apply ST_AppAbs.
-      * apply IHe.
-        constructor; auto.
-        now eapply multistep_preserves_SN; eauto.
-  - now apply IHe1, IHe2.
-Admitted.
-*)
 
 End Norm.

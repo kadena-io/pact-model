@@ -177,13 +177,4 @@ Qed.
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RenExp skip1.
 
-Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (VAR ZV).
-
-(** Now that we have weakening, we can define composition. *)
-
-Definition composition {Γ τ τ' τ''}
-           (f : Exp Γ (τ' ⟶ τ''))
-           (g : Exp Γ (τ ⟶ τ')) : Exp Γ (τ ⟶ τ'') :=
-  LAM (APP (wk f) (APP (wk g) (VAR ZV))).
-
 End Ren.

@@ -342,6 +342,8 @@ Proof.
 Qed.
 
 (*
+jww (2022-07-11): An attempt using a logical predicate
+
 Lemma SubExp_SN' {Γ Γ'} (env : Sub Γ' Γ) τ (e : Exp Γ τ) :
   SubP (λ _ e, ¬ (e ---> e)) env →
   ExpP (λ _ e, ¬ (e ---> e)) (SubExp env e).

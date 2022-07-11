@@ -18,17 +18,64 @@ Unset Transparent Obligations.
 
 Section Cat.
 
-Import ListNotations.
-
 Context {A : Type}.
 Context `{L : HostExprsSem A}.
+
+Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (VAR ZV).
+
+Lemma SemExp_identity {Γ τ} (se : SemEnv Γ) :
+  SemExp (identity Γ τ) se = Datatypes.id.
+Proof. now extensionality e. Qed.
+
+Definition composition {Γ τ τ' τ''}
+           (f : Exp Γ (τ' ⟶ τ''))
+           (g : Exp Γ (τ ⟶ τ')) : Exp Γ (τ ⟶ τ'') :=
+  LAM (APP (wk f) (APP (wk g) (VAR ZV))).
+
+Lemma SemExp_composition `(E : SemEnv Γ)
+      {τ τ' τ''} (f : Exp Γ (τ' ⟶ τ'')) (g : Exp Γ (τ ⟶ τ')) :
+  SemExp (composition f g) E = Basics.compose (SemExp f E) (SemExp g E).
+Proof.
+  extensionality z.
+  fold SemTy in z.
+  unfold composition; simpl.
+  now rewrite !SemExp_wk.
+Qed.
+
+Lemma SemExp_composition_identity_right `(E : SemEnv Γ)
+      {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
+  SemExp (composition f (identity Γ τ)) E = SemExp f E.
+Proof.
+  rewrite SemExp_composition.
+  reflexivity.
+Qed.
+
+Lemma SemExp_composition_identity_left `(E : SemEnv Γ)
+      {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
+  SemExp (composition (identity Γ τ') f) E = SemExp f E.
+Proof.
+  rewrite SemExp_composition.
+  reflexivity.
+Qed.
+
+Lemma SemExp_composition_assoc `(E : SemEnv Γ)
+      {τ τ' τ'' τ'''}
+      (f : Exp Γ (τ'' ⟶ τ'''))
+      (g : Exp Γ (τ' ⟶ τ''))
+      (h : Exp Γ (τ ⟶ τ')) :
+  SemExp (composition f (composition g h)) E =
+  SemExp (composition (composition f g) h) E.
+Proof.
+  rewrite !SemExp_composition.
+  now rewrite compose_assoc.
+Qed.
 
 Program Definition Pact Γ : Category := {|
   obj     := Ty;
   hom     := λ A B : Ty, Exp Γ (A ⟶ B);
   homset  := λ _ _, {| equiv := λ f g, SemExp f = SemExp g |};
-  id      := @Ren.identity _ _ Γ;
-  compose := @Ren.composition _ _ Γ
+  id      := @identity Γ;
+  compose := @composition Γ
 |}.
 Next Obligation. equivalence; congruence. Qed.
 Next Obligation.
@@ -68,7 +115,7 @@ Next Obligation.
   now apply H.
 Qed.
 
-#[global]
+#[export]
 Program Instance Pact_Terminal Γ : @Terminal (Pact Γ) := {
   terminal_obj := TyUnit;
   one := λ _, LAM EUnit
@@ -80,7 +127,7 @@ Next Obligation.
   now destruct (SemExp f se x0), (SemExp g se x0).
 Qed.
 
-#[global]
+#[export]
 Program Instance Pact_Cartesian Γ : @Cartesian (Pact Γ) := {
   product_obj := TyPair;
   fork := λ _ _ _ f g,
@@ -140,14 +187,18 @@ Next Obligation.
     now destruct (SemExp h se x2).
 Qed.
 
-#[global]
+Definition curry {Γ a b c} (f : Exp Γ (a × b ⟶ c)) : Exp Γ (a ⟶ b ⟶ c) :=
+  LAM (LAM (APP (wk (wk f)) (Pair (VAR (SV ZV)) (VAR ZV)))).
+
+Definition uncurry {Γ a b c} (f : Exp Γ (a ⟶ b ⟶ c)) : Exp Γ (a × b ⟶ c) :=
+  LAM (APP (APP (wk f) (Fst (VAR ZV))) (Snd (VAR ZV))).
+
+#[export]
 Program Instance Pact_Closed Γ : @Closed (Pact Γ) _ := {
   exponent_obj := TyArrow;
   exp_iso := λ _ _ _,
-    {| to   := {| morphism := λ f,
-                   LAM (LAM (APP (wk (wk f)) (Pair (VAR (SV ZV)) (VAR ZV)))) |}
-     ; from := {| morphism := λ f,
-                   LAM (APP (APP (wk f) (Fst (VAR ZV))) (Snd (VAR ZV))) |} |}
+    {| to   := {| morphism := curry |}
+     ; from := {| morphism := uncurry |} |}
 }.
 Next Obligation.
   extensionality se.

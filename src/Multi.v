@@ -259,7 +259,7 @@ Notation " t '--->*' t' " := (multi Step t t') (at level 40).
 (** The following two definitions fail with a typeclass instance mismatch when
     defined within the section above. *)
 
-Lemma multistep_CarCons' {A : Type} {S : HostExprsSem A}
+Lemma multistep_CarCons {A : Type} {S : HostExprsSem A}
       {Γ τ} {d e1 : Γ ⊢ τ} {e2 xs : Γ ⊢ (TyList τ)} :
   ValueP d → ValueP e1 → ValueP e2 →
   (xs --->* Cons e1 e2) → Car d xs --->* e1.

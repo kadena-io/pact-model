@@ -253,46 +253,4 @@ Proof.
   now rewrite IHr.
 Qed.
 
-Lemma SemExp_identity {Γ τ} (se : SemEnv Γ) :
-  SemExp (identity Γ τ) se = id.
-Proof. now extensionality e. Qed.
-
-Lemma SemExp_composition `(E : SemEnv Γ)
-      {τ τ' τ''} (f : Exp Γ (τ' ⟶ τ'')) (g : Exp Γ (τ ⟶ τ')) :
-  SemExp (composition f g) E = SemExp f E ∘ SemExp g E.
-Proof.
-  extensionality z.
-  fold SemTy in z.
-  unfold composition; simpl.
-  now rewrite !SemExp_wk.
-Qed.
-
-Lemma SemExp_composition_identity_right `(E : SemEnv Γ)
-      {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
-  SemExp (composition f (identity Γ τ)) E = SemExp f E.
-Proof.
-  rewrite SemExp_composition.
-  reflexivity.
-Qed.
-
-Lemma SemExp_composition_identity_left `(E : SemEnv Γ)
-      {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
-  SemExp (composition (identity Γ τ') f) E = SemExp f E.
-Proof.
-  rewrite SemExp_composition.
-  reflexivity.
-Qed.
-
-Lemma SemExp_composition_assoc `(E : SemEnv Γ)
-      {τ τ' τ'' τ'''}
-      (f : Exp Γ (τ'' ⟶ τ'''))
-      (g : Exp Γ (τ' ⟶ τ''))
-      (h : Exp Γ (τ ⟶ τ')) :
-  SemExp (composition f (composition g h)) E =
-  SemExp (composition (composition f g) h) E.
-Proof.
-  rewrite !SemExp_composition.
-  now rewrite compose_assoc.
-Qed.
-
 End Sem.

@@ -1,15 +1,13 @@
 Require Import
   Coq.Unicode.Utf8
   Coq.Program.Program
-  Coq.Lists.List
-  Coq.Relations.Relation_Definitions
   Coq.Classes.CRelationClasses
   Coq.Classes.Morphisms
   Ty
   Exp
   Sub
   Sem
-  Eval.
+  Multi.
 
 From Equations Require Import Equations.
 
@@ -233,239 +231,6 @@ Proof.
   now eapply step_preserves_SN'; eauto.
 Qed.
 
-Lemma multistep_Seq {Γ τ} {e1 : Γ ⊢ τ} {τ'} {e2 : Γ ⊢ τ'} :
-  Seq e1 e2 --->* e2.
-Proof.
-  intros.
-  eapply multi_step; eauto.
-  - now constructor.
-  - now apply multi_refl.
-Qed.
-
-Ltac simpl_multistep :=
-  intros;
-  match goal with
-  | [ H : _ --->* _ |- _ ] => induction H
-  end;
-  [ now apply multi_refl
-  | eapply multi_step; eauto;
-    now constructor ].
-
-Lemma multistep_If {Γ} {e1 e1' : Γ ⊢ TyBool} {τ} {e2 e3 : Γ ⊢ τ} :
-  (e1 --->* e1') → If e1 e2 e3 --->* If e1' e2 e3.
-Proof. now simpl_multistep. Qed.
-
-Lemma multistep_Pair1 {Γ τ1 τ2} {e1 e1' : Γ ⊢ τ1} {e2 : Γ ⊢ τ2} :
-  (e1 --->* e1') → Pair e1 e2 --->* Pair e1' e2.
-Proof. now simpl_multistep. Qed.
-
-Lemma multistep_Pair2 {Γ τ1 τ2} {e1 : Γ ⊢ τ1} {e2 e2' : Γ ⊢ τ2} :
-  ValueP e1 → (e2 --->* e2') → Pair e1 e2 --->* Pair e1 e2'.
-Proof. now simpl_multistep. Qed.
-
-Lemma multistep_Pair {Γ τ1 τ2} {e1 e1' : Γ ⊢ τ1} {e2 e2' : Γ ⊢ τ2} :
-  ValueP e1' →
-  (e1 --->* e1') → (e2 --->* e2') → Pair e1 e2 --->* Pair e1' e2'.
-Proof.
-  intros.
-  induction H; intros.
-  - now apply multistep_Pair2; auto.
-  - rewrite <- IHmulti; auto.
-    apply multistep_Pair1; auto.
-    now econstructor; eauto.
-Qed.
-
-Lemma multistep_Fst1 {Γ τ1 τ2} {p p' : Γ ⊢ (τ1 × τ2)} :
-  (p --->* p') → Fst p --->* Fst p'.
-Proof. now simpl_multistep. Qed.
-
-Lemma multistep_FstPair {Γ τ1 τ2} {e1 e1' : Γ ⊢ τ1} {e2 e2' : Γ ⊢ τ2} :
-  ValueP e1' → (e1 --->* e1') →
-  ValueP e2' → (e2 --->* e2') → Fst (Pair e1 e2) --->* e1'.
-Proof.
-  intros.
-  induction H; intros.
-  - induction H0; intros.
-    + apply multi_R.
-      now constructor.
-    + rewrite <- IHmulti at 2; auto.
-      apply multistep_Fst1.
-      apply multistep_Pair; eauto.
-      constructor.
-      now apply multi_R.
-  - rewrite <- IHmulti; auto.
-    apply multistep_Fst1; auto.
-    apply multistep_Pair1; auto.
-    now apply multi_R.
-Qed.
-
-Lemma multistep_Snd1 {Γ τ1 τ2} {p p' : Γ ⊢ (τ1 × τ2)} :
-  (p --->* p') → Snd p --->* Snd p'.
-Proof. now simpl_multistep. Qed.
-
-Lemma multistep_SndPair {Γ τ1 τ2} {e1 e1' : Γ ⊢ τ1} {e2 e2' : Γ ⊢ τ2} :
-  ValueP e1' → (e1 --->* e1') →
-  ValueP e2' → (e2 --->* e2') → Snd (Pair e1 e2) --->* e2'.
-Proof.
-  intros.
-  induction H; intros.
-  - induction H0; intros.
-    + apply multi_R.
-      now constructor.
-    + rewrite <- IHmulti; auto.
-      apply multistep_Snd1.
-      apply multistep_Pair; eauto.
-      constructor.
-      now apply multi_R.
-  - rewrite <- IHmulti; auto.
-    apply multistep_Snd1; auto.
-    apply multistep_Pair1; auto.
-    now apply multi_R.
-Qed.
-
-Lemma multistep_Cons1 {Γ τ} {x x' : Γ ⊢ τ} {xs : Γ ⊢ (TyList τ)} :
-  (x --->* x') → Cons x xs --->* Cons x' xs.
-Proof. now simpl_multistep. Qed.
-
-Lemma multistep_Cons2 {Γ τ} {x : Γ ⊢ τ} {xs xs' : Γ ⊢ (TyList τ)} :
-  ValueP x → (xs --->* xs') → Cons x xs --->* Cons x xs'.
-Proof. now simpl_multistep. Qed.
-
-Lemma multistep_Cons {Γ τ} {e1 e1' : Γ ⊢ τ} {e2 e2' : Γ ⊢ (TyList τ)} :
-  ValueP e1' →
-  (e1 --->* e1') → (e2 --->* e2') → Cons e1 e2 --->* Cons e1' e2'.
-Proof.
-  intros.
-  induction H; intros.
-  - now apply multistep_Cons2; auto.
-  - rewrite <- IHmulti; auto.
-    apply multistep_Cons1; auto.
-    now econstructor; eauto.
-Qed.
-
-Lemma multistep_Car1 {Γ τ} {d d' : Γ ⊢ τ} {xs : Γ ⊢ (TyList τ)} :
-  (d --->* d') → Car d xs --->* Car d' xs.
-Proof. now simpl_multistep. Qed.
-
-Lemma multistep_Car2 {Γ τ} {d : Γ ⊢ τ} {xs xs' : Γ ⊢ (TyList τ)} :
-  ValueP d → (xs --->* xs') → Car d xs --->* Car d xs'.
-Proof. now simpl_multistep. Qed.
-
-Lemma multistep_Car {Γ τ} {d d' : Γ ⊢ τ} {xs xs' : Γ ⊢ (TyList τ)} :
-  ValueP d' →
-  (d --->* d') → (xs --->* xs') → Car d xs --->* Car d' xs'.
-Proof.
-  intros.
-  induction H; intros.
-  - now apply multistep_Car2.
-  - rewrite <- IHmulti; eauto.
-    apply multistep_Car1; auto.
-    now econstructor; eauto.
-Qed.
-
-Lemma multistep_CarNil {Γ τ} {d d' : Γ ⊢ τ} {xs : Γ ⊢ (TyList τ)} :
-  ValueP d' → (d --->* d') →
-  (xs --->* Nil) → Car d xs --->* d'.
-Proof.
-  intros.
-  dependent induction H.
-  - erewrite multistep_Car2; eauto.
-    apply multi_R.
-    now constructor.
-  - rewrite <- IHmulti; eauto.
-    apply multistep_Car1.
-    now apply multi_R.
-Qed.
-
-Lemma multistep_CarCons {Γ τ} {d e1 : Γ ⊢ τ} {e2 xs : Γ ⊢ (TyList τ)} :
-  ValueP d → ValueP e1 → ValueP e2 →
-  (xs --->* Cons e1 e2) → Car d xs --->* e1.
-Proof.
-  intros.
-  dependent induction H.
-  - erewrite multistep_Car2; eauto.
-    + apply multi_R.
-      now constructor; eauto.
-    + now constructor; eauto.
-  - specialize (IHmulti L _ _ d _ _ _ X X0 X1
-                        eq_refl JMeq_refl JMeq_refl JMeq_refl).
-    rewrite <- IHmulti; auto.
-    apply multistep_Car2; auto.
-    now apply multi_R.
-Fail Qed.
-Admitted.
-
-Lemma multistep_Cdr1 {Γ τ} {xs xs' : Γ ⊢ (TyList τ)} :
-  (xs --->* xs') → Cdr xs --->* Cdr xs'.
-Proof. now simpl_multistep. Qed.
-
-Lemma multistep_CdrNil {Γ τ} {xs : Γ ⊢ (TyList τ)} :
-  (xs --->* Nil) → Cdr xs --->* Nil.
-Proof.
-  intros.
-  dependent induction H.
-  - apply multi_R.
-    now constructor.
-  - rewrite <- IHmulti; eauto.
-    apply multi_R.
-    now constructor.
-Qed.
-
-Lemma multistep_CdrCons {Γ τ} {e1 : Γ ⊢ τ} {e2 xs : Γ ⊢ (TyList τ)} :
-  ValueP e1 → ValueP e2 →
-  (xs --->* Cons e1 e2) → Cdr xs --->* e2.
-Proof.
-  intros.
-  dependent induction H.
-  - apply multi_R.
-    now constructor.
-  - specialize (IHmulti L _ _ _ _ y X X0
-                        eq_refl JMeq_refl JMeq_refl JMeq_refl).
-    rewrite <- IHmulti.
-    apply multistep_Cdr1.
-    now apply multi_R.
-Fail Qed.
-Admitted.
-
-(*
-Lemma multistep_CdrCons {Γ τ} {e1 e1' : Γ ⊢ τ} {e2 e2' : Γ ⊢ (TyList τ)} :
-  ValueP e1' → (e1 --->* e1') →
-  ValueP e2' → (e2 --->* e2') → Cdr (Cons e1 e2) --->* e2'.
-Proof.
-  intros.
-  induction H; intros.
-  - induction H0; intros.
-    + apply multi_R.
-      now constructor.
-    + rewrite <- IHmulti; auto.
-      apply multistep_Cdr1.
-      apply multistep_Cons2; eauto.
-      now apply multi_R.
-  - rewrite <- IHmulti; auto.
-    apply multistep_Cdr1; auto.
-    apply multistep_Cons1; auto.
-    now apply multi_R.
-Qed.
-*)
-
-Lemma multistep_App2 {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :
-  ValueP v → (e --->* e') → APP v e --->* APP v e'.
-Proof. now simpl_multistep. Qed.
-
-#[export]
-Program Instance multi_Step_respects {Γ τ} :
-  Proper (multi Step --> multi Step ==> impl) (multi (Step (Γ:=Γ) (τ:=τ))).
-Next Obligation.
-  generalize dependent y0.
-  generalize dependent y.
-  induction H1; intros; eauto;
-  unfold flip in *.
-  - now transitivity x.
-  - pose proof (multi_step _ _ _ _ H H1).
-    pose proof (multi_trans _ _ _ _ H0 H3).
-    now transitivity z.
-Qed.
-
 Lemma SubExp_SN {Γ Γ'} (env : Sub Γ' Γ) {τ} (e : Exp Γ τ) :
   SN_Sub env →
   SN (SubExp env e).
@@ -575,5 +340,50 @@ Proof.
   pose proof (Exp_SN e).
   induction τ; now simpl in H.
 Qed.
+
+(*
+Lemma SubExp_SN' {Γ Γ'} (env : Sub Γ' Γ) τ (e : Exp Γ τ) :
+  SubP (λ _ e, ¬ (e ---> e)) env →
+  ExpP (λ _ e, ¬ (e ---> e)) (SubExp env e).
+Proof.
+  generalize dependent env.
+  induction e; intros; simpl.
+  - admit.
+  - admit.
+  - admit.
+  - now simp ExpP; intro H'; inversion H'.
+  - now simp ExpP; intro H'; inversion H'.
+  - now simp ExpP; intro H'; inversion H'.
+  - admit.
+  - admit.
+  - now destruct (IHe env H).
+  - now destruct (IHe env H).
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - induction env.
+    + now inv v.
+    + simpl in *.
+      inv H.
+      now dependent elimination v; simp SubVar.
+  - eexists.
+    + now intro; inv H0.
+    + intros.
+      destruct (SN_halts H0) as [v [P [Q]]].
+      apply (multistep_preserves_SN' (e':=SubExp (Push v env) e)); auto.
+      eapply multi_trans; eauto.
+      * eapply multistep_App2; eauto.
+        now constructor.
+      * apply multi_R; auto.
+        rewrite SubExp_Push.
+        now apply ST_AppAbs.
+      * apply IHe.
+        constructor; auto.
+        now eapply multistep_preserves_SN; eauto.
+  - now apply IHe1, IHe2.
+Admitted.
+*)
 
 End Norm.

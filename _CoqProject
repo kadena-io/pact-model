@@ -10,9 +10,10 @@ src/Trace.v
 src/Ren.v
 src/Sub.v
 src/Sem.v
-src/Eval.v
+src/Step.v
+src/Multi.v
 src/Norm.v
 src/Cat.v
-src/CEK.v
+src/Eval.v
 src/Pact.v
 src/Capabilities.v

@@ -211,24 +211,6 @@ Proof.
     now apply multi_R.
 Qed.
 
-Lemma multistep_CarCons {Γ τ} {d e1 : Γ ⊢ τ} {e2 xs : Γ ⊢ (TyList τ)} :
-  ValueP d → ValueP e1 → ValueP e2 →
-  (xs --->* Cons e1 e2) → Car d xs --->* e1.
-Proof.
-  intros.
-  dependent induction H.
-  - erewrite multistep_Car2; eauto.
-    + apply multi_R.
-      now constructor; eauto.
-    + now constructor; eauto.
-  - specialize (IHmulti _ _ _ d _ _ _ X X0 X1
-                        eq_refl JMeq_refl JMeq_refl JMeq_refl).
-    rewrite <- IHmulti; auto.
-    apply multistep_Car2; auto.
-    now apply multi_R.
-Fail Qed.
-Admitted.
-
 Lemma multistep_Cdr1 {Γ τ} {xs xs' : Γ ⊢ (TyList τ)} :
   (xs --->* xs') → Cdr xs --->* Cdr xs'.
 Proof. now simpl_multistep. Qed.
@@ -244,22 +226,6 @@ Proof.
     apply multi_R.
     now constructor.
 Qed.
-
-Lemma multistep_CdrCons {Γ τ} {e1 : Γ ⊢ τ} {e2 xs : Γ ⊢ (TyList τ)} :
-  ValueP e1 → ValueP e2 →
-  (xs --->* Cons e1 e2) → Cdr xs --->* e2.
-Proof.
-  intros.
-  dependent induction H.
-  - apply multi_R.
-    now constructor.
-  - specialize (IHmulti _ _ _ _ _ y X X0
-                        eq_refl JMeq_refl JMeq_refl JMeq_refl).
-    rewrite <- IHmulti.
-    apply multistep_Cdr1.
-    now apply multi_R.
-Fail Qed.
-Admitted.
 
 (*
 Lemma multistep_CdrCons {Γ τ} {e1 e1' : Γ ⊢ τ} {e2 e2' : Γ ⊢ (TyList τ)} :
@@ -289,3 +255,40 @@ Proof. now simpl_multistep. Qed.
 End Multi.
 
 Notation " t '--->*' t' " := (multi Step t t') (at level 40).
+
+(** The following two definitions fail with a typeclass instance mismatch when
+    defined within the section above. *)
+
+Lemma multistep_CarCons' {A : Type} {S : HostExprsSem A}
+      {Γ τ} {d e1 : Γ ⊢ τ} {e2 xs : Γ ⊢ (TyList τ)} :
+  ValueP d → ValueP e1 → ValueP e2 →
+  (xs --->* Cons e1 e2) → Car d xs --->* e1.
+Proof.
+  intros.
+  dependent induction H.
+  - erewrite multistep_Car2; eauto.
+    + apply multi_R.
+      now constructor; eauto.
+    + now constructor; eauto.
+  - specialize (IHmulti _ _ _ d _ _ _ X X0 X1
+                        eq_refl JMeq_refl JMeq_refl JMeq_refl).
+    rewrite <- IHmulti; auto.
+    apply multistep_Car2; auto.
+    now apply multi_R.
+Qed.
+
+Lemma multistep_CdrCons {A : Type} {S : HostExprsSem A}
+      {Γ τ} {e1 : Γ ⊢ τ} {e2 xs : Γ ⊢ (TyList τ)} :
+  ValueP e1 → ValueP e2 →
+  (xs --->* Cons e1 e2) → Cdr xs --->* e2.
+Proof.
+  intros.
+  dependent induction H.
+  - apply multi_R.
+    now constructor.
+  - specialize (IHmulti _ _ _ _ _ y X X0
+                        eq_refl JMeq_refl JMeq_refl JMeq_refl).
+    rewrite <- IHmulti.
+    apply multistep_Cdr1.
+    now apply multi_R.
+Qed.

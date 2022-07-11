@@ -4,9 +4,8 @@ Require Export
   Exp
   Sub
   Sem
-  Eval
   Norm
-  CEK.
+  Eval.
 
 From Equations Require Import Equations.
 

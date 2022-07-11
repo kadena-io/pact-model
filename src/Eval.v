@@ -3,8 +3,7 @@ Require Export
   Exp
   Sub
   Sem
-  Eval
-  Norm.
+  Step.
 
 From Equations Require Import Equations.
 
@@ -129,10 +128,12 @@ Ltac ceksimp :=
 
 Ltac is_step := ceksimp; firstorder eauto.
 
+(*
 Theorem cek_sound τ (e e' : Exp [] τ) :
   e --->* e' → ValueP e' →      (* evaluation halts at e' *)
   ∃ gas, loop gas (inject e) = MkΣ e' Empty MT.
 Proof.
 Abort.
+*)
 
 End Eval.

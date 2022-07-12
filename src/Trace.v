@@ -6,6 +6,7 @@ Require Export
   Value.
 
 From Equations Require Import Equations.
+Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -218,13 +219,13 @@ Definition invariant {Γ u v} (ctx : EvalContext u v) (env : ClEnv Γ) : Type :=
 Definition termination {u} (t : Exp [] u) : Trace t NoCl MT.
 Proof.
   dependent induction t.
-  17: {
-    unshelve eapply TLookup; [constructor|].
-    now dependent elimination v.
-  }
-  17: {
-    now apply TDone.
-  }
+  (* 18: { *)
+  (*   unshelve eapply TLookup; [constructor|]. *)
+  (*   now dependent elimination v. *)
+  (* } *)
+  (* 18: { *)
+  (*   now apply TDone. *)
+  (* } *)
 Abort.
 
 (*

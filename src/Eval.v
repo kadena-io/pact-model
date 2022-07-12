@@ -6,6 +6,7 @@ Require Export
   Step.
 
 From Equations Require Import Equations.
+Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -35,10 +36,12 @@ Equations with_closure `(a : Exp Γ dom) `(ρ : ValEnv Γ)
           `(κ : Kont cod τ) `(f : Value (dom ⟶ cod)) : Σ τ :=
   with_closure a ρ κ (ClosureExp (Lambda e)) :=
     MkΣ a ρ (FN (λ v, MkΣ e (Val v Empty) κ));
-  with_closure a ρ κ (ClosureExp (Func f)) :=
-    MkΣ a ρ (FN (λ v, let '(existT _ x H) := valueToExp v in
-                      MkΣ (CallHost f x H) Empty κ)).
+  (* with_closure a ρ κ (ClosureExp (Func f)) := *)
+  (*   MkΣ a ρ (FN (λ v, let '(existT _ x H) := valueToExp v in *)
+  (*                     MkΣ (CallHost f x H) Empty κ)) *)
+.
 
+(*
 Equations IfBody `(v : Value TyBool) {Γ τ} (t e : Exp Γ τ) : Exp Γ τ :=
   IfBody VTrue  t _ := t;
   IfBody VFalse _ e := e.
@@ -62,9 +65,11 @@ Equations VCdr `(v : Value (TyList r)) {Γ} (ρ : ValEnv Γ)
 Equations VIsNil `(v : Value (TyList r)) `(κ : Kont TyBool τ) : Σ τ :=
   VIsNil VNil        κ := MkΣ ETrue  Empty κ;
   VIsNil (VCons _ _) κ := MkΣ EFalse Empty κ.
+*)
 
-Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
+Fail Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   (* Constants *)
+(*
   step (MkΣ (r:=TyHost _)   (HostedVal x) ρ (FN f)) := f (HostValue x);
   step (MkΣ (r:=dom ⟶ cod) (HostedFun x) ρ (FN f)) := f (ClosureExp (Func x));
   step (MkΣ (HostedExp x) ρ κ) := MkΣ (projT1 (Reduce x)) ρ κ;
@@ -95,6 +100,7 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
 
   (* A sequence just evaluates the second, for now *)
   step (MkΣ (Seq e1 e2) ρ κ) := MkΣ e2 ρ κ;
+*)
 
   (* A variable might lookup a lambda, in which case continue evaluating down
      that vein; otherwise, if no continuation, this is as far as we can go. *)
@@ -113,6 +119,7 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
 
   step (MkΣ e ρ MT) := MkΣ e ρ MT.
 
+(*
 Equations loop (gas : nat) {τ : Ty} (s : Σ τ) : Σ τ :=
   loop O s := s;
   loop (S gas') s := loop gas' (step s).
@@ -133,6 +140,7 @@ Ltac ceksimp :=
           simpl).
 
 Ltac is_step := ceksimp; firstorder eauto.
+*)
 
 (*
 Theorem cek_sound τ (e e' : Exp [] τ) :

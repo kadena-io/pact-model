@@ -1,5 +1,7 @@
-Require Export
+Require Import
   Coq.Program.Program
+  Hask.Control.Monad
+  Hask.Data.Either
   ilist
   Ty
   Exp
@@ -14,19 +16,24 @@ Section Sem.
 
 Import ListNotations.
 
-Fixpoint SemTy `{HostTypes A} (τ : Ty) : Type :=
+Fixpoint SemTy `{HostExprs A} (τ : Ty) : Type :=
   match τ with
-  | TyHost τ        => HostTySem τ
-  | TyUnit          => unit
-  | TyBool          => bool
-  | TyList τ        => list (SemTy τ)
-  | TyPair t1 t2    => SemTy t1 * SemTy t2
+  (* | TyHost τ        => HostTySem τ *)
+  (* | TyUnit          => unit *)
+  (* | TyBool          => bool *)
+  (* | TyList τ        => list (SemTy τ) *)
+  (* | TyPair t1 t2    => SemTy t1 * SemTy t2 *)
+  (* | TyArrow dom cod => SemTy dom → Err + SemTy cod *)
   | TyArrow dom cod => SemTy dom → SemTy cod
   end.
 
 Class HostExprsSem (A : Type) : Type := {
   has_host_exprs :> HostExprs A;
+  (* HostExpSem {τ} : HostExp τ → Err + SemTy τ; *)
   HostExpSem {τ} : HostExp τ → SemTy τ;
+
+  (* HostExpSem_valid {ty} (e : HostExp ty) : *)
+  (*   ∃ x, HostExpSem e = pure x; *)
 
   CallHost {Γ dom cod} :
     HostExp (dom ⟶ cod) → ∀ v : Exp Γ dom, ValueP v → Exp Γ cod;
@@ -94,32 +101,118 @@ Proof.
       now rewrite <- IHΓ; simp RcR; simp RenSem.
 Qed.
 
+(*
+Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → Err + SemTy τ :=
+  match e with
+  | HostedExp x   => λ _,  HostExpSem x
+  | HostedVal x   => λ _,  HostExpSem x
+  | HostedFun x   => λ _,  HostExpSem x
+  | Error e       => λ _,  inl e
+  | EUnit         => λ _,  pure tt
+  | ETrue         => λ _,  pure true
+  | EFalse        => λ _,  pure false
+  | If b t e      => λ se, b' <- SemExp b se ;
+                           if b' : bool
+                           then SemExp t se
+                           else SemExp e se
+  | Pair x y      => λ se, x' <- SemExp x se ;
+                           y' <- SemExp y se ;
+                           pure (x', y')
+  | Fst p         => λ se, fst <$> SemExp p se
+  | Snd p         => λ se, snd <$> SemExp p se
+  | Nil           => λ se, pure nil
+  | Cons x xs     => λ se, x'  <- SemExp x se ;
+                           xs' <- SemExp xs se ;
+                           pure (x' :: xs')
+  | Car xs        => λ se, xs' <- SemExp xs se ;
+                           match xs' with
+                           | []     => inl CarOfNil
+                           | x :: _ => pure x
+                           end
+  | Cdr xs        => λ se, xs' <- SemExp xs se ;
+                           match xs' with
+                           | []      => pure nil
+                           | _ :: xs => pure xs
+                           end
+  | IsNil xs      => λ se, xs' <- SemExp xs se ;
+                           match xs' with
+                           | []      => pure true
+                           | _ :: xs => pure false
+                           end
+  | Seq exp1 exp2 => λ se, SemExp exp1 se >> SemExp exp2 se
+
+  | VAR v         => λ se, pure (SemVar v se)
+  | LAM e         => λ se, pure (λ x, SemExp e (x, se))
+  | APP e1 e2     => λ se, e1' <- SemExp e1 se ;
+                           e2' <- SemExp e2 se ;
+                           e1' e2'
+  end.
+*)
+
 Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
-  | HostedExp x   => λ _, HostExpSem x
-  | HostedVal x   => λ _, HostExpSem x
-  | HostedFun x   => λ _, HostExpSem x
-  | EUnit         => λ _, tt
-  | ETrue         => λ _, true
-  | EFalse        => λ _, false
-  | If b t e      => λ se, if SemExp b se then SemExp t se else SemExp e se
-  | Pair x y      => λ se, (SemExp x se, SemExp y se)
-  | Fst p         => λ se, fst (SemExp p se)
-  | Snd p         => λ se, snd (SemExp p se)
-  | Nil           => λ se, nil
-  | Cons x xs     => λ se, SemExp x se :: SemExp xs se
-  | Car d xs      => λ se, hd (SemExp d se) (SemExp xs se)
-  | Cdr xs        => λ se, tl (SemExp xs se)
-  | IsNil xs      => λ se, match SemExp xs se with
-                           | [] => true
-                           | _ :: _ => false
-                           end
-  | Seq exp1 exp2 => λ se, SemExp exp2 se
-
-  | VAR v         => SemVar v
-  | LAM e         => λ se x, SemExp e (x, se)
+  | VAR v         => λ se, SemVar v se
+  | LAM e         => λ se, λ x, SemExp e (x, se)
   | APP e1 e2     => λ se, SemExp e1 se (SemExp e2 se)
   end.
+
+Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ') :
+  SemExp e (RenSem r se) = SemExp (RenExp r e) se.
+Proof.
+  generalize dependent Γ'.
+  induction e; simpl; intros; auto.
+  (* - now rewrite IHe1, IHe2, IHe3. *)
+  (* - now rewrite IHe1, IHe2. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe1, IHe2. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe1, IHe2. *)
+  - now rewrite SemVar_RenSem.
+  - f_equal.
+    extensionality z.
+    fold SemTy in z.
+    rewrite <- IHe; clear IHe.
+    simpl.
+    now repeat f_equal.
+  - now rewrite IHe1, IHe2.
+Qed.
+
+Lemma SemExp_wk `(E : SemEnv Γ) {τ τ'} (y : SemTy τ') (e : Exp Γ τ) :
+  SemExp (wk e) (y, E) = SemExp e E.
+Proof.
+  unfold wk.
+  rewrite <- SemExp_RenSem; simpl.
+  f_equal.
+  now rewrite RenSem_skip1.
+Qed.
+
+(*
+Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
+  ValueP e → ∃ x, SemExp e se = pure x.
+Proof.
+  induction 1; simpl; intros;
+  try (now eexists; eauto); reduce.
+  - pose proof (HostExpSem_valid x).
+    reduce.
+    rewrite H0.
+    now eexists.
+  - pose proof (HostExpSem_valid f).
+    reduce.
+    rewrite H0.
+    now eexists.
+  - rewrite H0, H1; simpl.
+    now eexists.
+  - rewrite H0, H1; simpl.
+    now eexists.
+Qed.
+*)
+
+(************************************************************************
+ * SubSem
+ *)
 
 Equations SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : SemEnv Γ' :=
   SubSem NoSub      _  := tt;
@@ -128,35 +221,6 @@ Equations SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : SemEnv Γ' :=
 Lemma SubSem_inil (s : Sub [] []) :
   SubSem s () = ().
 Proof. now dependent elimination s. Qed.
-
-Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ') :
-  SemExp e (RenSem r se) = SemExp (RenExp r e) se.
-Proof.
-  generalize dependent Γ'.
-  induction e; simpl; intros; auto.
-  - now rewrite IHe1, IHe2, IHe3.
-  - now rewrite IHe1, IHe2.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite IHe1, IHe2.
-  - now rewrite IHe1, IHe2.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite SemVar_RenSem.
-  - extensionality z.
-    fold SemTy in z.
-    rewrite <- IHe; clear IHe.
-    simpl.
-    now repeat f_equal.
-  - now rewrite IHe1, IHe2.
-Qed.
-
-Lemma ScR_idRen {Γ Γ'} (s : Sub Γ Γ') :
-  ScR s idRen = s.
-Proof.
-  induction s; simp ScR; auto.
-  now rewrite RenExp_idRen, IHs.
-Qed.
 
 Lemma SubSem_ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') (se : SemEnv Γ) :
   SubSem (ScR s r) se = SubSem s (RenSem r se).
@@ -186,15 +250,6 @@ Proof.
   now rewrite IHΓ.
 Qed.
 
-Lemma SemExp_wk `(E : SemEnv Γ) {τ τ'} (y : SemTy τ') (e : Exp Γ τ) :
-  SemExp (wk e) (y, E) = SemExp e E.
-Proof.
-  unfold wk.
-  rewrite <- SemExp_RenSem; simpl.
-  f_equal.
-  now rewrite RenSem_skip1.
-Qed.
-
 Lemma SemVar_SubSem {Γ Γ' τ} (v : Var Γ τ) (s : Sub Γ' Γ) (se : SemEnv Γ') :
   SemVar v (SubSem s se) = SemExp (SubVar s v) se.
 Proof.
@@ -209,12 +264,115 @@ Lemma SemExp_SubSem {Γ Γ' τ} (e : Exp Γ τ) (s : Sub Γ' Γ) (se : SemEnv Γ
 Proof.
   generalize dependent Γ'.
   induction e; simpl; intros; auto.
+  (* - now rewrite IHe1, IHe2, IHe3. *)
+  (* - now rewrite IHe1, IHe2. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe1, IHe2. *)
+  (* - now rewrite IHe1, IHe2. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe. *)
+  - now rewrite SemVar_SubSem.
+  - extensionality z.
+    fold SemTy in z.
+    rewrite <- IHe; clear IHe.
+    simpl.
+    unfold Keepₛ, Dropₛ; simp SubSem.
+    repeat f_equal.
+    rewrite SubSem_ScR.
+    now rewrite RenSem_skip1.
+  - now rewrite IHe1, IHe2.
+Qed.
+
+Lemma SubSem_ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (t : Sub Γ Γ') (se : SemEnv Γ) :
+  SubSem (ScS s t) se = SubSem s (SubSem t se).
+Proof.
+  generalize dependent Γ''.
+  induction s; intros; simpl; simp SubSem; auto.
+  now rewrite <- SemExp_SubSem, IHs.
+Qed.
+
+Lemma SubSem_RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') (se : SemEnv Γ) :
+  SubSem (RcS r s) se = RenSem r (SubSem s se).
+Proof.
+  generalize dependent Γ.
+  induction r; intros; simpl; simp RcS; simp RenSem; auto;
+  dependent elimination s; simp RcS; simp SubSem; simp RenSem.
+  now rewrite IHr.
+Qed.
+
+(*
+Equations SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : Err + SemEnv Γ' :=
+  SubSem NoSub      _  := inr tt;
+  SubSem (Push t σ) se := t' <- SemExp t se ;
+                          ρ' <- SubSem σ se ;
+                          pure (t', ρ').
+
+Lemma SubSem_inil (s : Sub [] []) :
+  SubSem s () = inr ().
+Proof. now dependent elimination s. Qed.
+
+Lemma SubSem_ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') (se : SemEnv Γ) :
+  SubSem (ScR s r) se = SubSem s (RenSem r se).
+Proof.
+  generalize dependent Γ''.
+  generalize dependent Γ'.
+  destruct Γ, se; simpl; intros; auto.
+  - dependent elimination r; simp RenSem.
+    rewrite NoRen_idRen.
+    now rewrite ScR_idRen.
+  - clear.
+    dependent induction s1; simp ScR; simp SubSem; auto.
+    repeat f_equal; simpl.
+    + extensionality z.
+      now repeat f_equal.
+    + dependent elimination r; simpl in *; simp RenSem in *;
+      now rewrite <- SemExp_RenSem.
+Qed.
+
+Lemma SubSem_idSub {Γ} (se : SemEnv Γ) :
+  SubSem idSub se = inr se.
+Proof.
+  induction Γ; destruct se; simpl; simp SubSem; simpl; intros; auto.
+  rewrite SubSem_ScR.
+  rewrite RenSem_skip1.
+  now rewrite IHΓ.
+Qed.
+
+Lemma SemVar_SubSem {Γ Γ' τ} (v : Var Γ τ) (s : Sub Γ' Γ) (se : SemEnv Γ') :
+  SemVar v <$> SubSem s se = SemExp (SubVar s v) se.
+Proof.
+  intros.
+  induction s; simp SubSem; simp SubVar; simpl.
+  - now inversion v.
+  - inversion v; subst.
+Admitted.
+(*
+    dependent elimination v; simpl; simp RenVar; simp SubVar.
+    simpl in *.
+    destruct (SemExp e se); simpl; auto.
+    destruct (SubSem s se); simpl; auto.
+    simpl in *.
+    cbv.
+Qed.
+*)
+
+Notation "f =<< x" := (x >>= f) (at level 42, right associativity).
+
+Lemma SemExp_SubSem {Γ Γ' τ} (e : Exp Γ τ) (s : Sub Γ' Γ) (se : SemEnv Γ') :
+  SemExp e =<< SubSem s se = SemExp (SubExp s e) se.
+Proof.
+  generalize dependent Γ'.
+  induction e; simpl; intros; auto.
+  - destruct (HostExpSem_valid h) as [? H1].
+    rewrite H1; simpl.
   - now rewrite IHe1, IHe2, IHe3.
   - now rewrite IHe1, IHe2.
   - now rewrite IHe.
   - now rewrite IHe.
   - now rewrite IHe1, IHe2.
-  - now rewrite IHe1, IHe2.
+  - now rewrite IHe.
+  - now rewrite IHe.
   - now rewrite IHe.
   - now rewrite IHe.
   - now rewrite SemVar_SubSem.
@@ -245,5 +403,8 @@ Proof.
   dependent elimination s; simp RcS; simp SubSem; simp RenSem.
   now rewrite IHr.
 Qed.
+*)
 
 End Sem.
+
+Notation "f =<< x" := (x >>= f) (at level 42, right associativity).

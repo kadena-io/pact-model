@@ -3,6 +3,7 @@ Set Warnings "-notation-overridden".
 Require Import
   Coq.Unicode.Utf8
   Exp
+  Ren
   Sem.
 
 Require Import Category.Lib.
@@ -10,6 +11,7 @@ Require Export Category.Theory.Category.
 Require Export Category.Structure.BiCCC.
 
 From Equations Require Import Equations.
+Set Equations With UIP.
 
 Generalizable All Variables.
 Set Primitive Projections.
@@ -115,6 +117,7 @@ Next Obligation.
   now apply H.
 Qed.
 
+(*
 #[export]
 Program Instance Pact_Terminal Γ : @Terminal (Pact Γ) := {
   terminal_obj := TyUnit;
@@ -261,5 +264,6 @@ Next Obligation.
   rewrite !RenSem_skip1.
   now setoid_rewrite RenSem_skip1.
 Qed.
+*)
 
 End Cat.

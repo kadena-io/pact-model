@@ -4,8 +4,9 @@ Require Export
   Exp.
 
 From Equations Require Import Equations.
-
+Set Equations With UIP.
 Generalizable All Variables.
+
 
 Section Pat.
 
@@ -16,9 +17,9 @@ Context `{HostExprs A}.
 
 Open Scope Ty_scope.
 
-Inductive Pat : Env → Ty → Type :=
-  | PPair {Γ Γ' τ1 τ2}  : Pat Γ τ1 → Pat Γ' τ2 → Pat (Γ ++ Γ') (TyPair τ1 τ2).
+(* Inductive Pat : Env → Ty → Type := *)
+(*   | PPair {Γ Γ' τ1 τ2}  : Pat Γ τ1 → Pat Γ' τ2 → Pat (Γ ++ Γ') (TyPair τ1 τ2). *)
 
-Derive Signature NoConfusion for Pat.
+(* Derive Signature NoConfusion for Pat. *)
 
 End Pat.

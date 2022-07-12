@@ -1,3 +1,5 @@
+Set Warnings "-cannot-remove-as-expected".
+
 Require Import
   Coq.Unicode.Utf8
   Coq.Program.Program
@@ -11,6 +13,7 @@ Require Import
   Multi.
 
 From Equations Require Import Equations.
+Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -44,14 +47,14 @@ Proof.
   intros.
   unfold normal_form.
   dependent induction v;
-  inv X; intro; reduce;
+  inv H; intro; reduce;
   try now inversion H.
-  - inv H.
-    + now eapply IHv1; eauto.
-    + now eapply IHv2; eauto.
-  - inv H.
-    + now eapply IHv1; eauto.
-    + now eapply IHv2; eauto.
+  (* - inv H. *)
+  (*   + now eapply IHv1; eauto. *)
+  (*   + now eapply IHv2; eauto. *)
+  (* - inv H. *)
+  (*   + now eapply IHv1; eauto. *)
+  (*   + now eapply IHv2; eauto. *)
 Qed.
 
 Lemma nf_is_value {τ} (v : Exp [] τ) :
@@ -74,7 +77,7 @@ Qed.
 
 Lemma value_halts {Γ τ} (v : Exp Γ τ) : ValueP v → halts v.
 Proof.
-  intros.
+  intros X.
   unfold halts.
   now induction X; eexists; repeat constructor.
 Qed.
@@ -94,23 +97,17 @@ Ltac invert_step :=
   try solve [ f_equal; intuition eauto | normality ].
 
 Theorem step_deterministic Γ τ :
-  deterministic (@Step _ _ Γ τ).
+  deterministic (Step (Γ:=Γ) (τ:=τ)).
 Proof.
   repeat intro.
   generalize dependent y2.
-  dependent induction x; intros; inv H;
-  inv H0; invert_step.
-  - inv H4; now invert_step.
-  - inv H3; now invert_step.
-  - inv H4; now invert_step.
-  - inv H3; now invert_step.
-  - inv H4; now invert_step.
-  - inv H3; now invert_step.
-  - inv H5; now invert_step.
-  - inv H4; now invert_step.
-  - inv H5; now invert_step.
-  - inv H4; now invert_step.
-  - now f_equal; apply ValueP_irrelevance.
+  dependent induction H; intros.
+  - dependent elimination H0; auto;
+    now invert_step.
+  - dependent elimination H0; auto;
+    now invert_step.
+  - dependent elimination H1; auto;
+    now invert_step.
 Qed.
 
 Theorem normal_forms_unique Γ τ :
@@ -139,15 +136,14 @@ Proof.
   intros.
   unfold halts.
   split.
-  - intros [e'' [H1 H2]].
+  - intros [e'' [H1 [H2]]].
     destruct H1.
-    + destruct H2.
-      apply value_is_nf in X.
-      destruct X.
+    + apply value_is_nf in H2.
+      destruct H2.
       now exists e'.
     + rewrite (step_deterministic _ _ _ _ _ H H0).
       now exists z.
-  - intros [e'0 [H1 H2]].
+  - intros [e'0 [H1 [H2]]].
     exists e'0.
     split; auto.
     now eapply multi_step; eauto.
@@ -162,10 +158,10 @@ Variable P : ∀ {τ}, Exp Γ τ → Prop.
 (** [ExpP] is a logical predicate that permits type-directed induction on
     expressions. *)
 Equations ExpP `(e : Exp Γ τ) : Prop :=
-  ExpP (τ:=_ ⟶ _)   f := P f ∧ (∀ x, ExpP x → ExpP (APP f x));
-  ExpP (τ:=_ × _)    p := P p ∧ ExpP (Fst p) ∧ ExpP (Snd p);
+  ExpP (τ:=_ ⟶ _)   f := P f ∧ (∀ x, ExpP x → ExpP (APP f x)).
+  (* ExpP (τ:=_ × _)    p := P p ∧ ExpP (Fst p) ∧ ExpP (Snd p); *)
   (* ExpP (τ:=TyList _) l := P l ∧ (∀ d, ExpP d → ExpP (Car d l)); *)
-  ExpP e := P e.
+  (* ExpP e := P e. *)
 
 Inductive SubP : ∀ {Γ'}, Sub Γ Γ' → Prop :=
   | NoSubP : SubP (NoSub (Γ:=Γ))
@@ -194,12 +190,12 @@ Proof.
   induction τ; simpl in *; simp SN in *;
   pose proof H as H1;
   apply step_preserves_halting in H1; intuition.
-  - eapply IHτ1; eauto.
-    now constructor.
-  - eapply IHτ2; eauto.
-    now constructor.
-  - eapply IHτ2; eauto.
-    now constructor.
+  (* - eapply IHτ1; eauto. *)
+  (*   now constructor. *)
+  (* - eapply IHτ2; eauto. *)
+  (*   now constructor. *)
+  (* - eapply IHτ2; eauto. *)
+  (*   now constructor. *)
 Qed.
 
 Lemma multistep_preserves_SN {Γ τ} {e e' : Γ ⊢ τ} :
@@ -218,12 +214,12 @@ Proof.
   induction τ; simpl in *; simp SN in *;
   pose proof H as H1;
   apply step_preserves_halting in H1; intuition.
-  - eapply IHτ1; eauto.
-    now constructor.
-  - eapply IHτ2; eauto.
-    now constructor.
-  - eapply IHτ2; eauto.
-    now constructor.
+  (* - eapply IHτ1; eauto. *)
+  (*   now constructor. *)
+  (* - eapply IHτ2; eauto. *)
+  (*   now constructor. *)
+  (* - eapply IHτ2; eauto. *)
+  (*   now constructor. *)
 Qed.
 
 Lemma multistep_preserves_SN' {Γ τ} {e e' : Γ ⊢ τ} :
@@ -240,87 +236,87 @@ Lemma SubExp_SN {Γ Γ'} (env : Sub Γ' Γ) {τ} (e : Exp Γ τ) :
 Proof.
   generalize dependent env.
   induction e; intros; simpl.
-  - admit.
-  - admit.
-  - admit.
-  - now eexists; repeat constructor.
-  - now eexists; repeat constructor.
-  - now eexists; repeat constructor.
-  - destruct (SN_halts (IHe1 env H)) as [v [P [Q]]].
-    apply (multistep_preserves_SN'
-             (e':=If v (SubExp env e2) (SubExp env e3))); auto.
-    + now apply multistep_If.
-    + inv Q; simpl.
-      * apply (step_preserves_SN' (e':=SubExp env e2)); auto.
-        now constructor.
-      * apply (step_preserves_SN' (e':=SubExp env e3)); auto.
-        now constructor.
-  - split.
-    + destruct (SN_halts (IHe1 env H)) as [v1 [P1 [Q1]]].
-      destruct (SN_halts (IHe2 env H)) as [v2 [P2 [Q2]]].
-      exists (Pair v1 v2).
-      split.
-      * now apply multistep_Pair.
-      * now repeat constructor.
-    + split.
-      * destruct (SN_halts (IHe1 env H)) as [v1 [P1 [Q1]]].
-        destruct (SN_halts (IHe2 env H)) as [v2 [P2 [Q2]]].
-        apply (multistep_preserves_SN' (e':=v1)); auto.
-        ** now eapply multistep_FstPair; eauto.
-        ** apply (multistep_preserves_SN (e:=SubExp env e1));
-           now intuition.
-      * destruct (SN_halts (IHe1 env H)) as [v1 [P1 [Q1]]].
-        destruct (SN_halts (IHe2 env H)) as [v2 [P2 [Q2]]].
-        apply (multistep_preserves_SN' (e':=v2)); auto.
-        ** now eapply multistep_SndPair; eauto.
-        ** apply (multistep_preserves_SN (e:=SubExp env e2));
-           now intuition.
-  - now destruct (IHe env H).
-  - now destruct (IHe env H).
-  - now eexists; repeat constructor.
-  - destruct (SN_halts (IHe1 env H)) as [v1 [P1 [Q1]]].
-    destruct (SN_halts (IHe2 env H)) as [v2 [P2 [Q2]]].
-    exists (Cons v1 v2).
-    split.
-    * now apply multistep_Cons.
-    * now repeat constructor.
-  - destruct (SN_halts (IHe1 env H)) as [v1 [P1 [Q1]]].
-    destruct (SN_halts (IHe2 env H)) as [v2 [P2 [Q2]]].
-    inv Q2.
-    + apply (multistep_preserves_SN' (e':=v1)); auto.
-      * now eapply multistep_CarNil.
-      * apply (multistep_preserves_SN (e:=SubExp env e1));
-        now intuition.
-    + apply (multistep_preserves_SN' (e':=x)); auto.
-      * erewrite multistep_Car1; eauto.
-        now eapply multistep_CarCons; eauto.
-      * admit.
-  - destruct (SN_halts (IHe env H)) as [v [P [Q]]].
-    inv Q.
-    + exists Nil.
-      split.
-      * now apply multistep_CdrNil.
-      * now repeat constructor.
-    + exists xs.
-      split.
-      * now eapply multistep_CdrCons; eauto.
-      * now repeat constructor.
-  - destruct (SN_halts (IHe env H)) as [v [P [Q]]].
-    inv Q.
-    + exists ETrue.
-      split.
-      * now apply multistep_IsNilNil.
-      * now repeat constructor.
-    + exists EFalse.
-      split.
-      * now eapply multistep_IsNilCons; eauto.
-      * now repeat constructor.
-  - eapply step_preserves_SN'; eauto.
-    now constructor.
+  (* - admit. *)
+  (* - admit. *)
+  (* - admit. *)
+  (* - now eexists; repeat constructor. *)
+  (* - now eexists; repeat constructor. *)
+  (* - now eexists; repeat constructor. *)
+  (* - destruct (SN_halts (IHe1 env H)) as [v [P [Q]]]. *)
+  (*   apply (multistep_preserves_SN' *)
+  (*            (e':=If v (SubExp env e2) (SubExp env e3))); auto. *)
+  (*   + now apply multistep_If. *)
+  (*   + inv Q; simpl. *)
+  (*     * apply (step_preserves_SN' (e':=SubExp env e2)); auto. *)
+  (*       now constructor. *)
+  (*     * apply (step_preserves_SN' (e':=SubExp env e3)); auto. *)
+  (*       now constructor. *)
+  (* - split. *)
+  (*   + destruct (SN_halts (IHe1 env H)) as [v1 [P1 [Q1]]]. *)
+  (*     destruct (SN_halts (IHe2 env H)) as [v2 [P2 [Q2]]]. *)
+  (*     exists (Pair v1 v2). *)
+  (*     split. *)
+  (*     * now apply multistep_Pair. *)
+  (*     * now repeat constructor. *)
+  (*   + split. *)
+  (*     * destruct (SN_halts (IHe1 env H)) as [v1 [P1 [Q1]]]. *)
+  (*       destruct (SN_halts (IHe2 env H)) as [v2 [P2 [Q2]]]. *)
+  (*       apply (multistep_preserves_SN' (e':=v1)); auto. *)
+  (*       ** now eapply multistep_FstPair; eauto. *)
+  (*       ** apply (multistep_preserves_SN (e:=SubExp env e1)); *)
+  (*          now intuition. *)
+  (*     * destruct (SN_halts (IHe1 env H)) as [v1 [P1 [Q1]]]. *)
+  (*       destruct (SN_halts (IHe2 env H)) as [v2 [P2 [Q2]]]. *)
+  (*       apply (multistep_preserves_SN' (e':=v2)); auto. *)
+  (*       ** now eapply multistep_SndPair; eauto. *)
+  (*       ** apply (multistep_preserves_SN (e:=SubExp env e2)); *)
+  (*          now intuition. *)
+  (* - now destruct (IHe env H). *)
+  (* - now destruct (IHe env H). *)
+  (* - now eexists; repeat constructor. *)
+  (* - destruct (SN_halts (IHe1 env H)) as [v1 [P1 [Q1]]]. *)
+  (*   destruct (SN_halts (IHe2 env H)) as [v2 [P2 [Q2]]]. *)
+  (*   exists (Cons v1 v2). *)
+  (*   split. *)
+  (*   * now apply multistep_Cons. *)
+  (*   * now repeat constructor. *)
+  (* - destruct (SN_halts (IHe1 env H)) as [v1 [P1 [Q1]]]. *)
+  (*   destruct (SN_halts (IHe2 env H)) as [v2 [P2 [Q2]]]. *)
+  (*   inv Q2. *)
+  (*   + apply (multistep_preserves_SN' (e':=v1)); auto. *)
+  (*     * now eapply multistep_CarNil. *)
+  (*     * apply (multistep_preserves_SN (e:=SubExp env e1)); *)
+  (*       now intuition. *)
+  (*   + apply (multistep_preserves_SN' (e':=x)); auto. *)
+  (*     * erewrite multistep_Car1; eauto. *)
+  (*       now eapply multistep_CarCons; eauto. *)
+  (*     * admit. *)
+  (* - destruct (SN_halts (IHe env H)) as [v [P [Q]]]. *)
+  (*   inv Q. *)
+  (*   + exists Nil. *)
+  (*     split. *)
+  (*     * now apply multistep_CdrNil. *)
+  (*     * now repeat constructor. *)
+  (*   + exists xs. *)
+  (*     split. *)
+  (*     * now eapply multistep_CdrCons; eauto. *)
+  (*     * now repeat constructor. *)
+  (* - destruct (SN_halts (IHe env H)) as [v [P [Q]]]. *)
+  (*   inv Q. *)
+  (*   + exists ETrue. *)
+  (*     split. *)
+  (*     * now apply multistep_IsNilNil. *)
+  (*     * now repeat constructor. *)
+  (*   + exists EFalse. *)
+  (*     split. *)
+  (*     * now eapply multistep_IsNilCons; eauto. *)
+  (*     * now repeat constructor. *)
+  (* - eapply step_preserves_SN'; eauto. *)
+  (*   now constructor. *)
   - induction env.
     + now inv v.
     + simpl in *.
-      inv H.
+      dependent elimination H.
       now dependent elimination v; simp SubVar.
   - eexists.
     + now eexists; repeat constructor.
@@ -337,7 +333,7 @@ Proof.
         constructor; auto.
         now eapply multistep_preserves_SN; eauto.
   - now apply IHe1, IHe2.
-Admitted.
+Qed.
 
 Theorem Exp_SN {τ} (e : Exp [] τ) : SN e.
 Proof.
@@ -350,8 +346,8 @@ Qed.
 
 Corollary strong_normalization {τ} (e : Exp [] τ) : e ⇓.
 Proof.
-  pose proof (Exp_SN e).
-  induction τ; now simpl in H.
+  pose proof (Exp_SN e) as H.
+  now induction τ; intuition eauto.
 Qed.
 
 End Norm.

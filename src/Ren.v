@@ -4,6 +4,7 @@ Require Export
   Exp.
 
 From Equations Require Import Equations.
+Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -119,22 +120,23 @@ Qed.
 
 Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
-  | HostedExp x   => HostedExp x
-  | HostedVal x   => HostedVal x
-  | HostedFun x   => HostedFun x
-  | EUnit         => EUnit
-  | ETrue         => ETrue
-  | EFalse        => EFalse
-  | If b t e      => If (RenExp r b) (RenExp r t) (RenExp r e)
-  | Pair x y      => Pair (RenExp r x) (RenExp r y)
-  | Fst p         => Fst (RenExp r p)
-  | Snd p         => Snd (RenExp r p)
-  | Nil           => Nil
-  | Cons x xs     => Cons (RenExp r x) (RenExp r xs)
-  | Car d xs      => Car (RenExp r d) (RenExp r xs)
-  | Cdr xs        => Cdr (RenExp r xs)
-  | IsNil xs      => IsNil (RenExp r xs)
-  | Seq exp1 exp2 => Seq (RenExp r exp1) (RenExp r exp2)
+  (* | HostedExp x   => HostedExp x *)
+  (* | HostedVal x   => HostedVal x *)
+  (* | HostedFun x   => HostedFun x *)
+  (* | Error e       => Error e *)
+  (* | EUnit         => EUnit *)
+  (* | ETrue         => ETrue *)
+  (* | EFalse        => EFalse *)
+  (* | If b t e      => If (RenExp r b) (RenExp r t) (RenExp r e) *)
+  (* | Pair x y      => Pair (RenExp r x) (RenExp r y) *)
+  (* | Fst p         => Fst (RenExp r p) *)
+  (* | Snd p         => Snd (RenExp r p) *)
+  (* | Nil           => Nil *)
+  (* | Cons x xs     => Cons (RenExp r x) (RenExp r xs) *)
+  (* | Car xs        => Car (RenExp r xs) *)
+  (* | Cdr xs        => Cdr (RenExp r xs) *)
+  (* | IsNil xs      => IsNil (RenExp r xs) *)
+  (* | Seq exp1 exp2 => Seq (RenExp r exp1) (RenExp r exp2) *)
 
   | VAR v         => VAR (RenVar r v)
   | APP e1 e2     => APP (RenExp r e1) (RenExp r e2)

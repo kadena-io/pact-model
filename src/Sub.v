@@ -8,6 +8,7 @@ Require Export
   Ren.
 
 From Equations Require Import Equations.
+Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -34,6 +35,13 @@ Equations get `(s : Sub Γ' Γ) `(v : Var Γ τ) : Exp Γ' τ :=
 Equations ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') : Sub Γ Γ'' :=
   ScR NoSub      δ := NoSub;
   ScR (Push t σ) δ := Push (RenExp δ t) (ScR σ δ).
+
+Lemma ScR_idRen {Γ Γ'} (s : Sub Γ Γ') :
+  ScR s idRen = s.
+Proof.
+  induction s; simp ScR; auto.
+  now rewrite RenExp_idRen, IHs.
+Qed.
 
 Fixpoint idSub {Γ} : Sub Γ Γ :=
   match Γ with
@@ -65,22 +73,23 @@ Equations SubVar {Γ Γ' τ} (s : Sub Γ Γ') (v : Var Γ' τ) : Exp Γ τ :=
 
 Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
-  | HostedExp x   => HostedExp x
-  | HostedVal x   => HostedVal x
-  | HostedFun x   => HostedFun x
-  | EUnit         => EUnit
-  | ETrue         => ETrue
-  | EFalse        => EFalse
-  | If b t e      => If (SubExp s b) (SubExp s t) (SubExp s e)
-  | Pair x y      => Pair (SubExp s x) (SubExp s y)
-  | Fst p         => Fst (SubExp s p)
-  | Snd p         => Snd (SubExp s p)
-  | Nil           => Nil
-  | Cons x xs     => Cons (SubExp s x) (SubExp s xs)
-  | Car d xs      => Car (SubExp s d) (SubExp s xs)
-  | Cdr xs        => Cdr (SubExp s xs)
-  | IsNil xs      => IsNil (SubExp s xs)
-  | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
+  (* | HostedExp x   => HostedExp x *)
+  (* | HostedVal x   => HostedVal x *)
+  (* | HostedFun x   => HostedFun x *)
+  (* | Error e       => Error e *)
+  (* | EUnit         => EUnit *)
+  (* | ETrue         => ETrue *)
+  (* | EFalse        => EFalse *)
+  (* | If b t e      => If (SubExp s b) (SubExp s t) (SubExp s e) *)
+  (* | Pair x y      => Pair (SubExp s x) (SubExp s y) *)
+  (* | Fst p         => Fst (SubExp s p) *)
+  (* | Snd p         => Snd (SubExp s p) *)
+  (* | Nil           => Nil *)
+  (* | Cons x xs     => Cons (SubExp s x) (SubExp s xs) *)
+  (* | Car xs        => Car (SubExp s xs) *)
+  (* | Cdr xs        => Cdr (SubExp s xs) *)
+  (* | IsNil xs      => IsNil (SubExp s xs) *)
+  (* | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2) *)
 
   | VAR v         => SubVar s v
   | APP e1 e2     => APP (SubExp s e1) (SubExp s e2)
@@ -340,21 +349,22 @@ Proof.
 Qed.
 
 Equations valueToExp `(c : Value τ) : { v : Exp [] τ & ValueP v } := {
-  valueToExp (HostValue x)             := existT _ (HostedVal x) (HostedValP x);
-  valueToExp VUnit                     := existT _ EUnit (UnitP []);
-  valueToExp VTrue                     := existT _ (ETrue) TrueP;
-  valueToExp VFalse                    := existT _ (EFalse) FalseP;
-  valueToExp (VPair x y)               :=
-    let '(existT _ v1 H1) := valueToExp x in
-    let '(existT _ v2 H2) := valueToExp y in
-    existT _ (Pair v1 v2) (PairP H1 H2);
-  valueToExp VNil                      := existT _ Nil NilP;
-  valueToExp (VCons x xs)              :=
-    let '(existT _ v1 H1) := valueToExp x in
-    let '(existT _ v2 H2) := valueToExp xs in
-    existT _ (Cons v1 v2) (ConsP H1 H2);
+  (* valueToExp (HostValue x)             := existT _ (HostedVal x) (HostedValP x); *)
+  (* valueToExp (VError m)                := existT _ (Error m) (ErrorP m); *)
+  (* valueToExp VUnit                     := existT _ EUnit (UnitP []); *)
+  (* valueToExp VTrue                     := existT _ (ETrue) TrueP; *)
+  (* valueToExp VFalse                    := existT _ (EFalse) FalseP; *)
+  (* valueToExp (VPair x y)               := *)
+  (*   let '(existT _ v1 H1) := valueToExp x in *)
+  (*   let '(existT _ v2 H2) := valueToExp y in *)
+  (*   existT _ (Pair v1 v2) (PairP H1 H2); *)
+  (* valueToExp VNil                      := existT _ Nil NilP; *)
+  (* valueToExp (VCons x xs)              := *)
+  (*   let '(existT _ v1 H1) := valueToExp x in *)
+  (*   let '(existT _ v2 H2) := valueToExp xs in *)
+  (*   existT _ (Cons v1 v2) (ConsP H1 H2); *)
   valueToExp (ClosureExp (Lambda e))   := existT _ (LAM e) (LambdaP _);
-  valueToExp (ClosureExp (Func f))     := existT _ (HostedFun f) (HostedFunP f)
+  (* valueToExp (ClosureExp (Func f))     := existT _ (HostedFun f) (HostedFunP f) *)
 }.
 
 (*
@@ -390,7 +400,7 @@ Proof.
   - dependent destruction r'; simpl.
     rewrite !NoSub_idSub, !SubExp_idSub.
     now rewrite !NoRen_idRen, !RenExp_idRen.
-  - dependent destruction r'; simpl.
+  - dependent elimination r'; simpl.
     rewrite <- SubExp_RcS in *.
     simp RcS.
     now rewrite SubExp_RcS.
@@ -410,14 +420,15 @@ Equations vsubst {Γ τ ty} (e : Exp (ty :: Γ) τ) (s : ValEnv Γ) : Exp [ty] �
     vsubst (SubExp (Keepₛ {|| RenExp DropAll (projT1 (valueToExp x)) ||}) e) xs.
 
 Equations expToValue `{v : Exp [] τ} (V : ValueP v) : Value τ :=
-  expToValue (HostedValP x) := HostValue x;
-  expToValue (HostedFunP x) := ClosureExp (Func x);
-  expToValue (UnitP _)      := VUnit;
-  expToValue TrueP          := VTrue;
-  expToValue FalseP         := VFalse;
-  expToValue (PairP X Y)    := VPair (expToValue X) (expToValue Y);
-  expToValue NilP           := VNil;
-  expToValue (ConsP X XS)   := VCons (expToValue X) (expToValue XS);
+  (* expToValue (HostedValP x) := HostValue x; *)
+  (* expToValue (HostedFunP x) := ClosureExp (Func x); *)
+  (* expToValue (ErrorP m)     := VError m; *)
+  (* expToValue (UnitP _)      := VUnit; *)
+  (* expToValue TrueP          := VTrue; *)
+  (* expToValue FalseP         := VFalse; *)
+  (* expToValue (PairP X Y)    := VPair (expToValue X) (expToValue Y); *)
+  (* expToValue NilP           := VNil; *)
+  (* expToValue (ConsP X XS)   := VCons (expToValue X) (expToValue XS); *)
   expToValue (LambdaP e)    := ClosureExp (Lambda e).
 
 Lemma expToValue_valueToExp `(v : Value τ) :
@@ -426,22 +437,22 @@ Lemma expToValue_valueToExp `(v : Value τ) :
 Proof.
   induction v;
   simp valueToExp; simp expToValue; auto.
-  - now destruct (valueToExp v1), (valueToExp v2); subst.
-  - now destruct (valueToExp v1), (valueToExp v2); subst.
+  (* - now destruct (valueToExp v1), (valueToExp v2); subst. *)
+  (* - now destruct (valueToExp v1), (valueToExp v2); subst. *)
   - now destruct c; simp valueToExp; simp expToValue.
 Qed.
 
 Lemma RenExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Ren Γ' Γ) :
   ValueP v → ValueP (RenExp σ v).
 Proof.
-  intros.
+  intros X.
   now induction X; simpl; intros; try constructor.
 Defined.
 
 Lemma SubExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Sub Γ' Γ) :
   ValueP v → ValueP (SubExp σ v).
 Proof.
-  intros.
+  intros X.
   now induction X; simpl; intros; try constructor.
 Defined.
 

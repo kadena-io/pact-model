@@ -10,6 +10,7 @@ src/Value.v
 src/Trace.v
 src/Ren.v
 src/Sub.v
+src/Ctxt.v
 src/Sem.v
 src/Step.v
 src/Multi.v

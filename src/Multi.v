@@ -11,6 +11,7 @@ Require Export
   Step.
 
 From Equations Require Import Equations.
+Set Equations With UIP.
 
 Section Multi.
 
@@ -67,6 +68,7 @@ Qed.
 
 Notation " t '--->*' t' " := (multi Step t t') (at level 40).
 
+(*
 Lemma multistep_Seq {Γ τ} {e1 : Γ ⊢ τ} {τ'} {e2 : Γ ⊢ τ'} :
   Seq e1 e2 --->* e2.
 Proof.
@@ -75,6 +77,7 @@ Proof.
   - now constructor.
   - now apply multi_refl.
 Qed.
+*)
 
 Ltac simpl_multistep :=
   intros;
@@ -85,6 +88,7 @@ Ltac simpl_multistep :=
   | eapply multi_step; eauto;
     now constructor ].
 
+(*
 Lemma multistep_If {Γ} {e1 e1' : Γ ⊢ TyBool} {τ} {e2 e3 : Γ ⊢ τ} :
   (e1 --->* e1') → If e1 e2 e3 --->* If e1' e2 e3.
 Proof. now simpl_multistep. Qed.
@@ -242,6 +246,7 @@ Proof.
     apply multi_R.
     now constructor.
 Qed.
+*)
 
 Lemma multistep_App2 {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :
   ValueP v → (e --->* e') → APP v e --->* APP v e'.
@@ -254,6 +259,7 @@ Notation " t '--->*' t' " := (multi Step t t') (at level 40).
 (** The following two definitions cannot be completed, due to a typeclass
     instance mismatch, when defined within the section above. *)
 
+(*
 Lemma multistep_CarCons {A : Type} {S : HostExprsSem A}
       {Γ τ} {d e1 : Γ ⊢ τ} {e2 xs : Γ ⊢ (TyList τ)} :
   ValueP d → ValueP e1 → ValueP e2 →
@@ -303,3 +309,4 @@ Proof.
     apply multistep_IsNil1.
     now apply multi_R.
 Qed.
+*)

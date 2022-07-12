@@ -8,9 +8,11 @@ Require Export
   Eval.
 
 From Equations Require Import Equations.
+Set Equations With UIP.
 
 Generalizable All Variables.
 
+(*
 Section Pact.
 
 Import ListNotations.
@@ -263,3 +265,4 @@ Example exp_call_FAdd :
 Proof. reflexivity. Qed.
 
 End Pact.
+*)

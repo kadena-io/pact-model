@@ -2,6 +2,7 @@ Require Export
   Coq.Unicode.Utf8.
 
 From Equations Require Import Equations.
+Set Equations With UIP.
 
 Section Ty.
 
@@ -22,31 +23,32 @@ Context `{HostTypes A}.
  - Capabilities *)
 
 Inductive Ty : Type :=
-  | TyHost : HostTy → Ty
+  (* | TyHost : HostTy → Ty *)
 
-  | TyUnit : Ty
-  | TyBool : Ty
-  | TyList : Ty → Ty
-  | TyPair : Ty → Ty → Ty
+  (* | TyUnit : Ty *)
+  (* | TyBool : Ty *)
+  (* | TyList : Ty → Ty *)
+  (* | TyPair : Ty → Ty → Ty *)
 
   (* The arrow type is the only type in the base lambda calculus *)
   | TyArrow : Ty → Ty → Ty.
 
-Derive NoConfusion NoConfusionHom Subterm for Ty.
+(* Derive NoConfusion NoConfusionHom Subterm for Ty. *)
+Derive NoConfusion NoConfusionHom for Ty.
 
 End Ty.
 
-Arguments Ty {A H}.
-Arguments TyHost {A H} _.
-Arguments TyUnit {A H}.
-Arguments TyBool {A H}.
-Arguments TyList {A H} _.
-Arguments TyPair {A H} _ _.
-Arguments TyArrow {A H} _ _.
+(* Arguments Ty {A H}. *)
+(* Arguments TyHost {A H} _. *)
+(* Arguments TyUnit {A H}. *)
+(* Arguments TyBool {A H}. *)
+(* Arguments TyList {A H} _. *)
+(* Arguments TyPair {A H} _ _. *)
+(* Arguments TyArrow {A H} _ _. *)
 
 Declare Scope Ty_scope.
 Bind Scope Ty_scope with Ty.
 Delimit Scope Ty_scope with ty.
 
 Infix "⟶" := TyArrow (at level 51, right associativity) : Ty_scope.
-Infix "×"  := TyPair  (at level 40, left associativity) : Ty_scope.
+(* Infix "×"  := TyPair  (at level 40, left associativity) : Ty_scope. *)

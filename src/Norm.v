@@ -3,12 +3,13 @@ Set Warnings "-cannot-remove-as-expected".
 Require Import
   Coq.Unicode.Utf8
   Coq.Program.Program
+  Coq.Relations.Relation_Definitions
   Coq.Classes.CRelationClasses
   Coq.Classes.Morphisms
   Ty
   Exp
   Sub
-  (* Log *)
+  Log
   Sem
   Multi.
 
@@ -24,8 +25,10 @@ Import ListNotations.
 Context {A : Type}.
 Context `{L : HostLang A}.
 
+(* Definition normal_form `(R : relation X) (t : X) : Prop := *)
+(*   ¬ ∃ t', R t t'. *)
 Definition normal_form `(R : relation X) (t : X) : Prop :=
-  ¬ ∃ t', R t t'.
+  ∀ t', ¬ R t t'.
 
 Definition normalizing `(R : relation X) : Prop :=
   ∀ t, ∃ t', multi R t t' ∧ normal_form R t'.
@@ -46,9 +49,11 @@ Lemma value_is_nf {Γ τ} (v : Exp Γ τ) :
 Proof.
   intros.
   unfold normal_form.
-  dependent induction v;
-  inv H; intro; reduce;
-  try now inversion H.
+  dependent elimination H.
+  repeat intro.
+  inv H.
+  inv H2.
+  inv H6.
   (* - inv H. *)
   (*   + now eapply IHv1; eauto. *)
   (*   + now eapply IHv2; eauto. *)
@@ -57,14 +62,22 @@ Proof.
   (*   + now eapply IHv2; eauto. *)
 Qed.
 
+Ltac normality :=
+  exfalso;
+  lazymatch goal with
+    | [ H1 : ValueP ?X, H2 : ?X ---> ?Y |- False ] =>
+        apply value_is_nf in H1; destruct H1;
+        now exists Y
+    | [ H1 : normal_form ?R ?X, H2 : ?R ?X ?Y |- False ] =>
+        exfalso; now apply (H1 Y)
+  end.
+
 Lemma nf_is_value {τ} (v : Exp [] τ) :
   normal_form Step v → ValueP v.
 Proof.
   intros.
-  destruct (strong_progress v); auto.
-  reduce.
-  destruct H.
-  now exists x.
+  destruct (strong_progress v); auto; reduce.
+  now normality.
 Qed.
 
 Theorem nf_same_as_value {τ} (v : Exp [] τ) :
@@ -82,32 +95,25 @@ Proof.
   now induction X; eexists; repeat constructor.
 Qed.
 
-Ltac normality :=
-  exfalso;
-  lazymatch goal with
-    | [ H1 : ValueP ?X, H2 : ?X ---> ?Y |- False ] =>
-        apply value_is_nf in H1; destruct H1;
-        now exists Y
-  end.
-
 Ltac invert_step :=
   try lazymatch goal with
   | [ H : _ ---> _ |- _ ] => now inv H
   end;
   try solve [ f_equal; intuition eauto | normality ].
 
-Theorem step_deterministic Γ τ :
+Theorem Step_deterministic Γ τ :
   deterministic (Step (Γ:=Γ) (τ:=τ)).
 Proof.
   repeat intro.
-  generalize dependent y2.
-  dependent induction H; intros.
-  - dependent elimination H0; auto;
-    now invert_step.
-  - dependent elimination H0; auto;
-    now invert_step.
-  - dependent elimination H1; auto;
-    now invert_step.
+  dependent elimination H.
+  dependent elimination H0.
+  assert (τ' = τ'0 ∧ C ~= C0 ∧ e1 ~= e3)
+    by (eapply Plug_deterministic; eassumption).
+  intuition idtac; subst.
+  assert (e2 = e4)
+    by (eapply Redex_deterministic; eassumption).
+  subst.
+  now eapply Plug_functional; eauto.
 Qed.
 
 Theorem normal_forms_unique Γ τ :
@@ -120,13 +126,11 @@ Proof.
   generalize dependent y2.
   induction P11; intros.
   - inversion P21; auto.
-    induction P12.
-    now exists y.
+    now einduction P12; eauto.
   - apply IHP11; auto.
     inv P21.
-    + destruct P22.
-      now exists y.
-    + assert (y = y0) by now apply step_deterministic with x.
+    + now edestruct P22; eauto.
+    + assert (y = y0) by now apply Step_deterministic with x.
       now subst.
 Qed.
 
@@ -139,41 +143,14 @@ Proof.
   - intros [e'' [H1 [H2]]].
     destruct H1.
     + apply value_is_nf in H2.
-      destruct H2.
-      now exists e'.
-    + rewrite (step_deterministic _ _ _ _ _ H H0).
+      now edestruct H2; eauto.
+    + rewrite (Step_deterministic _ _ _ _ _ H H0).
       now exists z.
   - intros [e'0 [H1 [H2]]].
     exists e'0.
     split; auto.
     now eapply multi_step; eauto.
 Qed.
-
-Section Log.
-
-Context {Γ : Env}.
-
-Variable P : ∀ {τ}, Exp Γ τ → Prop.
-
-(** [ExpP] is a logical predicate that permits type-directed induction on
-    expressions. *)
-Equations ExpP `(e : Exp Γ τ) : Prop :=
-  ExpP (τ:=_ ⟶ _)   f := P f ∧ (∀ x, ExpP x → ExpP (APP f x)).
-  (* ExpP (τ:=_ × _)    p := P p ∧ ExpP (Fst p) ∧ ExpP (Snd p); *)
-  (* ExpP (τ:=TyList _) l := P l ∧ (∀ d, ExpP d → ExpP (Car d l)); *)
-  (* ExpP e := P e. *)
-
-Inductive SubP : ∀ {Γ'}, Sub Γ Γ' → Prop :=
-  | NoSubP : SubP (NoSub (Γ:=Γ))
-  | PushP {Γ' τ} (e : Exp Γ τ) (s : Sub Γ Γ') :
-    ExpP e → SubP s → SubP (Push e s).
-
-Derive Signature for SubP.
-
-Lemma ExpP_P {τ} {e : Γ ⊢ τ} : ExpP e → P e.
-Proof. intros; induction τ; simpl in *; simp ExpP in H; now reduce. Qed.
-
-End Log.
 
 Definition SN {Γ τ} : Γ ⊢ τ → Prop := ExpP (@halts Γ).
 Arguments SN {Γ τ} _ /.
@@ -328,7 +305,7 @@ Proof.
         now constructor.
       * apply multi_R; auto.
         rewrite SubExp_Push.
-        now apply ST_AppAbs.
+        now repeat econstructor.
       * apply IHe.
         constructor; auto.
         now eapply multistep_preserves_SN; eauto.

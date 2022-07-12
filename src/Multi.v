@@ -8,7 +8,9 @@ Require Export
   Exp
   Sub
   Sem
-  Step.
+  (* Step *)
+  Ctxt
+.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -61,7 +63,7 @@ Next Obligation.
   generalize dependent y0.
   generalize dependent y.
   induction H1; intros; eauto.
-  - now repeat econstructor; eauto.
+  - now do 4 (econstructor; eauto).
   - unfold flip in *.
     now econstructor; eauto.
 Qed.
@@ -86,7 +88,7 @@ Ltac simpl_multistep :=
   end;
   [ now apply multi_refl
   | eapply multi_step; eauto;
-    now constructor ].
+    now econstructor; eauto ].
 
 (*
 Lemma multistep_If {Γ} {e1 e1' : Γ ⊢ TyBool} {τ} {e2 e3 : Γ ⊢ τ} :
@@ -248,9 +250,19 @@ Proof.
 Qed.
 *)
 
+#[local] Hint Constructors ValueP Plug Redex Step : core.
+
 Lemma multistep_App2 {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :
   ValueP v → (e --->* e') → APP v e --->* APP v e'.
-Proof. now simpl_multistep. Qed.
+Proof.
+  intros.
+  induction H0.
+  - now apply multi_refl.
+  - rewrite <- IHmulti; clear IHmulti H1.
+    apply multi_R.
+    dependent elimination H0.
+    now eauto 6.
+Qed.
 
 End Multi.
 

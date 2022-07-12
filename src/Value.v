@@ -1,4 +1,5 @@
 Require Export
+  Coq.Logic.ProofIrrelevance
   Ty
   Exp.
 
@@ -18,7 +19,7 @@ Open Scope Ty_scope.
 
 (* [ValueP] is an inductive proposition that indicates whether an expression
    represents a value, i.e., that it does reduce any further. *)
-Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Type :=
+Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
   (* | HostedValP {ty} (x : HostExp (TyHost ty)) : ValueP Γ (HostedVal x) *)
   (* | HostedFunP {dom cod} (f : HostExp (dom ⟶ cod)) : ValueP Γ (HostedFun f) *)
   (* | ErrorP {τ} m : ValueP Γ (Error (τ:=τ) m) *)
@@ -32,15 +33,11 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Type :=
   (*   ValueP Γ x → ValueP Γ xs → ValueP Γ (Cons x xs) *)
   | LambdaP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (LAM e).
 
-Derive Signature NoConfusion NoConfusionHom for ValueP.
+Derive Signature for ValueP.
 
 Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP _ v) :
   H1 = H2.
-Proof.
-  induction H1; dependent elimination H2; auto.
-  (* - now erewrite IHValueP1, IHValueP2; eauto. *)
-  (* - now erewrite IHValueP1, IHValueP2; eauto. *)
-Qed.
+Proof. now apply proof_irrelevance. Qed.
 
 Inductive Value : Ty → Type :=
   (* | HostValue {ty}         : HostExp (TyHost ty) → Value (TyHost ty) *)

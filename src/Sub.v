@@ -414,12 +414,13 @@ Lemma SubExp_VAR_SV {Γ τ τ'} (s : Sub [] Γ) (x : Exp [] τ') (v : Var Γ τ)
   SubExp (Push x s) (VAR (SV v)) = SubExp s (VAR v).
 Proof. now simpl; simp SubVar. Qed.
 
+(*
 Equations vsubst {Γ τ ty} (e : Exp (ty :: Γ) τ) (s : ValEnv Γ) : Exp [ty] τ :=
   vsubst e Empty      := e;
   vsubst e (Val x xs) :=
     vsubst (SubExp (Keepₛ {|| RenExp DropAll (projT1 (valueToExp x)) ||}) e) xs.
 
-Equations expToValue `{v : Exp [] τ} (V : ValueP v) : Value τ :=
+Equations expToValue `(v : Exp [] τ) : Value τ :=
   (* expToValue (HostedValP x) := HostValue x; *)
   (* expToValue (HostedFunP x) := ClosureExp (Func x); *)
   (* expToValue (ErrorP m)     := VError m; *)
@@ -429,7 +430,7 @@ Equations expToValue `{v : Exp [] τ} (V : ValueP v) : Value τ :=
   (* expToValue (PairP X Y)    := VPair (expToValue X) (expToValue Y); *)
   (* expToValue NilP           := VNil; *)
   (* expToValue (ConsP X XS)   := VCons (expToValue X) (expToValue XS); *)
-  expToValue (LambdaP e)    := ClosureExp (Lambda e).
+  expToValue (LAM e) := ClosureExp (Lambda e).
 
 Lemma expToValue_valueToExp `(v : Value τ) :
   let '(existT _ e H) := valueToExp v in
@@ -441,6 +442,7 @@ Proof.
   (* - now destruct (valueToExp v1), (valueToExp v2); subst. *)
   - now destruct c; simp valueToExp; simp expToValue.
 Qed.
+*)
 
 Lemma RenExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Ren Γ' Γ) :
   ValueP v → ValueP (RenExp σ v).

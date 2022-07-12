@@ -37,3 +37,5 @@ Ltac reduce :=
           end; subst).
 
 Ltac inv H := inversion H; subst; clear H; reduce.
+
+Ltac equality := intuition congruence.

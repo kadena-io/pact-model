@@ -389,7 +389,7 @@ Qed.
 Import ListNotations.
 
 Theorem strong_progress {τ} (e : Exp [] τ) :
-  ValueP e + { e' | e ---> e' }.
+  ValueP e ∨ ∃ e', e ---> e'.
 Proof.
   dependent induction e; reduce.
   (* - destruct τ; *)
@@ -471,23 +471,20 @@ Proof.
   - left.
     now constructor.
   - right.
-    destruct IHe1.
-    + destruct IHe2.
-      * dependent elimination e1; inv v.
-        (* ** now exists (CallHost h1 e2 v0); constructor. *)
-        ** now eexists (SubExp {|| e2 ||} _); constructor.
-      * dependent elimination e1; inv v.
-        (* ** exists (APP (HostedFun h1) x); constructor; auto. *)
-        (*    now constructor. *)
-        ** eexists (APP (LAM _) x); constructor; eauto.
-           now constructor.
-    + reduce.
-      destruct IHe2.
-      * exists (APP x e2).
+    destruct IHe1 as [V1|[e1' H1']];
+    destruct IHe2 as [V2|[e2' H2']].
+    + dependent elimination V1.
+      (* ** now exists (CallHost h1 e2 v0); constructor. *)
+      * now eexists (SubExp {|| e2 ||} _); constructor.
+    + dependent elimination e1; inv V1.
+      (* ** exists (APP (HostedFun h1) x); constructor; auto. *)
+      (*    now constructor. *)
+      * eexists (APP (LAM _) e2'); constructor; eauto.
         now constructor.
-      * reduce.
-        exists (APP x e2).
-        now constructor.
+    + exists (APP e1' e2).
+      now constructor.
+    + exists (APP e1' e2).
+      now constructor.
 Qed.
 
 End Sound.

@@ -1,4 +1,4 @@
-Require Export
+Require Import
   Ty
   Exp.
 

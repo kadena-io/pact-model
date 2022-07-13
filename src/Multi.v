@@ -1,16 +1,13 @@
-Require Export
-  Coq.Unicode.Utf8
-  Coq.Lists.List
-  Coq.Relations.Relation_Definitions
-  Coq.Classes.RelationClasses
-  Coq.Classes.Morphisms
+Require Import
+  Lib
+  Ltac
   Ty
   Exp
+  Value
+  Ren
   Sub
   Sem
-  (* Step *)
-  Ctxt
-.
+  Step.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -261,8 +258,9 @@ Proof.
   - rewrite <- IHmulti; clear IHmulti H1.
     apply multi_R.
     dependent elimination H0.
-    now eauto 6.
-Qed.
+    + now eauto 6.
+    + admit.
+Admitted.
 
 End Multi.
 

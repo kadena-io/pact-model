@@ -1,3 +1,5 @@
+Set Warnings "-cannot-remove-as-expected".
+
 Require Import
   Coq.Unicode.Utf8
   Coq.Program.Program

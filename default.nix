@@ -30,8 +30,8 @@ pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec
 
   buildInputs = [
     coq coq.ocaml coq.camlp5 coq.findlib
-    equations category-theory (coq-haskell coqPackages)
-    coqhammer pkgs.z3-tptp
+    equations QuickChick coqhammer pkgs.z3-tptp
+    category-theory (coq-haskell coqPackages)
   ];
   enableParallelBuilding = true;
 

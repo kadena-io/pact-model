@@ -1,6 +1,6 @@
-Require Export
+Require Import
+  Lib
   Ty
-  Coq.Lists.List
   Exp.
 
 From Equations Require Import Equations.

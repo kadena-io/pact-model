@@ -1,283 +1,321 @@
 Require Import
-  Coq.Unicode.Utf8
-  Coq.Lists.List
-  Coq.Classes.RelationClasses
-  Coq.Classes.Morphisms
-  Hask.Control.Monad
-  Hask.Data.Either
+  Lib
+  Ltac
   Ty
   Exp
+  Value
+  Ren
   Sub
   Sem.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
 
-Section Step.
-
 Generalizable All Variables.
+
+(** Evaluation contexts *)
+
+Section Step.
 
 Import ListNotations.
 
 Context {A : Type}.
-Context `{S : HostExprsSem A}.
+Context `{HostExprs A}.
+
+Open Scope Ty_scope.
+
+(* A context defines a hole which, after substitution, yields an expression of
+   the index type. *)
+Inductive Ctxt Γ τ' : Ty → Type :=
+  | C_Hole : Ctxt Γ τ' τ'
+
+  (* | C_If1 {τ} : Ctxt Γ τ' TyBool → Exp Γ τ → Exp Γ τ → Ctxt Γ τ' TyBool *)
+  (* | C_If2 {τ} : Exp Γ TyBool → Ctxt Γ τ → Exp Γ τ → Ctxt Γ τ *)
+  (* | C_If3 {τ} : Exp Γ TyBool → Exp Γ τ → Ctxt Γ τ → Ctxt Γ τ *)
+
+  | C_App1 {dom cod} : Ctxt Γ τ' (dom ⟶ cod) → Exp Γ dom → Ctxt Γ τ' cod
+  | C_App2 {dom cod} : Exp Γ (dom ⟶ cod) → Ctxt Γ τ' dom → Ctxt Γ τ' cod.
+
+Derive Signature NoConfusion for Ctxt.
+
+(* [Ctxt] forms a category with objects = types and morphisms = contexts. *)
+
+Definition Ctxt_id {Γ τ} : Ctxt Γ τ τ := C_Hole _ _.
+Arguments Ctxt_id {_ _} /.
+
+Equations Ctxt_comp {Γ τ τ' τ''} (C : Ctxt Γ τ' τ) (C' : Ctxt Γ τ'' τ') :
+  Ctxt Γ τ'' τ :=
+  Ctxt_comp (C_Hole _ _)     c' := c';
+  Ctxt_comp (C_App1 _ _ c _) c' := C_App1 _ _ (Ctxt_comp c c') _;
+  Ctxt_comp (C_App2 _ _ _ c) c' := C_App2 _ _ _ (Ctxt_comp c c').
+
+Theorem Ctxt_id_left {Γ τ τ'} {C : Ctxt Γ τ' τ} :
+  Ctxt_comp Ctxt_id C = C.
+Proof. induction C; simp Ctxt_comp; auto; now f_equal. Qed.
+
+Theorem Ctxt_id_right {Γ τ τ'} {C : Ctxt Γ τ' τ} :
+  Ctxt_comp C Ctxt_id = C.
+Proof. induction C; simp Ctxt_comp; auto; now f_equal. Qed.
+
+Theorem Ctxt_comp_assoc {Γ τ τ' τ'' τ'''}
+        {C : Ctxt Γ τ' τ} {C' : Ctxt Γ τ'' τ'} {C'' : Ctxt Γ τ''' τ''} :
+  Ctxt_comp C (Ctxt_comp C' C'') = Ctxt_comp (Ctxt_comp C C') C''.
+Proof. induction C; simp Ctxt_comp; auto; now f_equal. Qed.
+
+(*
+Equations Plug {Γ τ' τ} (e : Exp Γ τ') (c : Ctxt Γ τ' τ) : Exp Γ τ :=
+  Plug e (C_Hole _ _)      := e;
+  Plug e (C_App1 _ _ C e1) := APP (Plug e C) e1;
+  Plug e (C_App2 _ _ e1 C) := APP e1 (Plug e C).
+*)
+
+Unset Elimination Schemes.
+
+Inductive Plug {Γ τ'} (e : Exp Γ τ') : ∀ {τ}, Ctxt Γ τ' τ → Exp Γ τ → Prop :=
+  | Plug_Hole : Plug e (C_Hole _ _) e
+
+  (* | Plug_If1 {Γ τ} (C : Ctxt Γ TyBool) (e e' : Exp Γ TyBool) (e1 e2 : Exp Γ τ) : *)
+  (*   Plug C e e' → Plug (C_If1 _ C e1 e2) e (If e' e1 e2) *)
+  (* | Plug_If2 {Γ τ} (C : Ctxt Γ τ) (e e' : Exp Γ τ) e1 (e2 : Exp Γ τ) : *)
+  (*   Plug C e e' → Plug (C_If2 _ e1 C e2) e (If e1 e' e2) *)
+  (* | Plug_If3 {Γ τ} (C : Ctxt Γ τ) (e e' : Exp Γ τ) e1 (e2 : Exp Γ τ) : *)
+  (*   Plug C e e' → Plug (C_If3 _ e1 e2 C) e (If e1 e2 e') *)
+
+  | Plug_App1 {dom cod} {C : Ctxt Γ τ' (dom ⟶ cod)}
+              {e' : Exp Γ (dom ⟶ cod)} {e1 : Exp Γ dom} :
+    Plug e C e' →
+    Plug e (C_App1 _ _ C e1) (APP e' e1)
+  | Plug_App2 {dom cod} {C : Ctxt Γ τ' dom}
+              {e' : Exp Γ dom} {e1 : Exp Γ (dom ⟶ cod)} :
+    ValueP e1 →
+    Plug e C e' →
+    Plug e (C_App2 _ _ e1 C) (APP e1 e').
+
+Derive Signature for Plug.
+
+Set Elimination Schemes.
+
+Scheme Plug_ind := Induction for Plug Sort Prop.
+
+(* [Plug] forms a category with objects = expressions and morphisms = plugs
+   over existential contexts. *)
+
+Definition Plug_id {Γ τ} {x : Exp Γ τ} : Plug x (C_Hole Γ τ) x := Plug_Hole _.
+Arguments Plug_id {_ _ _} /.
+
+Equations Plug_comp {Γ τ τ' τ''}
+          {x : Exp Γ τ''} {y : Exp Γ τ'} {z : Exp Γ τ}
+          {C : Ctxt Γ τ' τ} {C' : Ctxt Γ τ'' τ'}
+          (P : Plug x C' y) (P' : Plug y C z) : Plug x (Ctxt_comp C C') z :=
+  Plug_comp p (Plug_Hole _)    := p;
+  Plug_comp p (Plug_App1 _ p')   := Plug_App1 _ (Plug_comp p p');
+  Plug_comp p (Plug_App2 _ H p') := Plug_App2 _ H (Plug_comp p p').
+
+(* This should be provable, but the dependent types get in the way. *)
+Theorem Plug_id_left {Γ τ τ'} {C : Ctxt Γ τ' τ} {x : Exp Γ τ'} {y : Exp Γ τ}
+        (P : Plug x C y) :
+  Plug_comp Plug_id P ~= P.
+Proof.
+  dependent induction P; auto.
+  - rewrite (Plug_comp_equation_2 _ _ _ _ _ _ _ _ _ _ _ Plug_id P).
+    unfold Ctxt_comp_obligations_obligation_1.
+    pose proof (@Ctxt_id_right _ _ _ C).
+    simpl in *.
+    Fail rewrite H0 in IHP.
+    Fail now rewrite IHP.
+Abort.
+(*
+  - rewrite (Plug_comp_equation_3 _ _ _ _ _ _ _ _ _ _ _ Plug_id _ P).
+    pose proof (@Ctxt_id_right _ _ _ C).
+    simpl in *.
+    Fail now rewrite IHP.
+*)
+
+Inductive Redex {Γ} : ∀ {τ}, Exp Γ τ → Exp Γ τ → Prop :=
+  | ST_AppAbs0 {dom cod} (e : Exp (dom :: Γ) cod) v :
+    ValueP v →
+    Redex (APP (LAM e) v) (SubExp {|| v ||} e).
+
+Derive Signature for Redex.
 
 Reserved Notation " t '--->' t' " (at level 40).
 
-(************************************************************************
- * Small-step operational semantics
- *)
+Inductive Step {Γ τ} : Exp Γ τ → Exp Γ τ → Prop :=
+  | StepRule {τ'} {C : Ctxt Γ τ' τ} {e1 e2 : Exp Γ τ'} {e1' e2' : Exp Γ τ} :
+    Plug e1 C e1' →
+    Plug e2 C e2' →
+    Redex e1 e2 →
+    e1' ---> e2'
 
-Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
-(*
-  | ST_Seq1 Γ τ τ' (e1 e1' : Exp Γ τ') (e2 : Exp Γ τ) :
-    e1 ---> e1' →
-    Seq e1 e2 ---> Seq e1' e2
-  | ST_Seq1Err Γ τ τ' (m : Err) (e2 : Exp Γ τ) :
-    Seq (τ':=τ') (Error m) e2 ---> Error m
-  | ST_Seq2 Γ τ τ' (e1 : Exp Γ τ') (e2 : Exp Γ τ) :
-    ValueP e1 →
-    Seq e1 e2 ---> e2
-
-  | ST_Host Γ τ (h : HostExp τ) :
-    HostedExp h ---> projT1 (Reduce (Γ:=Γ) h)
-
-  | ST_IfTrue Γ τ (t e : Exp Γ τ) :
-    If ETrue t e ---> t
-  | ST_IfFalse Γ τ (t e : Exp Γ τ) :
-    If EFalse t e ---> e
-  | ST_If Γ b b' τ (t e : Exp Γ τ) :
-    b ---> b' →
-    If b t e ---> If b' t e
-  | ST_IfErr Γ τ (m : Err) (t e : Exp Γ τ) :
-    If (Error m) t e ---> Error m
-
-  | ST_Pair1 Γ τ1 τ2 (x x' : Exp Γ τ1) (y : Exp Γ τ2) :
-    x ---> x' →
-    Pair x y ---> Pair x' y
-  | ST_Pair2 Γ τ1 τ2 (x : Exp Γ τ1) (y y' : Exp Γ τ2) :
-    ValueP x →
-    y ---> y' →
-    Pair x y ---> Pair x y'
-  | ST_Pair1Err Γ τ1 τ2 (m : Err) (y : Exp Γ τ2) :
-    Pair (τ1:=τ1) (Error m) y ---> Error m
-  | ST_Pair2Err Γ τ1 τ2 (x : Exp Γ τ1) (m : Err) :
-    ValueP x →
-    Pair (τ2:=τ2) x (Error m) ---> Error m
-
-  | ST_Fst1 Γ τ1 τ2 (p p' : Exp Γ (TyPair τ1 τ2)) :
-    p ---> p' →
-    Fst p ---> Fst p'
-  | ST_Fst1Err Γ τ1 τ2 (m : Err) :
-    Fst (Γ:=Γ) (τ1:=τ1) (τ2:=τ2) (Error m) ---> Error m
-  | ST_FstPair Γ τ1 τ2 (v1 : Exp Γ τ1) (v2 : Exp Γ τ2) :
-    ValueP v1 →
-    ValueP v2 →
-    Fst (Pair v1 v2) ---> v1
-
-  | ST_Snd1 Γ τ1 τ2 (p p' : Exp Γ (TyPair τ1 τ2)) :
-    p ---> p' →
-    Snd p ---> Snd p'
-  | ST_Snd1Err Γ τ1 τ2 (m : Err) :
-    Snd (Γ:=Γ) (τ1:=τ1) (τ2:=τ2) (Error m) ---> Error m
-  | ST_SndPair Γ τ1 τ2 (v1 : Exp Γ τ1) (v2 : Exp Γ τ2) :
-    ValueP v1 →
-    ValueP v2 →
-    Snd (Pair v1 v2) ---> v2
-
-  | ST_Cons1 Γ τ (x : Exp Γ τ) x' (xs : Exp Γ (TyList τ)) :
-    x ---> x' →
-    Cons x xs ---> Cons x' xs
-  | ST_Cons2 Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) xs' :
-    ValueP x →
-    xs ---> xs' →
-    Cons x xs ---> Cons x xs'
-  | ST_Cons1Err Γ τ (m : Err) (xs : Exp Γ (TyList τ)) :
-    Cons (Error m) xs ---> Error m
-  | ST_Cons2Err Γ τ (x : Exp Γ τ) (m : Err) :
-    ValueP x →
-    Cons x (Error m) ---> Error m
-
-  | ST_Car1 Γ τ (l l' : Exp Γ (TyList τ)) :
-    l ---> l' →
-    Car l ---> Car l'
-  | ST_Car1Err Γ τ (m : Err) :
-    Car (Γ:=Γ) (τ:=τ) (Error m) ---> Error m
-  | ST_CarNil Γ τ :
-    Car (Nil (Γ:=Γ) (τ:=τ)) ---> Error CarOfNil
-  | ST_CarCons Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) :
-    ValueP x →
-    ValueP xs →
-    Car (Cons x xs) ---> x
-
-  | ST_Cdr1 Γ τ (l l' : Exp Γ (TyList τ)) :
-    l ---> l' →
-    Cdr l ---> Cdr l'
-  | ST_Cdr1Err Γ τ (m : Err) :
-    Cdr (Γ:=Γ) (τ:=τ) (Error m) ---> Error m
-  | ST_CdrNil Γ τ :
-    Cdr (Nil (Γ:=Γ) (τ:=τ)) ---> Nil
-  | ST_CdrCons Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) :
-    ValueP x →
-    ValueP xs →
-    Cdr (Cons x xs) ---> xs
-
-  | ST_IsNil1 Γ τ (l l' : Exp Γ (TyList τ)) :
-    l ---> l' →
-    IsNil l ---> IsNil l'
-  | ST_IsNil1Err Γ τ (m : Err) :
-    IsNil (Γ:=Γ) (τ:=τ) (Error m) ---> Error m
-  | ST_IsNilNil Γ τ :
-    IsNil (Nil (Γ:=Γ) (τ:=τ)) ---> ETrue
-  | ST_IsNilCons Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) :
-    ValueP x →
-    ValueP xs →
-    IsNil (Cons x xs) ---> EFalse
-
-  | ST_AppHost Γ dom cod (f : HostExp (dom ⟶ cod)) (v : Exp Γ dom) :
-    ∀ H : ValueP v,
-    APP (HostedFun f) v ---> CallHost f v H
-*)
-
-  | ST_AppAbs Γ dom cod (e : Exp (dom :: Γ) cod) (v : Exp Γ dom) :
-    ValueP v →
-    APP (LAM e) v ---> SubExp {|| v ||} e
-
-  | ST_App1 Γ dom cod (e1 : Exp Γ (dom ⟶ cod)) e1' (e2 : Exp Γ dom) :
-    e1 ---> e1' →
-    APP e1 e2 ---> APP e1' e2
-  (* | ST_App1Err Γ dom cod (m : Err) (e2 : Exp Γ dom) : *)
-  (*   APP (dom:=dom) (cod:=cod) (Error m) e2 ---> Error m *)
-
-  | ST_App2 Γ dom cod (v1 : Exp Γ (dom ⟶ cod)) (e2 : Exp Γ dom) e2' :
-    ValueP v1 →
-    e2 ---> e2' →
-    APP v1 e2 ---> APP v1 e2'
-  (* | ST_App2Err Γ dom cod (v1 : Exp Γ (dom ⟶ cod)) (m : Err) : *)
-  (*   ValueP v1 → *)
-  (*   APP v1 (Error m) ---> Error m *)
+  | StepError {τ'} {C : Ctxt Γ τ' τ} {m : Err} {e1' : Exp Γ τ} :
+    Plug (Error m) C e1' →
+    ¬ ErrorP e1' →
+    e1' ---> Error m
 
   where " t '--->' t' " := (Step t t').
 
 Derive Signature for Step.
 
-End Step.
+#[local] Hint Constructors ValueP Plug Redex Step : core.
 
-Notation " t '--->' t' " := (Step t t') (at level 40).
-
-Class HostLang (A : Type) : Type := {
-  has_host_exprs_sem :> HostExprsSem A;
-
-
-(*
-  CallHost_sound {Γ dom cod} (f : HostExp (dom ⟶ cod))
-                 (v : Exp Γ dom) (H : ValueP v) se :
-    (HostExpSem f >>= λ f', SemExp v se >>= λ x, f' x) =
-      SemExp (CallHost f v H) se;
-
-  CallHost_irr {Γ dom cod} (f : HostExp (dom ⟶ cod))
-               (v : Exp Γ dom) (H : ValueP v) :
-    ¬ (CallHost f v H = APP (HostedFun f) v);
-
-  CallHost_preserves_renaming {Γ Γ' dom cod} (f : HostExp (dom ⟶ cod))
-               (v : Exp Γ dom) (H : ValueP v) (σ : Ren Γ' Γ) :
-    APP (HostedFun f) (RenExp σ v) ---> RenExp σ (CallHost f v H);
-
-  CallHost_preserves_substitution {Γ Γ' dom cod} (f : HostExp (dom ⟶ cod))
-               (v : Exp Γ dom) (H : ValueP v) (σ : Sub Γ' Γ) :
-    APP (HostedFun f) (SubExp σ v) ---> SubExp σ (CallHost f v H);
-
-
-  Reduce_sound {Γ τ} (h : HostExp τ) se :
-    HostExpSem h = SemExp (projT1 (Reduce (Γ:=Γ) h)) se;
-
-  Reduce_irr {Γ τ} (h : HostExp τ) :
-    ¬ (projT1 (Reduce (Γ:=Γ) h) = HostedExp h);
-
-  Reduce_preserves_renaming {Γ Γ' τ} (h : HostExp τ) (σ : Ren Γ Γ') :
-    RenExp σ (HostedExp h) ---> RenExp σ (projT1 (Reduce h));
-
-  Reduce_preserves_substitution {Γ Γ' τ} (h : HostExp τ) (σ : Sub Γ Γ') :
-    SubExp σ (HostedExp h) ---> SubExp σ (projT1 (Reduce h));
-*)
-}.
-
-Section Sound.
-
-Context {A : Type}.
-Context `{L : HostLang A}.
-
-Corollary sum_id {X Y : Type} (e : X + Y) :
-  match e with
-  | inl x => inl x
-  | inr y => inr y
-  end = e.
-Proof. now destruct e. Qed.
-
-(*
-Lemma SemExp_SubVar {Γ dom cod}
-      (v : (dom :: Γ) ∋ cod)
-      (e : Γ ⊢ dom)
-      (se : SemEnv Γ) :
-  SemVar v (SemExp e se, se) = SemExp (SubVar {||e||} v) se.
+Theorem strong_progress {τ} (e : Exp [] τ) :
+  ValueP e ∨ ErrorP e ∨ ∃ e', e ---> e'.
 Proof.
-  dependent elimination v; simpl; simp SubVar; auto.
-  now rewrite SubVar_idSub; simpl.
+  dependent induction e; reduce.
+  - right.
+    now left; eexists.
+  - now inv v.
+  - now left; constructor.
+  - right.
+    destruct IHe1 as [V1|[E1|[e1' H1']]];
+    destruct IHe2 as [V2|[E2|[e2' H2']]].
+    + dependent elimination V1.
+      now eauto 6.
+    + dependent elimination V1.
+      dependent elimination E2.
+      right.
+      now eexists; eapply StepError; eauto.
+    + dependent elimination H2'.
+      * now eauto 6.
+      * now right; eexists; eapply StepError; eauto.
+    + dependent elimination V2.
+      dependent elimination E1.
+      right.
+      now eexists; eapply StepError; eauto.
+    + dependent elimination E1.
+      right.
+      now eexists; eapply StepError; eauto.
+    + dependent elimination E1.
+      right.
+      now eexists; eapply StepError; eauto.
+    + dependent elimination H1'.
+      * now eauto 6.
+      * right.
+        now eexists; eapply StepError; eauto.
+    + dependent elimination H1'.
+      * eauto 6.
+      * right.
+        now eexists; eapply StepError; eauto.
+    + dependent elimination H1'.
+      dependent elimination H2'.
+      * now eauto 6.
+      * now eauto 6.
+      * right.
+        now eexists; eapply StepError; eauto.
 Qed.
 
-Lemma SemExp_SubExp {Γ dom cod}
-      (e : (dom :: Γ) ⊢ cod)
-      (v : Γ ⊢ dom)
-      (se : SemEnv Γ) :
-  SemExp e (SemExp v se, se) = SemExp (SubExp {||v||} e) se.
-Proof.
-  dependent induction e; simpl; auto.
-  - now rewrite SemExp_SubVar.
-Qed.
-*)
-
-Theorem Step_sound {Γ τ} (e : Exp Γ τ) v :
-  e ---> v → SemExp e = SemExp v.
+Lemma Plug_not_ValueP {Γ τ} {C : Ctxt Γ τ τ} (e v : Exp Γ τ) :
+  ValueP v →
+  Plug e C v →
+    C = C_Hole _ _ ∧ e = v.
 Proof.
   intros.
-  induction H; simpl; auto;
-  extensionality se;
-  rewrite ?IHStep, ?sum_id; auto.
-  (* - destruct (SemExp_ValueP _ se X) as [? H]. *)
-  (*   simpl; rewrite H; simpl. *)
-  (*   now rewrite sum_id. *)
-  (* - now erewrite <- Reduce_sound. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H]. *)
-  (*   now simpl; rewrite H. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   destruct (SemExp_ValueP _ se X0) as [? H2]. *)
-  (*   now simpl; rewrite H1, H2. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   destruct (SemExp_ValueP _ se X0) as [? H2]. *)
-  (*   now simpl; rewrite H1, H2. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H]. *)
-  (*   now simpl; rewrite H. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   destruct (SemExp_ValueP _ se X0) as [? H2]. *)
-  (*   now simpl; rewrite H1, H2. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   destruct (SemExp_ValueP _ se X0) as [? H2]. *)
-  (*   now simpl; rewrite H1, H2. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   destruct (SemExp_ValueP _ se X0) as [? H2]. *)
-  (*   now simpl; rewrite H1, H2. *)
-  (* - now apply CallHost_sound. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   rewrite H1; simpl. *)
-  (*   rewrite sum_id. *)
-  (*   now erewrite <- SemExp_SubExp. *)
-  - rewrite <- SemExp_SubSem.
-    f_equal; simpl.
-    simp SubSem.
-    now rewrite SubSem_idSub.
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   now rewrite H1. *)
+  dependent elimination H0.
+  now inv H1.
 Qed.
+
+Lemma Redex_ValueP {Γ τ} (e v : Exp Γ τ) :
+  ValueP v →
+    ¬ Redex v e.
+Proof.
+  repeat intro.
+  dependent elimination H0.
+  now inv H1.
+Qed.
+
+Lemma Plug_deterministic {Γ τ τ'} {C : Ctxt Γ τ' τ} e2 :
+  ∀ e1 e1', Redex e1 e1' →
+  ∀ τ'' f1 f1', Redex f1 f1' →
+  Plug e1 C e2 →
+  ∀ (C' : Ctxt Γ τ'' τ),
+  Plug f1 C' e2 →
+    τ' = τ'' ∧ C ~= C' ∧ e1 ~= f1.
+Proof.
+  intros.
+  generalize dependent C'.
+  induction H2; intros; subst.
+  inv H3; auto.
+  - exfalso.
+    dependent elimination H0.
+    dependent elimination H1.
+    now inv H6.
+  - exfalso.
+    dependent elimination H0.
+    dependent elimination H1.
+    now inv H7.
+  - dependent elimination H3.
+    + exfalso.
+      dependent elimination H0.
+      dependent elimination H1.
+      now inv H2.
+    + intuition.
+      now destruct (IHPlug _ p); reduce.
+    + exfalso.
+      dependent elimination H0.
+      dependent elimination H1.
+      now inv H2.
+  - dependent elimination H3.
+    + exfalso.
+      dependent elimination H0.
+      dependent elimination H1.
+      now inv H2.
+    + exfalso.
+      dependent elimination H0.
+      dependent elimination H1.
+      now inv p.
+    + intuition.
+      now destruct (IHPlug _ p0); reduce.
+Qed.
+
+Lemma Plug_functional {Γ τ τ'} {C : Ctxt Γ τ' τ} e e1 :
+  Plug e C e1
+    → ∀ e2, Plug e C e2 → e1 = e2.
+Proof.
+  intros.
+  dependent induction H0.
+  - now inv H1.
+  - dependent destruction H1.
+    now f_equal; auto.
+  - dependent destruction H1.
+    now f_equal; auto.
+Qed.
+
+Lemma Plug_injective {Γ τ τ'} {C : Ctxt Γ τ' τ} e e1 :
+  Plug e C e1
+    → ∀ e', Plug e' C e1 → e = e'.
+Proof.
+  intros.
+  dependent induction H0.
+  - now inv H1.
+  - dependent destruction H1.
+    now f_equal; auto.
+  - dependent destruction H1.
+    now f_equal; auto.
+Qed.
+
+Lemma Redex_deterministic : ∀ Γ τ (e e' : Exp Γ τ),
+  Redex e e' → ∀ e'', Redex e e'' → e' = e''.
+Proof.
+  intros.
+  dependent elimination H0.
+  dependent elimination H1.
+  reflexivity.
+Qed.
+
+Lemma App_Lam_loop {Γ τ ty} {v : Exp Γ ty} {e : Exp (ty :: Γ) τ} :
+  ¬ (SubExp {||v||} e = APP (LAM e) v).
+Admitted.
+(*
+Proof.
+  dependent induction e; repeat intro; inv H.
+  - dependent induction v0; simp consSub in *.
+    + simp SubVar in H1.
+  (*     now induction v; inv H1; intuition. *)
+  (*   + simp SubVar in H1. *)
+  (*     rewrite SubVar_idSub in H1. *)
+  (*     now induction v0; inv H1; intuition. *)
+Admitted.
+*)
 
 (*
 Lemma If_loop_true {Γ τ} b {x : Exp Γ τ} {y : Exp Γ τ} :
@@ -302,24 +340,12 @@ Proof.
 Qed.
 *)
 
-Lemma App_Lam_loop {Γ τ ty} {v : Exp Γ ty} {e : Exp (ty :: Γ) τ} :
-  ¬ (SubExp {||v||} e = APP (LAM e) v).
-Proof.
-  dependent induction e; repeat intro; inv H.
-  - dependent induction v0; simp consSub in *.
-    + simp SubVar in H1.
-  (*     now induction v; inv H1; intuition. *)
-  (*   + simp SubVar in H1. *)
-  (*     rewrite SubVar_idSub in H1. *)
-  (*     now induction v0; inv H1; intuition. *)
-Admitted.
-
 (* A term never reduces to itself. *)
 #[export]
 Program Instance Step_Irreflexive {Γ τ} :
   Irreflexive (Step (Γ:=Γ) (τ:=τ)).
 Next Obligation.
-  dependent induction H.
+  dependent elimination H0.
   (* - inv H. *)
   (*   + now apply Reduce_irr in H4. *)
   (* - inv H. *)
@@ -330,9 +356,19 @@ Next Obligation.
   (*   + now intuition eauto. *)
   (*   + now eapply Seq_loop; eauto. *)
   (* + now eapply CallHost_irr; eauto. *)
-  - now eapply App_Lam_loop; eauto.
-  - now intuition.
-  - now intuition.
+  - admit.
+  - now apply n.
+Admitted.
+(*
+  - inv H0.
+  - inv H0.
+Qed.
+*)
+
+Corollary Step_productive {Γ τ} {x x' : Exp Γ τ} : x ---> x' → x ≠ x'.
+Proof.
+  repeat intro; subst.
+  now eapply Step_Irreflexive; eauto.
 Qed.
 
 #[export]
@@ -340,26 +376,44 @@ Program Instance RenExp_Step {Γ Γ' τ} (σ : Ren Γ' Γ) :
   Proper (Step (Γ:=Γ) (τ:=τ) ==> Step) (RenExp σ).
 Next Obligation.
   intros.
-  induction H; simpl;
+  induction H0; simpl;
   try solve [ now constructor; intuition idtac
             | now constructor; intuition; apply RenExp_ValueP ].
   (* - now apply Reduce_preserves_renaming. *)
   (* - now apply CallHost_preserves_renaming. *)
-  - rewrite <- SubExp_ScR.
-    simp ScR.
-    rewrite <- RcS_idSub.
-    pose proof (SubExp_RcS (Keep σ) (Push (RenExp σ v) idSub) e) as H1.
-    simp RcS in H1.
-    rewrite H1.
-    constructor.
-    now apply RenExp_ValueP.
+Admitted.
+(*
+  - dependent elimination H2.
+    (* epose proof (StepRule (Plug_App2 _ H0) *)
+    (*                       (Plug_App2 _ H1) H3). *)
+    dependent induction H2.
+    + inv H1; simpl.
+      rewrite <- SubExp_ScR.
+      simp ScR.
+      rewrite <- RcS_idSub.
+      pose proof (SubExp_RcS (Keep σ) (Push (RenExp σ v) idSub) e) as H1.
+      simp RcS in H1.
+      rewrite H1.
+      repeat econstructor.
+      now apply RenExp_ValueP.
+    + specialize (IHPlug _ _ _ _ _ eq_refl H1 v0).
+      apply IHPlug.
+      dependent destruction H1; simpl.
+
+      repeat econstructor.
+      epose proof (StepRule (Plug_App1 p)
+                            (Plug_App1 H1)).
+
 Qed.
+*)
 
 #[export]
 Program Instance SubExp_Step {Γ Γ' τ} (σ : Sub Γ' Γ) :
   Proper (Step (Γ:=Γ) (τ:=τ) ==> Step) (SubExp σ).
 Next Obligation.
   intros.
+Admitted.
+(*
   induction H; simpl;
   try solve [ now constructor; intuition idtac
             | now constructor; intuition; apply SubExp_ValueP ].
@@ -379,112 +433,32 @@ Next Obligation.
     constructor.
     now apply SubExp_ValueP.
 Qed.
+*)
 
-Corollary Step_productive {Γ τ} {x x' : Exp Γ τ} : x ---> x' → x ≠ x'.
+Lemma pluggable {Γ τ} {e1 e2 : Exp Γ τ} {τ'} {C : Ctxt Γ τ' τ} {f1 f2 : Exp Γ τ'} :
+  ¬ ErrorP f2 →
+  f1 ---> f2 →
+  Plug f1 C e1 →
+  Plug f2 C e2 →
+  e1 ---> e2.
 Proof.
-  repeat intro; subst.
-  now eapply Step_Irreflexive; eauto.
+  intros.
+
+  dependent elimination H1.
+  - exact (StepRule (Plug_comp p H2) (Plug_comp p0 H3) r).
+  - exfalso.
+    now apply H0.
 Qed.
 
-Import ListNotations.
-
-Theorem strong_progress {τ} (e : Exp [] τ) :
-  ValueP e ∨ ∃ e', e ---> e'.
+Lemma APP_LAM_2 {Γ dom cod} (e : Exp (dom :: Γ) cod) (x x' : Exp Γ dom) :
+  ¬ ErrorP x' →
+  x ---> x' →
+  APP (LAM e) x ---> APP (LAM e) x'.
 Proof.
-  dependent induction e; reduce.
-  (* - destruct τ; *)
-  (*   right; now exists (projT1 (Reduce h)); constructor. *)
-  (* - now left; constructor. *)
-  (* - now left; constructor. *)
-  (* - admit. *)
-  (* - now left; constructor. *)
-  (* - now left; constructor. *)
-  (* - now left; constructor. *)
-  (* - right. *)
-  (*   destruct IHe1; reduce. *)
-  (*   + inv v. *)
-  (*     * now exists e2; constructor. *)
-  (*     * now exists e3; constructor. *)
-  (*   + reduce. *)
-  (*     now exists (If x e2 e3); constructor. *)
-  (* - destruct IHe1; reduce. *)
-  (*   + destruct IHe2; reduce. *)
-  (*     * left. *)
-  (*       now constructor. *)
-  (*     * right; reduce. *)
-  (*       now exists (Pair e1 x); constructor. *)
-  (*   + destruct IHe2; reduce. *)
-  (*     * right; reduce. *)
-  (*       now exists (Pair x e2); constructor. *)
-  (*     * right; reduce. *)
-  (*       now exists (Pair x e2); constructor. *)
-  (* - destruct IHe; reduce. *)
-  (*   + right. *)
-  (*     inv v; reduce. *)
-  (*     * now exists x; constructor. *)
-  (*   + right; reduce. *)
-  (*     now exists (Fst x); constructor. *)
-  (* - destruct IHe; reduce. *)
-  (*   + right. *)
-  (*     inv v. *)
-  (*     * now exists y; constructor. *)
-  (*   + right; reduce. *)
-  (*     now exists (Snd x); constructor. *)
-  (* - now left; constructor. *)
-  (* - destruct IHe1. *)
-  (*   + destruct IHe2. *)
-  (*     * now left; constructor. *)
-  (*     * right; reduce. *)
-  (*       now exists (Cons e1 x); constructor. *)
-  (*   + destruct IHe2. *)
-  (*     * right; reduce. *)
-  (*       now exists (Cons x e2); constructor. *)
-  (*     * right; reduce. *)
-  (*       now exists (Cons x0 e2); constructor. *)
-  (* - destruct IHe. *)
-  (*   + right. *)
-  (*     inv v; now eexists; constructor. *)
-  (*   + right; reduce. *)
-  (*     now exists (Car x); constructor. *)
-  (* - destruct IHe. *)
-  (*   + right. *)
-  (*     inv v; now eexists; constructor. *)
-  (*   + right; reduce. *)
-  (*     now exists (Cdr x); constructor. *)
-  (* - right. *)
-  (*   destruct IHe. *)
-  (*   + inv v. *)
-  (*     * now exists ETrue; constructor. *)
-  (*     * now exists EFalse; constructor. *)
-  (*   + reduce. *)
-  (*     exists (IsNil x). *)
-  (*     now constructor. *)
-  (* - right. *)
-  (*   destruct IHe1. *)
-  (*   + destruct IHe2. *)
-  (*     * now exists e2; constructor. *)
-  (*     * now exists e2; constructor. *)
-  (*   + destruct IHe2; reduce. *)
-  (*     * now exists (Seq x e2); constructor. *)
-  (*     * now exists (Seq x0 e2); constructor. *)
-  - now inversion v.
-  - left.
-    now constructor.
-  - right.
-    destruct IHe1 as [V1|[e1' H1']];
-    destruct IHe2 as [V2|[e2' H2']].
-    + dependent elimination V1.
-      (* ** now exists (CallHost h1 e2 v0); constructor. *)
-      * now eexists (SubExp {|| e2 ||} _); constructor.
-    + dependent elimination e1; inv V1.
-      (* ** exists (APP (HostedFun h1) x); constructor; auto. *)
-      (*    now constructor. *)
-      * eexists (APP (LAM _) e2'); constructor; eauto.
-        now constructor.
-    + exists (APP e1' e2).
-      now constructor.
-    + exists (APP e1' e2).
-      now constructor.
+  intros.
+  now eapply (pluggable H0 H1); eauto.
 Qed.
 
-End Sound.
+End Step.
+
+Notation " t '--->' t' " := (Step t t') (at level 40).

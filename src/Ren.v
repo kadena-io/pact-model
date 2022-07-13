@@ -1,5 +1,5 @@
-Require Export
-  Coq.Program.Equality
+Require Import
+  Lib
   Ty
   Exp.
 
@@ -20,7 +20,7 @@ Inductive Ren : Env → Env → Type :=
   | Drop {τ Γ Γ'} : Ren Γ Γ' → Ren (τ :: Γ) Γ'
   | Keep {τ Γ Γ'} : Ren Γ Γ' → Ren (τ :: Γ) (τ :: Γ').
 
-Derive Signature NoConfusion for Ren.
+Derive Signature NoConfusion EqDec for Ren.
 
 Fixpoint idRen {Γ} : Ren Γ Γ :=
   match Γ with
@@ -123,7 +123,7 @@ Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   (* | HostedExp x   => HostedExp x *)
   (* | HostedVal x   => HostedVal x *)
   (* | HostedFun x   => HostedFun x *)
-  (* | Error e       => Error e *)
+  | Error e       => Error e
   (* | EUnit         => EUnit *)
   (* | ETrue         => ETrue *)
   (* | EFalse        => EFalse *)

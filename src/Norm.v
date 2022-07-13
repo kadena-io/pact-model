@@ -1,17 +1,19 @@
 Set Warnings "-cannot-remove-as-expected".
 
 Require Import
-  Coq.Unicode.Utf8
-  Coq.Program.Program
-  Coq.Relations.Relation_Definitions
-  Coq.Classes.CRelationClasses
-  Coq.Classes.Morphisms
+  Lib
+  Ltac
   Ty
   Exp
+  Value
+  Ren
   Sub
   Log
   Sem
-  Multi.
+  Multi
+  Lang
+  Sound
+  Step.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -37,7 +39,7 @@ Definition deterministic `(R : relation X) : Prop :=
   ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
 
 Definition halts {Γ τ} (e : Exp Γ τ) : Prop :=
-  ∃ e', e --->* e' ∧ inhabited (ValueP e').
+  ∃ e', e --->* e' ∧ (ValueP e' ∨ ErrorP e').
 
 Notation " e '⇓' " := (halts e) (at level 11).
 
@@ -45,21 +47,30 @@ Definition normal_form_of {Γ τ} (e e' : Exp Γ τ) : Prop :=
   (e --->* e' ∧ normal_form Step e').
 
 Lemma value_is_nf {Γ τ} (v : Exp Γ τ) :
-  ValueP v → normal_form Step v.
+  ValueP v ∨ ErrorP v → normal_form Step v.
 Proof.
   intros.
   unfold normal_form.
-  dependent elimination H.
-  repeat intro.
-  inv H.
-  inv H2.
-  inv H6.
-  (* - inv H. *)
-  (*   + now eapply IHv1; eauto. *)
-  (*   + now eapply IHv2; eauto. *)
-  (* - inv H. *)
-  (*   + now eapply IHv1; eauto. *)
-  (*   + now eapply IHv2; eauto. *)
+  destruct H.
+  - dependent elimination H.
+    repeat intro.
+    inv H.
+    inv H2.
+    inv H5.
+    inv H0.
+    now inv H0.
+    (* - inv H. *)
+    (*   + now eapply IHv1; eauto. *)
+    (*   + now eapply IHv2; eauto. *)
+    (* - inv H. *)
+    (*   + now eapply IHv1; eauto. *)
+    (*   + now eapply IHv2; eauto. *)
+  - dependent elimination H.
+    repeat intro.
+    inv H.
+    inv H2.
+    inv H0.
+    now apply H1.
 Qed.
 
 Ltac normality :=
@@ -73,22 +84,22 @@ Ltac normality :=
   end.
 
 Lemma nf_is_value {τ} (v : Exp [] τ) :
-  normal_form Step v → ValueP v.
+  normal_form Step v → ValueP v ∨ ErrorP v.
 Proof.
   intros.
-  destruct (strong_progress v); auto; reduce.
+  destruct (strong_progress v); intuition eauto; reduce.
   now normality.
 Qed.
 
 Theorem nf_same_as_value {τ} (v : Exp [] τ) :
-  iffT (normal_form Step v) (ValueP v).
+  normal_form Step v ↔ ValueP v ∨ ErrorP v.
 Proof.
   split.
   - now apply nf_is_value.
   - now apply value_is_nf.
 Qed.
 
-Lemma value_halts {Γ τ} (v : Exp Γ τ) : ValueP v → halts v.
+Lemma value_halts {Γ τ} (v : Exp Γ τ) : ValueP v ∨ ErrorP v → halts v.
 Proof.
   intros X.
   unfold halts.
@@ -106,14 +117,19 @@ Theorem Step_deterministic Γ τ :
 Proof.
   repeat intro.
   dependent elimination H.
-  dependent elimination H0.
-  assert (τ' = τ'0 ∧ C ~= C0 ∧ e1 ~= e3)
-    by (eapply Plug_deterministic; eassumption).
-  intuition idtac; subst.
-  assert (e2 = e4)
-    by (eapply Redex_deterministic; eassumption).
-  subst.
-  now eapply Plug_functional; eauto.
+  - inv H0.
+    + assert (τ' = τ'0 ∧ C ~= C0 ∧ e1 ~= e0)
+        by (eapply Plug_deterministic; eassumption).
+      intuition idtac; subst.
+      assert (e2 = e3)
+        by (eapply Redex_deterministic; eassumption).
+      subst.
+      now eapply Plug_functional; eauto.
+    + dependent elimination H.
+      admit.
+  - inv H0.
+    + admit.
+    + admit.
 Qed.
 
 Theorem normal_forms_unique Γ τ :

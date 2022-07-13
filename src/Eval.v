@@ -1,9 +1,12 @@
-Require Export
+Require Import
+  Lib
   Ty
   Exp
+  Value
   Sub
   Sem
-  Step.
+  Step
+  Lang.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

@@ -1,6 +1,5 @@
-Require Export
-  Coq.Program.Equality
-  Coq.Program.Program
+Require Import
+  Lib
   Ltac
   Ty
   Exp
@@ -26,7 +25,7 @@ Inductive Sub (Γ : Env) : Env → Type :=
 #[global] Arguments NoSub {Γ}.
 #[global] Arguments Push {Γ Γ' τ} _ _.
 
-Derive Signature NoConfusion for Sub.
+Derive Signature NoConfusion EqDec for Sub.
 
 Equations get `(s : Sub Γ' Γ) `(v : Var Γ τ) : Exp Γ' τ :=
   get (Push x _)   ZV    := x;
@@ -76,7 +75,7 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   (* | HostedExp x   => HostedExp x *)
   (* | HostedVal x   => HostedVal x *)
   (* | HostedFun x   => HostedFun x *)
-  (* | Error e       => Error e *)
+  | Error e       => Error e
   (* | EUnit         => EUnit *)
   (* | ETrue         => ETrue *)
   (* | EFalse        => EFalse *)

@@ -1,5 +1,5 @@
-Require Export
-  Coq.Program.Equality
+Require Import
+  Lib
   Ltac
   Ty
   Exp

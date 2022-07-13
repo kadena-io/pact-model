@@ -1,5 +1,5 @@
-Require Export
-  Coq.Logic.ProofIrrelevance
+Require Import
+  Lib
   Ty
   Exp.
 
@@ -56,6 +56,19 @@ with Closure : Ty → Ty → Type :=
 .
 
 Derive Signature NoConfusion NoConfusionHom for Value.
+(*
+Next Obligation.
+  destruct x, y.
+  - destruct (eq_dec e e0); subst.
+    + now left.
+    + right.
+      intro.
+      inversion H0.
+      apply inj_pair2 in H2.
+      apply inj_pair2 in H2.
+      contradiction.
+Defined.
+*)
 Derive Signature NoConfusion NoConfusionHom Subterm for Closure.
 
 Inductive ValEnv : Env → Type :=
@@ -68,9 +81,14 @@ Equations get_value `(s : ValEnv Γ) `(v : Var Γ τ) : Value τ :=
   get_value (Val x _)  ZV     := x;
   get_value (Val _ xs) (SV v) := get_value xs v.
 
+Inductive ErrorP Γ : ∀ {τ}, Exp Γ τ → Prop :=
+  | IsError {τ} m : ErrorP Γ (Error (τ:=τ) m).
+
+Derive Signature for ErrorP.
+
 End Value.
 
-(* Arguments ValueP {A H Γ τ} _. *)
+Arguments ValueP {A H Γ τ} _.
 (* Arguments HostedValP {A H Γ ty} _. *)
 (* Arguments HostedFunP {A H Γ dom cod} _. *)
 (* Arguments ErrorP {A H Γ τ} _. *)
@@ -79,7 +97,6 @@ End Value.
 (* Arguments PairP {A H Γ τ1 τ2 x y} _ _. *)
 (* Arguments NilP {A H Γ τ}. *)
 (* Arguments ConsP {A H Γ τ _ _} _ _. *)
-(* Arguments LambdaP {A H Γ dom cod} _. *)
+Arguments LambdaP {A H Γ dom cod} _.
 
-Arguments ValueP {Γ τ} _.
-Arguments LambdaP {Γ dom cod} _.
+Arguments ErrorP {A H Γ τ} _.

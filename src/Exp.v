@@ -1,6 +1,6 @@
-Require Export
-  Ty
-  Coq.Lists.List.
+Require Import
+  Lib
+  Ty.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -14,6 +14,7 @@ Import ListNotations.
 Class HostExprs (A : Type) : Type := {
   has_host_types :> HostTypes A;
   HostErr : Type;
+  HostErr_EqDec : EqDec HostErr;
   HostExp : Ty → Type
 }.
 
@@ -28,20 +29,31 @@ Inductive Var : Env → Ty → Type :=
   | ZV {Γ τ}    : Var (τ :: Γ) τ
   | SV {Γ τ τ'} : Var Γ τ → Var (τ' :: Γ) τ.
 
-Derive Signature NoConfusion for Var.
+Derive Signature NoConfusion EqDec for Var.
 
 Inductive Err : Type :=
   | CarOfNil
   | HostedErr : HostErr → Err.
 
-Derive NoConfusion NoConfusionHom Subterm for Err.
+Derive NoConfusion NoConfusionHom EqDec for Err.
+Next Obligation.
+  destruct x, y.
+  - now left.
+  - now right.
+  - now right.
+  - destruct (HostErr_EqDec h h0); subst.
+    + now left.
+    + right; intro.
+      inversion H0.
+      contradiction.
+Defined.
 
 Inductive Exp Γ : Ty → Type :=
   (* | HostedExp {τ}       : HostExp τ → Exp Γ τ *)
   (* | HostedVal {ty}      : HostExp (TyHost ty) → Exp Γ (TyHost ty) *)
   (* | HostedFun {dom cod} : HostExp (dom ⟶ cod) → Exp Γ (dom ⟶ cod) *)
 
-  (* | Error {τ}           : Err → Exp Γ τ *)
+  | Error {τ}           : Err → Exp Γ τ
   (* | EUnit               : Exp Γ TyUnit *)
   (* | ETrue               : Exp Γ TyBool *)
   (* | EFalse              : Exp Γ TyBool *)
@@ -64,14 +76,14 @@ Inductive Exp Γ : Ty → Type :=
   | LAM {dom cod}       : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
   | APP {dom cod}       : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
 
-Derive Signature NoConfusionHom for Exp.
+Derive Signature NoConfusionHom EqDec for Exp.
 
 Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   match e with
   (* | HostedExp _ x => 1 *)
   (* | HostedVal _ x => 1 *)
   (* | HostedFun _ x => 1 *)
-  (* | Error _ _     => 1 *)
+  | Error _ _     => 1
   (* | EUnit _       => 1 *)
   (* | ETrue _       => 1 *)
   (* | EFalse _      => 1 *)
@@ -102,7 +114,7 @@ End Exp.
 (* Arguments HostedExp {A H Γ τ} _. *)
 (* Arguments HostedVal {A H Γ ty} _. *)
 (* Arguments HostedFun {A H Γ dom cod} _. *)
-(* Arguments Error {A H Γ τ} _. *)
+Arguments Error {A H Γ τ} _.
 (* Arguments EUnit {A H Γ}. *)
 (* Arguments ETrue {A H Γ}. *)
 (* Arguments EFalse {A H Γ}. *)
@@ -116,13 +128,9 @@ End Exp.
 (* Arguments Cdr {A H Γ τ} _. *)
 (* Arguments IsNil {A H Γ τ} _. *)
 (* Arguments Seq {A H Γ τ τ'} _ _. *)
-(* Arguments VAR {A H Γ τ} _. *)
-(* Arguments LAM {A H Γ dom cod} _. *)
-(* Arguments APP {A H Γ dom cod} _ _. *)
-
-Arguments VAR {Γ τ} _.
-Arguments LAM {Γ dom cod} _.
-Arguments APP {Γ dom cod} _ _.
+Arguments VAR {A H Γ τ} _.
+Arguments LAM {A H Γ dom cod} _.
+Arguments APP {A H Γ dom cod} _ _.
 
 Notation "Γ ∋ τ" := (Var Γ τ) (at level 10).
 Notation "Γ ⊢ τ" := (Exp Γ τ) (at level 10).

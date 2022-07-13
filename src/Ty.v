@@ -1,5 +1,7 @@
-Require Export
-  Coq.Unicode.Utf8.
+Set Warnings "-cannot-remove-as-expected".
+
+Require Import
+  Lib.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -33,8 +35,8 @@ Inductive Ty : Type :=
   (* The arrow type is the only type in the base lambda calculus *)
   | TyArrow : Ty → Ty → Ty.
 
-(* Derive NoConfusion NoConfusionHom Subterm for Ty. *)
-Derive NoConfusion NoConfusionHom for Ty.
+(* Derive NoConfusion NoConfusionHom EqDec Subterm for Ty. *)
+Derive NoConfusion NoConfusionHom EqDec for Ty.
 
 End Ty.
 

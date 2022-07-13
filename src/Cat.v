@@ -1,14 +1,15 @@
 Set Warnings "-notation-overridden".
 
 Require Import
-  Coq.Unicode.Utf8
+  Lib
+  Ty
   Exp
   Ren
   Sem.
 
 Require Import Category.Lib.
-Require Export Category.Theory.Category.
-Require Export Category.Structure.BiCCC.
+Require Import Category.Theory.Category.
+Require Import Category.Structure.BiCCC.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

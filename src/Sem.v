@@ -1,10 +1,11 @@
 Require Import
-  Coq.Program.Program
   Hask.Control.Monad
   Hask.Data.Either
   ilist
+  Lib
   Ty
   Exp
+  Value
   Ren
   Sub.
 
@@ -23,8 +24,8 @@ Fixpoint SemTy `{HostExprs A} (τ : Ty) : Type :=
   (* | TyBool          => bool *)
   (* | TyList τ        => list (SemTy τ) *)
   (* | TyPair t1 t2    => SemTy t1 * SemTy t2 *)
-  (* | TyArrow dom cod => SemTy dom → Err + SemTy cod *)
-  | TyArrow dom cod => SemTy dom → SemTy cod
+  | TyArrow dom cod => SemTy dom → Err + SemTy cod
+  (* | TyArrow dom cod => SemTy dom → SemTy cod *)
   end.
 
 Class HostExprsSem (A : Type) : Type := {
@@ -102,44 +103,53 @@ Proof.
 Qed.
 
 (*
+Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : Err + SemTy τ :=
+  SemExp (Error e)   se := inl e;
+  SemExp (VAR v)     se := pure (SemVar v se);
+  SemExp (LAM e)     se := pure (λ x, SemExp e (x, se));
+  SemExp (APP e1 e2) se := e1' <- SemExp e1 se ;
+                           e2' <- SemExp e2 se ;
+                           e1' e2'.
+*)
+
 Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → Err + SemTy τ :=
   match e with
-  | HostedExp x   => λ _,  HostExpSem x
-  | HostedVal x   => λ _,  HostExpSem x
-  | HostedFun x   => λ _,  HostExpSem x
+  (* | HostedExp x   => λ _,  HostExpSem x *)
+  (* | HostedVal x   => λ _,  HostExpSem x *)
+  (* | HostedFun x   => λ _,  HostExpSem x *)
   | Error e       => λ _,  inl e
-  | EUnit         => λ _,  pure tt
-  | ETrue         => λ _,  pure true
-  | EFalse        => λ _,  pure false
-  | If b t e      => λ se, b' <- SemExp b se ;
-                           if b' : bool
-                           then SemExp t se
-                           else SemExp e se
-  | Pair x y      => λ se, x' <- SemExp x se ;
-                           y' <- SemExp y se ;
-                           pure (x', y')
-  | Fst p         => λ se, fst <$> SemExp p se
-  | Snd p         => λ se, snd <$> SemExp p se
-  | Nil           => λ se, pure nil
-  | Cons x xs     => λ se, x'  <- SemExp x se ;
-                           xs' <- SemExp xs se ;
-                           pure (x' :: xs')
-  | Car xs        => λ se, xs' <- SemExp xs se ;
-                           match xs' with
-                           | []     => inl CarOfNil
-                           | x :: _ => pure x
-                           end
-  | Cdr xs        => λ se, xs' <- SemExp xs se ;
-                           match xs' with
-                           | []      => pure nil
-                           | _ :: xs => pure xs
-                           end
-  | IsNil xs      => λ se, xs' <- SemExp xs se ;
-                           match xs' with
-                           | []      => pure true
-                           | _ :: xs => pure false
-                           end
-  | Seq exp1 exp2 => λ se, SemExp exp1 se >> SemExp exp2 se
+  (* | EUnit         => λ _,  pure tt *)
+  (* | ETrue         => λ _,  pure true *)
+  (* | EFalse        => λ _,  pure false *)
+  (* | If b t e      => λ se, b' <- SemExp b se ; *)
+  (*                          if b' : bool *)
+  (*                          then SemExp t se *)
+  (*                          else SemExp e se *)
+  (* | Pair x y      => λ se, x' <- SemExp x se ; *)
+  (*                          y' <- SemExp y se ; *)
+  (*                          pure (x', y') *)
+  (* | Fst p         => λ se, fst <$> SemExp p se *)
+  (* | Snd p         => λ se, snd <$> SemExp p se *)
+  (* | Nil           => λ se, pure nil *)
+  (* | Cons x xs     => λ se, x'  <- SemExp x se ; *)
+  (*                          xs' <- SemExp xs se ; *)
+  (*                          pure (x' :: xs') *)
+  (* | Car xs        => λ se, xs' <- SemExp xs se ; *)
+  (*                          match xs' with *)
+  (*                          | []     => inl CarOfNil *)
+  (*                          | x :: _ => pure x *)
+  (*                          end *)
+  (* | Cdr xs        => λ se, xs' <- SemExp xs se ; *)
+  (*                          match xs' with *)
+  (*                          | []      => pure nil *)
+  (*                          | _ :: xs => pure xs *)
+  (*                          end *)
+  (* | IsNil xs      => λ se, xs' <- SemExp xs se ; *)
+  (*                          match xs' with *)
+  (*                          | []      => pure true *)
+  (*                          | _ :: xs => pure false *)
+  (*                          end *)
+  (* | Seq exp1 exp2 => λ se, SemExp exp1 se >> SemExp exp2 se *)
 
   | VAR v         => λ se, pure (SemVar v se)
   | LAM e         => λ se, pure (λ x, SemExp e (x, se))
@@ -147,14 +157,15 @@ Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → Err + SemTy τ :=
                            e2' <- SemExp e2 se ;
                            e1' e2'
   end.
-*)
 
+(*
 Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
   match e with
   | VAR v         => λ se, SemVar v se
   | LAM e         => λ se, λ x, SemExp e (x, se)
   | APP e1 e2     => λ se, SemExp e1 se (SemExp e2 se)
   end.
+*)
 
 Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ') :
   SemExp e (RenSem r se) = SemExp (RenExp r e) se.
@@ -189,12 +200,13 @@ Proof.
   now rewrite RenSem_skip1.
 Qed.
 
-(*
 Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
   ValueP e → ∃ x, SemExp e se = pure x.
 Proof.
   induction 1; simpl; intros;
   try (now eexists; eauto); reduce.
+Qed.
+(*
   - pose proof (HostExpSem_valid x).
     reduce.
     rewrite H0.
@@ -214,6 +226,7 @@ Qed.
  * SubSem
  *)
 
+(*
 Equations SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : SemEnv Γ' :=
   SubSem NoSub      _  := tt;
   SubSem (Push t σ) se := (SemExp t se, SubSem σ se).
@@ -300,8 +313,15 @@ Proof.
   dependent elimination s; simp RcS; simp SubSem; simp RenSem.
   now rewrite IHr.
 Qed.
+*)
 
 (*
+Inductive SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : SemEnv Γ' → Type :=
+  SubSem NoSub      _  := inr tt;
+  SubSem (Push t σ) se := t' <- SemExp t se ;
+                          ρ' <- SubSem σ se ;
+                          pure (t', ρ').
+
 Equations SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : Err + SemEnv Γ' :=
   SubSem NoSub      _  := inr tt;
   SubSem (Push t σ) se := t' <- SemExp t se ;
@@ -345,7 +365,9 @@ Proof.
   intros.
   induction s; simp SubSem; simp SubVar; simpl.
   - now inversion v.
-  - inversion v; subst.
+  - dependent elimination v;
+    simp SubVar in *; simp SubSem in *; simpl in *.
+    rewrite H0 in *; simpl in *.
 Admitted.
 (*
     dependent elimination v; simpl; simp RenVar; simp SubVar.
@@ -364,17 +386,18 @@ Lemma SemExp_SubSem {Γ Γ' τ} (e : Exp Γ τ) (s : Sub Γ' Γ) (se : SemEnv Γ
 Proof.
   generalize dependent Γ'.
   induction e; simpl; intros; auto.
-  - destruct (HostExpSem_valid h) as [? H1].
-    rewrite H1; simpl.
-  - now rewrite IHe1, IHe2, IHe3.
-  - now rewrite IHe1, IHe2.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite IHe1, IHe2.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite IHe.
+  (* - destruct (HostExpSem_valid h) as [? H1]. *)
+  (*   rewrite H1; simpl. *)
+  -
+  (* - now rewrite IHe1, IHe2, IHe3. *)
+  (* - now rewrite IHe1, IHe2. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe1, IHe2. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe. *)
+  (* - now rewrite IHe. *)
   - now rewrite SemVar_SubSem.
   - extensionality z.
     fold SemTy in z.

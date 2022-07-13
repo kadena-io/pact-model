@@ -65,6 +65,29 @@ Next Obligation.
     now econstructor; eauto.
 Qed.
 
+#[export]
+Program Instance multi_respects_multi `(R : relation X) :
+  Proper (multi R --> multi R ==> impl) (multi R).
+Next Obligation.
+  unfold flip in *.
+  transitivity x; eauto.
+  now transitivity x0; eauto.
+Qed.
+
+#[export]
+Program Instance APP_respects_multi {Γ dom cod} (v : Exp Γ (dom ⟶ cod)) :
+  ValueP v →
+  Proper (multi Step ==> multi Step) (APP v).
+Next Obligation.
+  induction H0.
+  - now constructor.
+  - apply multi_step with (y:=APP v y).
+    + dependent elimination H.
+      eapply APP_LAM_2; eauto.
+      admit.
+    + now apply IHmulti.
+Admitted.
+
 Notation " t '--->*' t' " := (multi Step t t') (at level 40).
 
 (*
@@ -249,18 +272,44 @@ Qed.
 
 #[local] Hint Constructors ValueP Plug Redex Step : core.
 
+Lemma errors_final {Γ τ} {e e' : Γ ⊢ τ} :
+  ¬ ErrorP e' → (e --->* e') → ∀ i, i --->* e' → ¬ ErrorP i.
+Proof.
+  repeat intro.
+  inv H2.
+  inv H1.
+  - now apply H.
+  - inv H2.
+    + inv H1.
+      now inv H5.
+    + now inv H1.
+Qed.
+
 Lemma multistep_App2 {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :
-  ValueP v → (e --->* e') → APP v e --->* APP v e'.
+  ValueP v → ¬ ErrorP e' → (e --->* e') → APP v e --->* APP v e'.
 Proof.
   intros.
-  induction H0.
+  induction H1.
   - now apply multi_refl.
-  - rewrite <- IHmulti; clear IHmulti H1.
+  - rewrite <- IHmulti; clear IHmulti; auto.
+    dependent elimination H.
     apply multi_R.
-    dependent elimination H0.
-    + now eauto 6.
-    + admit.
-Admitted.
+    eapply APP_LAM_2; auto.
+    now eapply errors_final; eauto.
+Qed.
+
+Lemma multistep_App2_Error {Γ dom cod} {e : Γ ⊢ dom}
+      {v : Γ ⊢ (dom ⟶ cod)} {m : Err} :
+  ValueP v → (e --->* Error m) → APP v e --->* Error m.
+Proof.
+  intros.
+  dependent elimination H.
+  dependent induction H0.
+  - apply multi_R.
+    exact (StepError (Plug_App2 _ (LambdaP _)
+                                (Plug_Hole (Error m)))).
+  - admit.
+Abort.
 
 End Multi.
 

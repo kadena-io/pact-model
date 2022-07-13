@@ -19,6 +19,7 @@ Set Primitive Projections.
 Set Universe Polymorphism.
 Unset Transparent Obligations.
 
+(*
 Section Cat.
 
 Context {A : Type}.
@@ -27,8 +28,8 @@ Context `{L : HostExprsSem A}.
 Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (VAR ZV).
 
 Lemma SemExp_identity {Γ τ} (se : SemEnv Γ) :
-  SemExp (identity Γ τ) se = Datatypes.id.
-Proof. now extensionality e. Qed.
+  SemExp (identity Γ τ) se = Datatypes.inr Hask.Control.Applicative.pure.
+Proof. now f_equal. Qed.
 
 Definition composition {Γ τ τ' τ''}
            (f : Exp Γ (τ' ⟶ τ''))
@@ -37,7 +38,8 @@ Definition composition {Γ τ τ' τ''}
 
 Lemma SemExp_composition `(E : SemEnv Γ)
       {τ τ' τ''} (f : Exp Γ (τ' ⟶ τ'')) (g : Exp Γ (τ ⟶ τ')) :
-  SemExp (composition f g) E = Basics.compose (SemExp f E) (SemExp g E).
+  SemExp (composition f g) E =
+    Hask.Control.Monad.kleisli_compose (SemExp f E) (SemExp g E).
 Proof.
   extensionality z.
   fold SemTy in z.
@@ -268,3 +270,4 @@ Qed.
 *)
 
 End Cat.
+*)

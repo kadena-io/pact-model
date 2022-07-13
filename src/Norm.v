@@ -47,30 +47,30 @@ Definition normal_form_of {Γ τ} (e e' : Exp Γ τ) : Prop :=
   (e --->* e' ∧ normal_form Step e').
 
 Lemma value_is_nf {Γ τ} (v : Exp Γ τ) :
-  ValueP v ∨ ErrorP v → normal_form Step v.
+  ValueP v → normal_form Step v.
 Proof.
   intros.
   unfold normal_form.
-  destruct H.
-  - dependent elimination H.
-    repeat intro.
-    inv H.
-    inv H2.
-    inv H5.
-    inv H0.
-    now inv H0.
-    (* - inv H. *)
-    (*   + now eapply IHv1; eauto. *)
-    (*   + now eapply IHv2; eauto. *)
-    (* - inv H. *)
-    (*   + now eapply IHv1; eauto. *)
-    (*   + now eapply IHv2; eauto. *)
-  - dependent elimination H.
-    repeat intro.
-    inv H.
-    inv H2.
-    inv H0.
-    now apply H1.
+  dependent elimination H.
+  repeat intro.
+  inv H.
+  inv H2.
+  inv H5.
+  inv H0.
+  now inv H0.
+Qed.
+
+Lemma error_is_nf {Γ τ} (v : Exp Γ τ) :
+  ErrorP v → normal_form Step v.
+Proof.
+  intros.
+  unfold normal_form.
+  dependent elimination H.
+  repeat intro.
+  inv H.
+  inv H2.
+  inv H0.
+  now inv H0.
 Qed.
 
 Ltac normality :=
@@ -83,7 +83,7 @@ Ltac normality :=
         exfalso; now apply (H1 Y)
   end.
 
-Lemma nf_is_value {τ} (v : Exp [] τ) :
+Lemma nf_is_value_or_error {τ} (v : Exp [] τ) :
   normal_form Step v → ValueP v ∨ ErrorP v.
 Proof.
   intros.
@@ -91,15 +91,24 @@ Proof.
   now normality.
 Qed.
 
-Theorem nf_same_as_value {τ} (v : Exp [] τ) :
+Theorem nf_same_as_value_or_error {τ} (v : Exp [] τ) :
   normal_form Step v ↔ ValueP v ∨ ErrorP v.
 Proof.
   split.
-  - now apply nf_is_value.
-  - now apply value_is_nf.
+  - now apply nf_is_value_or_error.
+  - intros [H|H].
+    + now apply value_is_nf.
+    + now apply error_is_nf.
 Qed.
 
-Lemma value_halts {Γ τ} (v : Exp Γ τ) : ValueP v ∨ ErrorP v → halts v.
+Lemma value_halts {Γ τ} (v : Exp Γ τ) : ValueP v → halts v.
+Proof.
+  intros X.
+  unfold halts.
+  now induction X; eexists; repeat constructor.
+Qed.
+
+Lemma error_halts {Γ τ} (v : Exp Γ τ) : ErrorP v → halts v.
 Proof.
   intros X.
   unfold halts.
@@ -118,19 +127,19 @@ Proof.
   repeat intro.
   dependent elimination H.
   - inv H0.
-    + assert (τ' = τ'0 ∧ C ~= C0 ∧ e1 ~= e0)
+    + assert (τ' = τ'0 ∧ n = n0 ∧ C ~= C0 ∧ e1 ~= e0)
         by (eapply Plug_deterministic; eassumption).
       intuition idtac; subst.
       assert (e2 = e3)
         by (eapply Redex_deterministic; eassumption).
       subst.
       now eapply Plug_functional; eauto.
-    + dependent elimination H.
+    +
       admit.
   - inv H0.
     + admit.
     + admit.
-Qed.
+Admitted.
 
 Theorem normal_forms_unique Γ τ :
   deterministic (normal_form_of (Γ:=Γ) (τ:=τ)).
@@ -156,16 +165,24 @@ Proof.
   intros.
   unfold halts.
   split.
-  - intros [e'' [H1 [H2]]].
-    destruct H1.
-    + apply value_is_nf in H2.
-      now edestruct H2; eauto.
-    + rewrite (Step_deterministic _ _ _ _ _ H H0).
-      now exists z.
-  - intros [e'0 [H1 [H2]]].
-    exists e'0.
-    split; auto.
-    now eapply multi_step; eauto.
+  - intros [e'' [H1 [H2|H3]]].
+    + destruct H1.
+      * apply value_is_nf in H2.
+        now edestruct H2; eauto.
+      * rewrite (Step_deterministic _ _ _ _ _ H H0).
+        now intuition eauto.
+    + destruct H1.
+      * apply error_is_nf in H3.
+        now edestruct H3; eauto.
+      * rewrite (Step_deterministic _ _ _ _ _ H H0).
+        now intuition eauto.
+  - intros [e'0 [H1 [H2|H3]]].
+    + exists e'0.
+      split; auto.
+      now eapply multi_step; eauto.
+    + exists e'0.
+      split; auto.
+      now eapply multi_step; eauto.
 Qed.
 
 Definition SN {Γ τ} : Γ ⊢ τ → Prop := ExpP (@halts Γ).
@@ -306,6 +323,7 @@ Proof.
   (*     * now repeat constructor. *)
   (* - eapply step_preserves_SN'; eauto. *)
   (*   now constructor. *)
+  - now induction τ.
   - induction env.
     + now inv v.
     + simpl in *.
@@ -314,19 +332,31 @@ Proof.
   - eexists.
     + now eexists; repeat constructor.
     + intros.
-      destruct (SN_halts H0) as [v [P [Q]]].
-      apply (multistep_preserves_SN' (e':=SubExp (Push v env) e)); auto.
-      eapply multi_trans; eauto.
-      * eapply multistep_App2; eauto.
-        now constructor.
-      * apply multi_R; auto.
-        rewrite SubExp_Push.
-        now repeat econstructor.
-      * apply IHe.
-        constructor; auto.
-        now eapply multistep_preserves_SN; eauto.
+      destruct (SN_halts H0) as [v [P [Q|R]]].
+      * apply (multistep_preserves_SN' (e':=SubExp (Push v env) e)); auto.
+        eapply multi_trans; eauto.
+        ** eapply multistep_App2; eauto.
+           now constructor.
+           intro.
+           now inv H1; inv Q.
+        ** apply multi_R; auto.
+           rewrite SubExp_Push.
+           now repeat econstructor.
+        ** apply IHe.
+           constructor; auto.
+           now eapply multistep_preserves_SN; eauto.
+      * inv R.
+        apply (multistep_preserves_SN' (e':=Error m)); auto.
+        ** remember (SubExp (Keepₛ env) e) as s; clear -P.
+           inv P.
+           *** apply multi_R.
+               exact (StepError (Plug_App2 _ (LambdaP _)
+                                           (Plug_Hole (Error m)))).
+           *** pose proof (multi_step _ _ _ _ H H0); clear H H0.
+               admit.
+        ** now induction cod; intuition eauto.
   - now apply IHe1, IHe2.
-Qed.
+Admitted.
 
 Theorem Exp_SN {τ} (e : Exp [] τ) : SN e.
 Proof.

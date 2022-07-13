@@ -368,7 +368,6 @@ Proof.
   - dependent elimination v;
     simp SubVar in *; simp SubSem in *; simpl in *.
     rewrite H0 in *; simpl in *.
-Admitted.
 (*
     dependent elimination v; simpl; simp RenVar; simp SubVar.
     simpl in *.

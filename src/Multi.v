@@ -52,6 +52,8 @@ Program Instance multi_PreOrder `(R : relation X) :
 Next Obligation. now constructor. Qed.
 Next Obligation. now eapply multi_trans; eauto. Qed.
 
+Notation " t '--->*' t' " := (multi Step t t') (at level 40).
+
 #[export]
 Program Instance multi_respects_Step {Γ τ} :
   Proper (Step --> Step ==> impl) (multi (Step (Γ:=Γ) (τ:=τ))).
@@ -74,21 +76,18 @@ Next Obligation.
   now transitivity x0; eauto.
 Qed.
 
+(*
 #[export]
 Program Instance APP_respects_multi {Γ dom cod} (v : Exp Γ (dom ⟶ cod)) :
-  ValueP v →
-  Proper (multi Step ==> multi Step) (APP v).
+  ValueP v → Proper (multi Step ==> multi Step) (APP v).
 Next Obligation.
   induction H0.
-  - now constructor.
-  - apply multi_step with (y:=APP v y).
-    + dependent elimination H.
-      eapply APP_LAM_2; eauto.
-      admit.
-    + now apply IHmulti.
-Admitted.
-
-Notation " t '--->*' t' " := (multi Step t t') (at level 40).
+  - now apply multi_refl.
+  - rewrite <- IHmulti; clear IHmulti H1.
+    dependent elimination H.
+    destruct (AppR_LAM (e:= e) H0).
+Abort.
+*)
 
 (*
 Lemma multistep_Seq {Γ τ} {e1 : Γ ⊢ τ} {τ'} {e2 : Γ ⊢ τ'} :
@@ -276,29 +275,33 @@ Lemma errors_final {Γ τ} {e e' : Γ ⊢ τ} :
   ¬ ErrorP e' → (e --->* e') → ∀ i, i --->* e' → ¬ ErrorP i.
 Proof.
   repeat intro.
-  inv H2.
-  inv H1.
-  - now apply H.
-  - inv H2.
-    + inv H1.
-      now inv H5.
-    + now inv H1.
+  destruct H1.
+  - contradiction.
+  - apply error_is_nf in H2.
+    now edestruct H2; eauto.
 Qed.
 
-Lemma multistep_App2 {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :
+Lemma multistep_AppR {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :
   ValueP v → ¬ ErrorP e' → (e --->* e') → APP v e --->* APP v e'.
 Proof.
   intros.
   induction H1.
   - now apply multi_refl.
-  - rewrite <- IHmulti; clear IHmulti; auto.
-    dependent elimination H.
-    apply multi_R.
-    eapply APP_LAM_2; auto.
-    now eapply errors_final; eauto.
+  - dependent elimination H.
+    eapply (AppR_LAM (e:=e)) in H1.
+    rewrite <- IHmulti; clear IHmulti; auto.
+    destruct H1.
+    + now apply multi_R.
+    + reduce.
+      inv H2.
+      * exfalso.
+        now apply H0.
+      * apply error_is_nf in H.
+        ** contradiction.
+        ** now constructor.
 Qed.
 
-Lemma multistep_App2_Error {Γ dom cod} {e : Γ ⊢ dom}
+Lemma multistep_AppR_Error {Γ dom cod} {e : Γ ⊢ dom}
       {v : Γ ⊢ (dom ⟶ cod)} {m : Err} :
   ValueP v → (e --->* Error m) → APP v e --->* Error m.
 Proof.
@@ -306,10 +309,18 @@ Proof.
   dependent elimination H.
   dependent induction H0.
   - apply multi_R.
-    exact (StepError (Plug_App2 _ (LambdaP _)
+    exact (StepError (Plug_AppR _ (LambdaP _)
                                 (Plug_Hole (Error m)))).
-  - admit.
-Abort.
+  - apply (AppR_LAM (e:=e0)) in H.
+    destruct H.
+    + now econstructor; eauto.
+    + reduce.
+      inv H0.
+      * now apply multi_R.
+      * apply error_is_nf in H.
+        ** contradiction.
+        ** now constructor.
+Qed.
 
 End Multi.
 

@@ -70,9 +70,8 @@ Equations VIsNil `(v : Value (TyList r)) `(κ : Kont TyBool τ) : Σ τ :=
   VIsNil (VCons _ _) κ := MkΣ EFalse Empty κ.
 *)
 
-Fail Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
+Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   (* Constants *)
-(*
   step (MkΣ (r:=TyHost _)   (HostedVal x) ρ (FN f)) := f (HostValue x);
   step (MkΣ (r:=dom ⟶ cod) (HostedFun x) ρ (FN f)) := f (ClosureExp (Func x));
   step (MkΣ (HostedExp x) ρ κ) := MkΣ (projT1 (Reduce x)) ρ κ;
@@ -103,7 +102,6 @@ Fail Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
 
   (* A sequence just evaluates the second, for now *)
   step (MkΣ (Seq e1 e2) ρ κ) := MkΣ e2 ρ κ;
-*)
 
   (* A variable might lookup a lambda, in which case continue evaluating down
      that vein; otherwise, if no continuation, this is as far as we can go. *)

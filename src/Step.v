@@ -33,21 +33,27 @@ Inductive Ctxt Γ τ' : Ty → Type :=
   (* | C_If2 {τ} : Exp Γ TyBool → Ctxt Γ τ → Exp Γ τ → Ctxt Γ τ *)
   (* | C_If3 {τ} : Exp Γ TyBool → Exp Γ τ → Ctxt Γ τ → Ctxt Γ τ *)
 
-  | C_App1 {dom cod} : Ctxt Γ τ' (dom ⟶ cod) → Exp Γ dom → Ctxt Γ τ' cod
-  | C_App2 {dom cod} : Exp Γ (dom ⟶ cod) → Ctxt Γ τ' dom → Ctxt Γ τ' cod.
+  | C_AppL {dom cod} :
+    Ctxt Γ τ' (dom ⟶ cod) → Exp Γ dom → Ctxt Γ τ' cod
+  | C_AppR {dom cod} {v : Exp Γ (dom ⟶ cod)} :
+    ValueP v → Ctxt Γ τ' dom → Ctxt Γ τ' cod.
 
 Derive Signature NoConfusion for Ctxt.
 
+Arguments C_Hole {_ _}.
+Arguments C_AppL {_ _ _ _} _ _.
+Arguments C_AppR {_ _ _ _ _} _ _.
+
 (* [Ctxt] forms a category with objects = types and morphisms = contexts. *)
 
-Definition Ctxt_id {Γ τ} : Ctxt Γ τ τ := C_Hole _ _.
+Definition Ctxt_id {Γ τ} : Ctxt Γ τ τ := C_Hole.
 Arguments Ctxt_id {_ _} /.
 
 Equations Ctxt_comp {Γ τ τ' τ''} (C : Ctxt Γ τ' τ) (C' : Ctxt Γ τ'' τ') :
   Ctxt Γ τ'' τ :=
-  Ctxt_comp (C_Hole _ _)     c' := c';
-  Ctxt_comp (C_App1 _ _ c _) c' := C_App1 _ _ (Ctxt_comp c c') _;
-  Ctxt_comp (C_App2 _ _ _ c) c' := C_App2 _ _ _ (Ctxt_comp c c').
+  Ctxt_comp C_Hole       c' := c';
+  Ctxt_comp (C_AppL c _) c' := C_AppL (Ctxt_comp c c') _;
+  Ctxt_comp (C_AppR H c) c' := C_AppR _ (Ctxt_comp c c').
 
 Theorem Ctxt_id_left {Γ τ τ'} {C : Ctxt Γ τ' τ} :
   Ctxt_comp Ctxt_id C = C.
@@ -62,13 +68,6 @@ Theorem Ctxt_comp_assoc {Γ τ τ' τ'' τ'''}
   Ctxt_comp C (Ctxt_comp C' C'') = Ctxt_comp (Ctxt_comp C C') C''.
 Proof. induction C; simp Ctxt_comp; auto; now f_equal. Qed.
 
-(*
-Equations Plug {Γ τ' τ} (e : Exp Γ τ') (c : Ctxt Γ τ' τ) : Exp Γ τ :=
-  Plug e (C_Hole _ _)      := e;
-  Plug e (C_App1 _ _ C e1) := APP (Plug e C) e1;
-  Plug e (C_App2 _ _ e1 C) := APP e1 (Plug e C).
-*)
-
 Unset Elimination Schemes.
 
 Inductive Plug {Γ τ'} (e : Exp Γ τ') : nat → ∀ {τ}, Ctxt Γ τ' τ → Exp Γ τ → Prop :=
@@ -81,15 +80,14 @@ Inductive Plug {Γ τ'} (e : Exp Γ τ') : nat → ∀ {τ}, Ctxt Γ τ' τ → 
   (* | Plug_If3 {Γ τ} (C : Ctxt Γ τ) (e e' : Exp Γ τ) e1 (e2 : Exp Γ τ) : *)
   (*   Plug C e e' → Plug (C_If3 _ e1 e2 C) e (If e1 e2 e') *)
 
-  | Plug_App1 {n dom cod} {C : Ctxt Γ τ' (dom ⟶ cod)}
+  | Plug_AppL {n dom cod} {C : Ctxt Γ τ' (dom ⟶ cod)}
               {e' : Exp Γ (dom ⟶ cod)} {e1 : Exp Γ dom} :
     Plug e n C e' →
-    Plug e (S n) (C_App1 _ _ C e1) (APP e' e1)
-  | Plug_App2 {n dom cod} {C : Ctxt Γ τ' dom}
+    Plug e (S n) (C_AppL _ _ C e1) (APP e' e1)
+  | Plug_AppR {n dom cod} {C : Ctxt Γ τ' dom}
               {e' : Exp Γ dom} {e1 : Exp Γ (dom ⟶ cod)} :
-    ValueP e1 →
     Plug e n C e' →
-    Plug e (S n) (C_App2 _ _ e1 C) (APP e1 e').
+    Plug e (S n) (C_AppR _ _ e1 C) (APP e1 e').
 
 Derive Signature for Plug.
 
@@ -108,9 +106,9 @@ Equations Plug_comp {Γ τ τ' τ'' n m}
           {C : Ctxt Γ τ' τ} {C' : Ctxt Γ τ'' τ'}
           (P : Plug x n C' y) (P' : Plug y m C z) :
   Plug x (m + n) (Ctxt_comp C C') z :=
-  Plug_comp p (Plug_Hole _)    := p;
-  Plug_comp p (Plug_App1 _ p')   := Plug_App1 _ (Plug_comp p p');
-  Plug_comp p (Plug_App2 _ H p') := Plug_App2 _ H (Plug_comp p p').
+  Plug_comp p (Plug_Hole _)      := p;
+  Plug_comp p (Plug_AppL _ p')   := Plug_AppL _ (Plug_comp p p');
+  Plug_comp p (Plug_AppR _ H p') := Plug_AppR _ H (Plug_comp p p').
 
 (* This should be provable, but the dependent types get in the way. *)
 Theorem Plug_id_left {Γ τ τ' n} {C : Ctxt Γ τ' τ} {x : Exp Γ τ'} {y : Exp Γ τ}
@@ -133,7 +131,7 @@ Abort.
 *)
 
 Inductive Redex {Γ} : ∀ {τ}, Exp Γ τ → Exp Γ τ → Prop :=
-  | ST_AppAbs0 {dom cod} (e : Exp (dom :: Γ) cod) v :
+  | R_Beta {dom cod} (e : Exp (dom :: Γ) cod) v :
     ValueP v →
     Redex (APP (LAM e) v) (SubExp {|| v ||} e).
 
@@ -204,7 +202,7 @@ Proof.
         now eexists; eapply StepError; eauto.
 Qed.
 
-Lemma Plug_not_ValueP {Γ τ} {C : Ctxt Γ τ τ} (e v : Exp Γ τ) :
+Lemma Plug_not_value {Γ τ} {C : Ctxt Γ τ τ} (e v : Exp Γ τ) :
   ValueP v → Plug e 0 C v → C = C_Hole _ _ ∧ e = v.
 Proof.
   intros.
@@ -212,7 +210,7 @@ Proof.
   now inv H1.
 Qed.
 
-Lemma Redex_ValueP {Γ τ} (e v : Exp Γ τ) :
+Lemma Redex_value {Γ τ} (e v : Exp Γ τ) :
   ValueP v → ¬ Redex v e.
 Proof.
   repeat intro.
@@ -265,6 +263,57 @@ Proof.
       now destruct (IHPlug _ _ p0); reduce.
 Qed.
 
+(*
+Lemma Plug_deterministic_error {Γ τ τ' n} {C : Ctxt Γ τ' τ} e2 :
+  ∀ e1 e1', Redex e1 e1' →
+  Plug e1 n C e2 →
+  ∀ m τ'' (C' : Ctxt Γ τ'' τ) x,
+  Plug (Error x) m C' e2 →
+    τ' = τ'' ∧ n = m ∧ C ~= C'.
+Proof.
+  intros.
+  generalize dependent C'.
+  generalize dependent m.
+  generalize dependent x.
+  induction H0; intros; subst.
+  inv H2.
+  - now inv H1.
+  -
+    dependent elimination H1.
+  inv H3; auto.
+  - exfalso.
+    dependent elimination H0.
+    dependent elimination H1.
+    now inv H7.
+  - exfalso.
+    dependent elimination H0.
+    dependent elimination H1.
+    now inv H8.
+  - dependent elimination H3.
+    + exfalso.
+      dependent elimination H0.
+      dependent elimination H1.
+      now inv H2.
+    + intuition.
+      now destruct (IHPlug _ _ p); reduce.
+    + exfalso.
+      dependent elimination H0.
+      dependent elimination H1.
+      now inv H2.
+  - dependent elimination H3.
+    + exfalso.
+      dependent elimination H0.
+      dependent elimination H1.
+      now inv H2.
+    + exfalso.
+      dependent elimination H0.
+      dependent elimination H1.
+      now inv p.
+    + intuition.
+      now destruct (IHPlug _ _ p0); reduce.
+Qed.
+*)
+
 Lemma Plug_functional {Γ τ τ' n} {C : Ctxt Γ τ' τ} e e1 :
   Plug e n C e1 → ∀ e2, Plug e n C e2 → e1 = e2.
 Proof.
@@ -300,7 +349,7 @@ Qed.
 
 Lemma App_Lam_loop {Γ τ ty} {v : Exp Γ ty} {e : Exp (ty :: Γ) τ} :
   ¬ (SubExp {||v||} e = APP (LAM e) v).
-Admitted.
+Abort.
 (*
 Proof.
   dependent induction e; repeat intro; inv H.
@@ -310,7 +359,6 @@ Proof.
   (*   + simp SubVar in H1. *)
   (*     rewrite SubVar_idSub in H1. *)
   (*     now induction v0; inv H1; intuition. *)
-Admitted.
 *)
 
 (*
@@ -337,6 +385,7 @@ Qed.
 *)
 
 (* A term never reduces to itself. *)
+(*
 #[export]
 Program Instance Step_Irreflexive {Γ τ} :
   Irreflexive (Step (Γ:=Γ) (τ:=τ)).
@@ -344,16 +393,21 @@ Next Obligation.
   inv H0.
   - pose proof (Plug_injective _ _ H1 _ H2); subst.
     inv H3.
-    now eapply App_Lam_loop; eauto.
+    Fail now eapply App_Lam_loop; eauto.
+Abort.
+*)
+(*
   - now inv H1.
 Qed.
+*)
 
 Corollary Step_productive {Γ τ} {x x' : Exp Γ τ} : x ---> x' → x ≠ x'.
 Proof.
   repeat intro; subst.
-  now eapply Step_Irreflexive; eauto.
-Qed.
+  Fail now eapply Step_Irreflexive; eauto.
+Abort.
 
+(*
 #[export]
 Program Instance RenExp_Step {Γ Γ' τ} (σ : Ren Γ' Γ) :
   Proper (Step (Γ:=Γ) (τ:=τ) ==> Step) (RenExp σ).
@@ -364,11 +418,12 @@ Next Obligation.
             | now constructor; intuition; apply RenExp_ValueP ].
   (* - now apply Reduce_preserves_renaming. *)
   (* - now apply CallHost_preserves_renaming. *)
-Admitted.
+Abort.
+*)
 (*
   - dependent elimination H2.
-    (* epose proof (StepRule (Plug_App2 _ H0) *)
-    (*                       (Plug_App2 _ H1) H3). *)
+    (* epose proof (StepRule (Plug_AppR _ H0) *)
+    (*                       (Plug_AppR _ H1) H3). *)
     dependent induction H2.
     + inv H1; simpl.
       rewrite <- SubExp_ScR.
@@ -384,18 +439,20 @@ Admitted.
       dependent destruction H1; simpl.
 
       repeat econstructor.
-      epose proof (StepRule (Plug_App1 p)
-                            (Plug_App1 H1)).
+      epose proof (StepRule (Plug_AppL p)
+                            (Plug_AppL H1)).
 
 Qed.
 *)
 
+(*
 #[export]
 Program Instance SubExp_Step {Γ Γ' τ} (σ : Sub Γ' Γ) :
   Proper (Step (Γ:=Γ) (τ:=τ) ==> Step) (SubExp σ).
 Next Obligation.
   intros.
-Admitted.
+Abort.
+*)
 (*
   induction H; simpl;
   try solve [ now constructor; intuition idtac
@@ -427,20 +484,116 @@ Lemma pluggable {Γ τ n} {e1 e2 : Exp Γ τ} {τ'}
   e1 ---> e2.
 Proof.
   intros.
-  dependent elimination H1.
-  - exact (StepRule (Plug_comp p H2) (Plug_comp p0 H3) r).
+  dependent induction H1.
+  - exact (StepRule (Plug_comp H1 H4) (Plug_comp H2 H5) H3).
   - exfalso.
     now apply H0.
 Qed.
 
-Lemma APP_LAM_2 {Γ dom cod} (e : Exp (dom :: Γ) cod) (x x' : Exp Γ dom) :
-  ¬ ErrorP x' →
+Lemma AppR_LAM {Γ dom cod} {e : Exp (dom :: Γ) cod} {x x' : Exp Γ dom} :
   x ---> x' →
-  APP (LAM e) x ---> APP (LAM e) x'.
+  APP (LAM e) x ---> APP (LAM e) x'
+    ∨ (∃ m, x' = Error m ∧ APP (LAM e) x ---> Error m).
 Proof.
   intros.
-  now eapply (pluggable H0 H1); eauto.
+  dependent induction H0.
+  - left.
+    exact (StepRule (Plug_AppR _ (LambdaP _) H0)
+                    (Plug_AppR _ (LambdaP _) H1) H2).
+  - right.
+    exists m.
+    split.
+    + now constructor.
+    + exact (StepError (Plug_AppR _ (LambdaP _) H0)).
 Qed.
+
+(* Definition normal_form `(R : relation X) (t : X) : Prop := *)
+(*   ¬ ∃ t', R t t'. *)
+Definition normal_form `(R : relation X) (t : X) : Prop :=
+  ∀ t', ¬ R t t'.
+
+Definition deterministic `(R : relation X) : Prop :=
+  ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
+
+Lemma value_is_nf {Γ τ} (v : Exp Γ τ) :
+  ValueP v → normal_form Step v.
+Proof.
+  repeat intro.
+  dependent elimination H0.
+  dependent induction H1.
+  - inv H0.
+    now inv H2.
+  - now inv H0.
+Qed.
+
+Lemma error_is_nf {Γ τ} (v : Exp Γ τ) :
+  ErrorP v → normal_form Step v.
+Proof.
+  repeat intro.
+  dependent elimination H0.
+  dependent induction H1.
+  - inv H0.
+    now inv H2.
+  - now inv H0.
+Qed.
+
+Lemma nf_is_value_or_error {τ} (v : Exp [] τ) :
+  normal_form Step v → ValueP v ∨ ErrorP v.
+Proof.
+  intros.
+  destruct (strong_progress v); intuition eauto; reduce.
+  now edestruct H0; eauto.
+Qed.
+
+Theorem nf_same_as_value_or_error {τ} (v : Exp [] τ) :
+  normal_form Step v ↔ ValueP v ∨ ErrorP v.
+Proof.
+  split.
+  - now apply nf_is_value_or_error.
+  - intros [?|?].
+    + now apply value_is_nf.
+    + now apply error_is_nf.
+Qed.
+
+Theorem errors_deterministic {Γ τ} {x x' : Exp Γ τ} {m} :
+  x ---> Error m → ∀ y, x ---> y → y = Error m.
+Proof.
+Admitted.
+
+Theorem Step_non_deterministic Γ dom cod τ
+        (e : Exp (dom :: Γ) (cod ⟶ τ)) (x : Exp Γ dom) m :
+  ValueP x →
+  APP (APP (LAM e) x) (Error m) ---> APP (SubExp {|| x ||} e) (Error m) ∨
+  APP (APP (LAM e) x) (Error m) ---> Error m.
+Proof.
+  intros.
+  (* left. *)
+  (* apply (StepRule (Plug_AppL _ (Plug_Hole _)) *)
+  (*                 (Plug_AppL _ (Plug_Hole _)) (R_Beta e _ H0)). *)
+  right.
+  Fail apply (StepError (Plug_AppR _ _ (Plug_Hole _))).
+Abort.
+
+Theorem Step_deterministic Γ τ :
+  deterministic (Step (Γ:=Γ) (τ:=τ)).
+Proof.
+  repeat intro.
+  pose proof H0 as H8.
+  pose proof H1 as H9.
+  dependent elimination H0.
+  - inv H1.
+    + assert (τ' = τ'0 ∧ n = n0 ∧ C ~= C0 ∧ e1 ~= e0)
+        by (eapply Plug_deterministic; eassumption).
+      intuition idtac; subst.
+      assert (e2 = e3)
+        by (eapply Redex_deterministic; eassumption).
+      subst.
+      now eapply Plug_functional; eauto.
+    + epose proof (errors_deterministic H9 _ H8).
+  - inv H1.
+    + admit.              (* same case as admit above *)
+    + admit.              (* there can never be multiple errors in a form? *)
+Admitted.
 
 End Step.
 

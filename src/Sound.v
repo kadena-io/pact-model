@@ -55,7 +55,7 @@ Proof.
   (*   rewrite H1; simpl. *)
   (*   rewrite sum_id. *)
   (*   now erewrite <- SemExp_SubExp. *)
-  - admit.
+  (* -  *)
     (* rewrite <- SemExp_SubSem. *)
     (* f_equal; simpl. *)
     (* simp SubSem. *)

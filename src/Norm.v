@@ -27,16 +27,8 @@ Import ListNotations.
 Context {A : Type}.
 Context `{L : HostLang A}.
 
-(* Definition normal_form `(R : relation X) (t : X) : Prop := *)
-(*   ¬ ∃ t', R t t'. *)
-Definition normal_form `(R : relation X) (t : X) : Prop :=
-  ∀ t', ¬ R t t'.
-
 Definition normalizing `(R : relation X) : Prop :=
   ∀ t, ∃ t', multi R t t' ∧ normal_form R t'.
-
-Definition deterministic `(R : relation X) : Prop :=
-  ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
 
 Definition halts {Γ τ} (e : Exp Γ τ) : Prop :=
   ∃ e', e --->* e' ∧ (ValueP e' ∨ ErrorP e').
@@ -45,33 +37,6 @@ Notation " e '⇓' " := (halts e) (at level 11).
 
 Definition normal_form_of {Γ τ} (e e' : Exp Γ τ) : Prop :=
   (e --->* e' ∧ normal_form Step e').
-
-Lemma value_is_nf {Γ τ} (v : Exp Γ τ) :
-  ValueP v → normal_form Step v.
-Proof.
-  intros.
-  unfold normal_form.
-  dependent elimination H.
-  repeat intro.
-  inv H.
-  inv H2.
-  inv H5.
-  inv H0.
-  now inv H0.
-Qed.
-
-Lemma error_is_nf {Γ τ} (v : Exp Γ τ) :
-  ErrorP v → normal_form Step v.
-Proof.
-  intros.
-  unfold normal_form.
-  dependent elimination H.
-  repeat intro.
-  inv H.
-  inv H2.
-  inv H0.
-  now inv H0.
-Qed.
 
 Ltac normality :=
   exfalso;
@@ -83,23 +48,11 @@ Ltac normality :=
         exfalso; now apply (H1 Y)
   end.
 
-Lemma nf_is_value_or_error {τ} (v : Exp [] τ) :
-  normal_form Step v → ValueP v ∨ ErrorP v.
-Proof.
-  intros.
-  destruct (strong_progress v); intuition eauto; reduce.
-  now normality.
-Qed.
-
-Theorem nf_same_as_value_or_error {τ} (v : Exp [] τ) :
-  normal_form Step v ↔ ValueP v ∨ ErrorP v.
-Proof.
-  split.
-  - now apply nf_is_value_or_error.
-  - intros [H|H].
-    + now apply value_is_nf.
-    + now apply error_is_nf.
-Qed.
+Ltac invert_step :=
+  try lazymatch goal with
+  | [ H : _ ---> _ |- _ ] => now inv H
+  end;
+  try solve [ f_equal; intuition eauto | normality ].
 
 Lemma value_halts {Γ τ} (v : Exp Γ τ) : ValueP v → halts v.
 Proof.
@@ -114,32 +67,6 @@ Proof.
   unfold halts.
   now induction X; eexists; repeat constructor.
 Qed.
-
-Ltac invert_step :=
-  try lazymatch goal with
-  | [ H : _ ---> _ |- _ ] => now inv H
-  end;
-  try solve [ f_equal; intuition eauto | normality ].
-
-Theorem Step_deterministic Γ τ :
-  deterministic (Step (Γ:=Γ) (τ:=τ)).
-Proof.
-  repeat intro.
-  dependent elimination H.
-  - inv H0.
-    + assert (τ' = τ'0 ∧ n = n0 ∧ C ~= C0 ∧ e1 ~= e0)
-        by (eapply Plug_deterministic; eassumption).
-      intuition idtac; subst.
-      assert (e2 = e3)
-        by (eapply Redex_deterministic; eassumption).
-      subst.
-      now eapply Plug_functional; eauto.
-    +
-      admit.
-  - inv H0.
-    + admit.
-    + admit.
-Admitted.
 
 Theorem normal_forms_unique Γ τ :
   deterministic (normal_form_of (Γ:=Γ) (τ:=τ)).
@@ -240,15 +167,23 @@ Proof.
   now eapply step_preserves_SN'; eauto.
 Qed.
 
+Lemma ErrorP_SN {Γ τ} (e : Exp Γ τ) :
+  ErrorP e → SN e.
+Proof.
+  intro H.
+  induction H; simpl.
+  now induction τ.
+Qed.
+
 Lemma SubExp_SN {Γ Γ'} (env : Sub Γ' Γ) {τ} (e : Exp Γ τ) :
   SN_Sub env →
   SN (SubExp env e).
 Proof.
   generalize dependent env.
   induction e; intros; simpl.
-  (* - admit. *)
-  (* - admit. *)
-  (* - admit. *)
+  (* - *)
+  (* - *)
+  (* - *)
   (* - now eexists; repeat constructor. *)
   (* - now eexists; repeat constructor. *)
   (* - now eexists; repeat constructor. *)
@@ -300,7 +235,7 @@ Proof.
   (*   + apply (multistep_preserves_SN' (e':=x)); auto. *)
   (*     * erewrite multistep_Car1; eauto. *)
   (*       now eapply multistep_CarCons; eauto. *)
-  (*     * admit. *)
+  (*     * *)
   (* - destruct (SN_halts (IHe env H)) as [v [P [Q]]]. *)
   (*   inv Q. *)
   (*   + exists Nil. *)
@@ -323,19 +258,18 @@ Proof.
   (*     * now repeat constructor. *)
   (* - eapply step_preserves_SN'; eauto. *)
   (*   now constructor. *)
-  - now induction τ.
+  - now apply ErrorP_SN.
   - induction env.
     + now inv v.
-    + simpl in *.
-      dependent elimination H.
-      now dependent elimination v; simp SubVar.
-  - eexists.
+    + dependent elimination H.
+      now dependent elimination v; simpl in *; simp SubVar.
+  - split.
     + now eexists; repeat constructor.
     + intros.
       destruct (SN_halts H0) as [v [P [Q|R]]].
       * apply (multistep_preserves_SN' (e':=SubExp (Push v env) e)); auto.
         eapply multi_trans; eauto.
-        ** eapply multistep_App2; eauto.
+        ** eapply multistep_AppR; eauto.
            now constructor.
            intro.
            now inv H1; inv Q.
@@ -350,13 +284,14 @@ Proof.
         ** remember (SubExp (Keepₛ env) e) as s; clear -P.
            inv P.
            *** apply multi_R.
-               exact (StepError (Plug_App2 _ (LambdaP _)
+               exact (StepError (Plug_AppR _ (LambdaP _)
                                            (Plug_Hole (Error m)))).
            *** pose proof (multi_step _ _ _ _ H H0); clear H H0.
-               admit.
+               apply multistep_AppR_Error; auto.
+               now constructor.
         ** now induction cod; intuition eauto.
   - now apply IHe1, IHe2.
-Admitted.
+Qed.
 
 Theorem Exp_SN {τ} (e : Exp [] τ) : SN e.
 Proof.

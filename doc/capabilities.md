@@ -2,11 +2,8 @@
 
 ## What is a capability?
 
-In the general sense, a **capability** is an unforgeable token provided with
-an API by the system. A file descriptor in UNIX is a classic example of a
-capability: only the kernel can produce them, and only certain things can be
-done with them. In this way, capabilities allow a system to grant
-functionality to users for specific use cases.
+In the general sense, a **capability** is a means of granting the capability
+to perform some action from one part of a system to another.
 
 ## Pact capabilities
 

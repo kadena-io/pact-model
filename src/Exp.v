@@ -54,7 +54,7 @@ Inductive Exp Γ : Ty → Type :=
   (* | HostedFun {dom cod} : HostExp (dom ⟶ cod) → Exp Γ (dom ⟶ cod) *)
 
   | Error {τ}           : Err → Exp Γ τ
-  (* | EUnit               : Exp Γ TyUnit *)
+  | EUnit               : Exp Γ TyUnit
   (* | ETrue               : Exp Γ TyBool *)
   (* | EFalse              : Exp Γ TyBool *)
   (* | If {τ}              : Exp Γ TyBool → Exp Γ τ → Exp Γ τ → Exp Γ τ *)
@@ -84,7 +84,7 @@ Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   (* | HostedVal _ x => 1 *)
   (* | HostedFun _ x => 1 *)
   | Error _ _     => 1
-  (* | EUnit _       => 1 *)
+  | EUnit _       => 1
   (* | ETrue _       => 1 *)
   (* | EFalse _      => 1 *)
   (* | If _ b t e    => 1 + Exp_size b + Exp_size t + Exp_size e *)
@@ -115,7 +115,7 @@ End Exp.
 (* Arguments HostedVal {A H Γ ty} _. *)
 (* Arguments HostedFun {A H Γ dom cod} _. *)
 Arguments Error {A H Γ τ} _.
-(* Arguments EUnit {A H Γ}. *)
+Arguments EUnit {A H Γ}.
 (* Arguments ETrue {A H Γ}. *)
 (* Arguments EFalse {A H Γ}. *)
 (* Arguments If {A H Γ τ} _ _ _. *)

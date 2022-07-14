@@ -87,7 +87,9 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   (* step (MkΣ (r:=dom ⟶ cod) (HostedFun x) ρ (FN f)) := f (ClosureExp (Func x)); *)
   (* step (MkΣ (HostedExp x) ρ κ) := MkΣ (projT1 (Reduce x)) ρ κ; *)
 
-  (* step (MkΣ EUnit  _ (FN f)) := f VUnit; *)
+  step (MkΣ (Closure EUnit _) (FN f κ)) with f := {
+    | Val (LAM e) _ ρ' := MkΣ (Closure e (AddCl (Val EUnit UnitP NoCl) ρ')) κ;
+  };
   (* step (MkΣ ETrue  _ (FN f)) := f VTrue; *)
   (* step (MkΣ EFalse _ (FN f)) := f VFalse; *)
 
@@ -117,7 +119,7 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   (* A variable might lookup a lambda, in which case continue evaluating down
      that vein; otherwise, if no continuation, this is as far as we can go. *)
   step (MkΣ (Closure (VAR v) ρ) κ) with get_val ρ v := {
-    | Val (LAM e) _ ρ' := MkΣ (Closure (LAM e) ρ') κ
+    | Val val _ ρ' := MkΣ (Closure val ρ') κ
   };
 
   (* If a lambda is passed, call it with the continuation *)
@@ -130,7 +132,7 @@ Equations step {τ : Ty} (s : Σ τ) : Σ τ :=
   step (MkΣ (Closure (APP f x) ρ) κ) :=
     MkΣ (Closure f ρ) (AR (Closure x ρ) κ);
 
-  step (MkΣ (Closure (Error m) ρ) κ) := MkΣ (Closure (Error m) ρ) κ;
+  step (MkΣ (Closure (Error m) _) κ) := MkΣ (Closure (Error m) NoCl) κ;
 
   step (MkΣ c MT) := MkΣ c MT.
 

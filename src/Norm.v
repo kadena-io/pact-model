@@ -302,6 +302,7 @@ Proof.
   (* - eapply step_preserves_SN'; eauto. *)
   (*   now constructor. *)
   - now apply ErrorP_SN.
+  - now eexists; repeat constructor.
   - induction env.
     + now inv v.
     + dependent elimination H.

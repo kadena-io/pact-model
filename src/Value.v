@@ -23,7 +23,7 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
   (* | HostedValP {ty} (x : HostExp (TyHost ty)) : ValueP Γ (HostedVal x) *)
   (* | HostedFunP {dom cod} (f : HostExp (dom ⟶ cod)) : ValueP Γ (HostedFun f) *)
   (* | ErrorP {τ} m : ValueP Γ (Error (τ:=τ) m) *)
-  (* | UnitP        : ValueP Γ EUnit *)
+  | UnitP        : ValueP Γ EUnit
   (* | TrueP        : ValueP Γ ETrue *)
   (* | FalseP       : ValueP Γ EFalse *)
   (* | PairP {τ1 τ2} {x : Exp Γ τ1} {y : Exp Γ τ2} : *)
@@ -38,9 +38,8 @@ Derive Signature for ValueP.
 Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP _ v) :
   H1 = H2.
 Proof.
-  dependent elimination H1.
-  dependent elimination H2.
-  reflexivity.
+  dependent elimination H1;
+  dependent elimination H2; auto.
 Qed.
 
 Inductive ErrorP Γ : ∀ {τ}, Exp Γ τ → Prop :=
@@ -51,9 +50,8 @@ Derive Signature for ErrorP.
 Lemma ErrorP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ErrorP _ v) :
   H1 = H2.
 Proof.
-  dependent elimination H1.
-  dependent elimination H2.
-  reflexivity.
+  dependent elimination H1;
+  dependent elimination H2; auto.
 Qed.
 
 End Value.
@@ -62,6 +60,7 @@ Arguments ValueP {A H Γ τ} _.
 (* Arguments HostedValP {A H Γ ty} _. *)
 (* Arguments HostedFunP {A H Γ dom cod} _. *)
 (* Arguments ErrorP {A H Γ τ} _. *)
+Arguments UnitP {A H Γ}.
 (* Arguments TrueP {A H Γ}. *)
 (* Arguments FalseP {A H Γ}. *)
 (* Arguments PairP {A H Γ τ1 τ2 x y} _ _. *)

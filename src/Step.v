@@ -29,31 +29,32 @@ Open Scope Ty_scope.
 
 (* A context defines a hole which, after substitution, yields an expression of
    the index type. *)
-Inductive Ctxt Γ τ' : Ty → Type :=
-  | C_Hole : Ctxt Γ τ' τ'
+Inductive Frame Γ : Ty → Ty → Type :=
+  (* | C_If1 {τ} : Frame Γ τ' TyBool → Exp Γ τ → Exp Γ τ → Frame Γ τ' TyBool *)
+  (* | C_If2 {τ} : Exp Γ TyBool → Frame Γ τ → Exp Γ τ → Frame Γ τ *)
+  (* | C_If3 {τ} : Exp Γ TyBool → Exp Γ τ → Frame Γ τ → Frame Γ τ *)
 
-  (* | C_If1 {τ} : Ctxt Γ τ' TyBool → Exp Γ τ → Exp Γ τ → Ctxt Γ τ' TyBool *)
-  (* | C_If2 {τ} : Exp Γ TyBool → Ctxt Γ τ → Exp Γ τ → Ctxt Γ τ *)
-  (* | C_If3 {τ} : Exp Γ TyBool → Exp Γ τ → Ctxt Γ τ → Ctxt Γ τ *)
+  | F_AppL {dom cod} : Exp Γ dom → Frame Γ (dom ⟶ cod) cod
+  | F_AppR {dom cod} : Exp Γ (dom ⟶ cod) → Frame Γ dom cod.
 
-  | C_AppL {dom cod} :
-    Ctxt Γ τ' (dom ⟶ cod) → Exp Γ dom → Ctxt Γ τ' cod
-  | C_AppR {dom cod} :
-    Exp Γ (dom ⟶ cod) → Ctxt Γ τ' dom → Ctxt Γ τ' cod.
+Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Frame.
 
-Derive Signature NoConfusion for Ctxt.
+Inductive Ctxt Γ : Ty → Ty → Type :=
+  | C_Nil {τ}         : Ctxt Γ τ τ
+  | C_Cons {τ τ' τ''} : Frame Γ τ' τ → Ctxt Γ τ'' τ' → Ctxt Γ τ'' τ.
+
+Derive Signature NoConfusionHom Subterm for Ctxt.
 
 (* [Ctxt] forms a category with objects = types and morphisms = contexts. *)
 
-Definition Ctxt_id {Γ τ} : Ctxt Γ τ τ := C_Hole _ _.
+Definition Ctxt_id {Γ τ} : Ctxt Γ τ τ := C_Nil _.
 Arguments Ctxt_id {_ _} /.
 
-Fixpoint Ctxt_comp {Γ τ τ' τ''} (C : Ctxt Γ τ' τ) (C' : Ctxt Γ τ'' τ') :
-  Ctxt Γ τ'' τ :=
+Program Fixpoint Ctxt_comp {Γ τ τ' τ''}
+        (C : Ctxt Γ τ' τ) (C' : Ctxt Γ τ'' τ') : Ctxt Γ τ'' τ :=
   match C with
-  | C_Hole _ _       => C'
-  | C_AppL _ _ c1 e2 => C_AppL _ _ (Ctxt_comp c1 C') e2
-  | C_AppR _ _ e1 c2 => C_AppR _ _ e1 (Ctxt_comp c2 C')
+  | C_Nil _      => C'
+  | C_Cons _ f c => C_Cons _ f (Ctxt_comp c C')
   end.
 
 Theorem Ctxt_id_left {Γ τ τ'} {C : Ctxt Γ τ' τ} :
@@ -72,7 +73,7 @@ Proof. induction C; simpl; auto; now f_equal. Qed.
 Unset Elimination Schemes.
 
 Inductive Plug {Γ τ'} (e : Exp Γ τ') : nat → ∀ {τ}, Ctxt Γ τ' τ → Exp Γ τ → Prop :=
-  | Plug_Hole : Plug e 0 (C_Hole _ _) e
+  | Plug_Hole : Plug e 0 (C_Nil _) e
 
   (* | Plug_If1 {Γ τ} (C : Ctxt Γ TyBool) (e e' : Exp Γ TyBool) (e1 e2 : Exp Γ τ) : *)
   (*   Plug C e e' → Plug (C_If1 _ C e1 e2) e (If e' e1 e2) *)
@@ -82,14 +83,14 @@ Inductive Plug {Γ τ'} (e : Exp Γ τ') : nat → ∀ {τ}, Ctxt Γ τ' τ → 
   (*   Plug C e e' → Plug (C_If3 _ e1 e2 C) e (If e1 e2 e') *)
 
   | Plug_AppL {n dom cod} {C : Ctxt Γ τ' (dom ⟶ cod)}
-              {e' : Exp Γ (dom ⟶ cod)} {e1 : Exp Γ dom} :
+              {e' : Exp Γ (dom ⟶ cod)} {e2 : Exp Γ dom} :
     Plug e n C e' →
-    Plug e (S n) (C_AppL _ _ C e1) (APP e' e1)
+    Plug e (S n) (C_Cons _ (F_AppL _ e2) C) (APP e' e2)
   | Plug_AppR {n dom cod} {C : Ctxt Γ τ' dom}
               {e' : Exp Γ dom} {e1 : Exp Γ (dom ⟶ cod)} :
     ValueP e1 →
     Plug e n C e' →
-    Plug e (S n) (C_AppR _ _ e1 C) (APP e1 e').
+    Plug e (S n) (C_Cons _ (F_AppR _ e1) C) (APP e1 e').
 
 Derive Signature for Plug.
 
@@ -100,7 +101,7 @@ Scheme Plug_ind := Induction for Plug Sort Prop.
 (* [Plug] forms a category with objects = expressions and morphisms = plugs
    over existential contexts. *)
 
-Definition Plug_id {Γ τ} {x : Exp Γ τ} : Plug x 0 (C_Hole Γ τ) x := Plug_Hole _.
+Definition Plug_id {Γ τ} {x : Exp Γ τ} : Plug x 0 (C_Nil Γ) x := Plug_Hole _.
 Arguments Plug_id {_ _ _} /.
 
 Fixpoint Plug_comp {Γ τ τ' τ'' n m}
@@ -158,8 +159,8 @@ Theorem strong_progress {τ} (e : Exp [] τ) :
   ValueP e ∨ ErrorP e ∨ ∃ e', e ---> e'.
 Proof.
   dependent induction e; reduce.
-  - right.
-    now left; eexists.
+  - now right; left; eexists.
+  - now left; constructor.
   - now inv v.
   - now left; constructor.
   - right.
@@ -172,7 +173,7 @@ Proof.
       now eauto 6.
     + dependent elimination H2';
       now eauto 6.
-    + dependent elimination V2.
+    + dependent elimination V2;
       dependent elimination E1;
       now eauto 6.
     + dependent elimination E1.
@@ -189,10 +190,10 @@ Proof.
 Qed.
 
 Lemma Plug_not_value {Γ τ} {C : Ctxt Γ τ τ} (e v : Exp Γ τ) :
-  ValueP v → Plug e 0 C v → C = C_Hole _ _ ∧ e = v.
+  ValueP v → Plug e 0 C v → C = C_Nil _ ∧ e = v.
 Proof.
   intros.
-  dependent elimination H0.
+  dependent elimination H0;
   now inv H1.
 Qed.
 
@@ -200,7 +201,7 @@ Lemma Redex_value {Γ τ} (e v : Exp Γ τ) :
   ValueP v → ¬ Redex v e.
 Proof.
   repeat intro.
-  dependent elimination H0.
+  dependent elimination H0;
   now inv H1.
 Qed.
 
@@ -466,7 +467,7 @@ Lemma SubVar_ZV_of_value_never_error {Γ τ} {x : Exp Γ τ} :
   ValueP x → ∀ m, ¬ (SubVar {|| x ||} ZV = Error m).
 Proof.
   intros.
-  inv H0; simp SubVar.
+  inv H0; simp SubVar;
   now intro.
 Qed.
 
@@ -501,6 +502,7 @@ Proof.
   dependent elimination e; simpl.
   - exfalso.
     now apply H1.
+  - now intro.
   - now apply SubVar_of_value_never_error.
   - now intro.
   - now intro.
@@ -513,6 +515,7 @@ Proof.
   intros.
   dependent elimination e; simpl in *.
   - now inv H1.
+  - congruence.
   - pose proof (SubVar_of_value_never_error v0 H0 m).
     contradiction.
   - congruence.
@@ -581,8 +584,10 @@ Proof.
   dependent elimination H0.
   dependent induction H1.
   - inv H0.
-    now inv H2.
+    now inv H1.
   - now inv H0.
+  - inv H1;
+    now inv H0.
 Qed.
 
 Lemma error_is_nf {Γ τ} (v : Exp Γ τ) :
@@ -592,7 +597,7 @@ Proof.
   dependent elimination H0.
   dependent induction H1.
   - inv H0.
-    now inv H2.
+    now inv H1.
   - now inv H0.
 Qed.
 
@@ -629,7 +634,11 @@ Proof.
   generalize dependent y.
   generalize dependent m.
   induction τ; simpl; simp ExpP; intros; simp ExpP in *.
-Admitted.
+  - dependent elimination H0.
+    + dependent elimination p0.
+      dependent elimination p.
+      inv r.
+Abort.
 
 Lemma have_error {Γ τ} {x : Exp Γ τ} {m} :
   x ---> Error m → HasError m x.

@@ -267,6 +267,9 @@ Example exp_call_FAdd :
 Proof. reflexivity. Qed.
 *)
 
-Compute run 10 (APP (LAM (APP (VAR ZV) (LAM (VAR ZV)))) (LAM (VAR ZV))).
+Compute run 20 (APP (APP (LAM (APP (VAR ZV)
+                                   (LAM EUnit)))
+                         (LAM (VAR ZV)))
+                    EUnit).
 
 End Pact.

@@ -9,7 +9,6 @@ src/Exp.v
 src/Pat.v
 src/Value.v
 src/Log.v
-src/Trace.v
 src/Ren.v
 src/Sub.v
 src/Sem.v

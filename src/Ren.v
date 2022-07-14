@@ -1,7 +1,8 @@
 Require Import
   Lib
   Ty
-  Exp.
+  Exp
+  Value.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -177,6 +178,13 @@ Proof.
   - now rewrite RenVar_RcR.
   - now rewrite <- IHe; simp RcR.
 Qed.
+
+Lemma RenExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Ren Γ' Γ) :
+  ValueP v → ValueP (RenExp σ v).
+Proof.
+  intros X.
+  now induction X; simpl; intros; try constructor.
+Defined.
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RenExp skip1.
 

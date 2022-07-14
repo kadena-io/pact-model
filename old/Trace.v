@@ -19,31 +19,6 @@ Context `{HostExprs A}.
 
 Open Scope Ty_scope.
 
-Inductive Closed : Ty → Type :=
-  | Closure {Γ τ} : Exp Γ τ → ClEnv Γ → Closed τ
-  | Clapp {dom cod} : Closed (dom ⟶ cod) → Closed dom → Closed cod
-
-with ClEnv : Env → Type :=
-  | NoCl : ClEnv []
-  | AddCl {Γ τ} : Closed τ → ClEnv Γ → ClEnv (τ :: Γ).
-
-Derive Signature NoConfusion NoConfusionHom for Closed.
-Derive Signature NoConfusion NoConfusionHom for ClEnv.
-
-Equations get_exp `(s : ClEnv Γ) `(v : Var Γ τ) : Closed τ :=
-  get_exp (AddCl x _)  ZV     := x;
-  get_exp (AddCl _ xs) (SV v) := get_exp xs v.
-
-Inductive IsValue : ∀ {τ}, Closed τ → Type :=
-  | ClosureVal {Γ τ} {e : Exp Γ τ} ρ : ValueP e → IsValue (Closure e ρ).
-
-Derive Signature NoConfusion NoConfusionHom Subterm for IsValue.
-
-Inductive Value : Ty → Type :=
-  | Val {τ} (c : Closed τ) : IsValue c → Value τ.
-
-Derive Signature NoConfusion NoConfusionHom Subterm for Value.
-
 Inductive Redex : Ty → Type :=
   | Lookup {Γ τ} : Var Γ τ → ClEnv Γ → Redex τ
   | App {Γ dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → ClEnv Γ → Redex cod
@@ -52,26 +27,22 @@ Inductive Redex : Ty → Type :=
 Derive Signature NoConfusion NoConfusionHom Subterm for Redex.
 
 Equations fromRedex {u} (r : Redex u) : Closed u :=
-  fromRedex (Lookup v env)            := Closure (VAR v) env;
-  fromRedex (App f arg env)           := Closure (APP f arg) env;
-  fromRedex (Beta body env (Val c _)) := Clapp (Closure (LAM body) env) c.
+  fromRedex (Lookup v env)  := Closure (VAR v) env;
+  fromRedex (App f arg env) := Closure (APP f arg) env;
+  fromRedex (Beta e env (Lambda f env'))  :=
+    Clapp (Closure (LAM e) env) (Closure (LAM f) env').
 
 Equations contract {u} (r : Redex u) : Closed u :=
-  contract (Lookup v env)            := get_exp env v;
-  contract (App f x env)             := Clapp (Closure f env) (Closure x env);
-  contract (Beta body env (Val c x)) := Closure body (AddCl c env).
-
-Inductive EvalContext : Ty → Ty → Type :=
-  | MT {τ} : EvalContext τ τ
-  | ARG {dom cod τ} : Closed dom → EvalContext cod τ → EvalContext (dom ⟶ cod) τ
-  | FN {dom cod τ} : Value (dom ⟶ cod) → EvalContext cod τ → EvalContext dom τ.
-
-Derive Signature NoConfusion for EvalContext.
+  contract (Lookup v env) with get_exp env v := {
+    | Lambda e env' => Closure (LAM e) env'
+  };
+  contract (App f x env)     := Clapp (Closure f env) (Closure x env);
+  contract (Beta body env x) := Closure body (AddCl x env).
 
 Equations plug {u v} (e : EvalContext u v) (c : Closed u) : Closed v :=
-  plug MT f                          := f;
-  plug (ARG x ctx) f                 := plug ctx (Clapp f x);
-  plug (FN (Val closed isval) ctx) x := plug ctx (Clapp closed x).
+  plug MT f         := f;
+  plug (AR x ctx) f := plug ctx (Clapp f x);
+  plug (FN (Lambda f env) ctx) x := plug ctx (Clapp (Closure (LAM f) env) x).
 
 Inductive Decomposition : ∀ {τ}, Closed τ → Type :=
   | DVal {Γ dom cod} (e : Exp (dom :: Γ) cod) (ρ : ClEnv Γ) :
@@ -81,7 +52,6 @@ Inductive Decomposition : ∀ {τ}, Closed τ → Type :=
 
 Derive Signature NoConfusion Subterm for Decomposition.
 
-(*
 Definition decompose {u} (c : Closed u) : Decomposition c.
 
 Equations headReduce {u} (c : Closed u) : Closed u :=
@@ -91,19 +61,18 @@ Equations headReduce {u} (c : Closed u) : Closed u :=
     headReduce ?(plug ctx (fromRedex redex)) (RedCtx redex ctx) :=
       plug ctx (contract redex)
   }.
-*)
 
 Equations snoc {u v w} (e : EvalContext u (v ⟶ w)) (c : Closed v) :
   EvalContext u w :=
-  snoc MT c          := ARG c MT;
-  snoc (FN x ctx) c  := FN x (snoc ctx c);
-  snoc (ARG x ctx) c := ARG x (snoc ctx c).
+  snoc MT c         := AR c MT;
+  snoc (FN x ctx) c := FN x (snoc ctx c);
+  snoc (AR x ctx) c := AR x (snoc ctx c).
 
 Equations cons {a b c} (e : EvalContext a b) (v : Value (b ⟶ c)) :
   EvalContext a c :=
-  cons MT val          := FN val MT;
-  cons (FN x ctx) val  := FN x (cons ctx val);
-  cons (ARG x ctx) val := ARG x ((cons ctx val)).
+  cons MT val         := FN val MT;
+  cons (FN x ctx) val := FN x (cons ctx val);
+  cons (AR x ctx) val := AR x ((cons ctx val)).
 
 Inductive SnocView : ∀ {u v}, EvalContext u v → Type :=
   | SVNil {u} : SnocView (u:=u) MT
@@ -121,10 +90,10 @@ Equations viewSnoc {u v} (ctx : EvalContext u v) : SnocView ctx :=
     viewSnoc (FN x ?(cons ctx val)) (SVCons val ctx) := SVCons val (FN x ctx);
     viewSnoc (FN x ?(snoc ctx z))   (SVSnoc z ctx) := SVSnoc z (FN x ctx)
   };
-  viewSnoc (ARG x ctx) with viewSnoc ctx := {
-    viewSnoc (ARG x ?(MT))           SVNil := SVSnoc x MT;
-    viewSnoc (ARG x ?(cons ctx val)) (SVCons val ctx) := SVCons val (ARG x ctx);
-    viewSnoc (ARG x ?(snoc ctx z))   (SVSnoc z ctx) := SVSnoc z (ARG x ctx)
+  viewSnoc (AR x ctx) with viewSnoc ctx := {
+    viewSnoc (AR x ?(MT))           SVNil := SVSnoc x MT;
+    viewSnoc (AR x ?(cons ctx val)) (SVCons val ctx) := SVCons val (AR x ctx);
+    viewSnoc (AR x ?(snoc ctx z))   (SVSnoc z ctx) := SVSnoc z (AR x ctx)
   }.
 
 Inductive isValidClosure : ∀ {u}, Closed u → Type :=
@@ -147,10 +116,10 @@ Inductive isValidContext : ∀ {u v}, EvalContext u v → Type :=
     isValidEnv ρ → isValidContext κ →
     isValidContext (FN (Val (Closure (LAM body) ρ)
                             (ClosureVal _ (LambdaP _))) κ)
-  | ARG_isValidContext {Γ τ} (x : Exp Γ τ)
+  | AR_isValidContext {Γ τ} (x : Exp Γ τ)
                        (ρ : ClEnv Γ) {r} (κ : EvalContext τ r) :
     isValidEnv ρ → isValidContext κ →
-    isValidContext (ARG (Closure x ρ) κ).
+    isValidContext (AR (Closure x ρ) κ).
 
 Derive Signature for isValidContext.
 
@@ -180,12 +149,12 @@ Inductive Trace : ∀ {Γ τ}, Exp Γ τ → ClEnv Γ → ∀ {r}, EvalContext �
     Trace (VAR v) ρ κ
   | TLeft {Γ dom cod} (f : Exp Γ (dom ⟶ cod)) (x : Exp Γ dom) {ρ}
           {r} {κ : EvalContext cod r} :
-    Trace f ρ (ARG (Closure x ρ) κ) →
+    Trace f ρ (AR (Closure x ρ) κ) →
     Trace (APP f x) ρ κ
   | TRight {Γ Γ' dom cod} (e : Exp (dom :: Γ') cod) (x : Exp Γ dom) {ρ ρ'}
            {r} {κ : EvalContext cod r} :
     Trace x ρ (FN (Val (Closure (LAM e) ρ') (ClosureVal _ (LambdaP _))) κ) →
-    Trace (LAM e) ρ' (ARG (Closure x ρ) κ)
+    Trace (LAM e) ρ' (AR (Closure x ρ) κ)
   | TBeta {Γ Γ' dom cod} (argBody : Exp (dom :: Γ') cod)
           {r} (body : Exp ((dom ⟶ cod) :: Γ) r) {ρ ρ'}
           {r'} (κ : EvalContext r r') :
@@ -203,8 +172,8 @@ Equations refocus {Γ u v} (ctx : EvalContext u v) (t : Exp Γ u)
   refocus ?(MT) ?(LAM body) env (TDone body) :=
     Val (Closure (LAM body) env) (ClosureVal _ (LambdaP _));
   refocus kont ?(APP f x) env (TLeft f x trace) :=
-    refocus (ARG (Closure x env) kont) f env trace;
-  refocus ?(ARG (Closure x _) _) ?(LAM body) ?(env)
+    refocus (AR (Closure x env) kont) f env trace;
+  refocus ?(AR (Closure x _) _) ?(LAM body) ?(env)
           (TRight body x (ρ':=env) trace) :=
     refocus (FN (Val (Closure (LAM body) env)
                      (ClosureVal _ (LambdaP _))) _) x _ trace;

@@ -1,10 +1,12 @@
 Require Import
   Coq.ZArith.ZArith
+  Lib
   Ty
   Exp
   Sub
   Sem
   Norm
+  Lang
   Eval.
 
 From Equations Require Import Equations.
@@ -12,7 +14,6 @@ Set Equations With UIP.
 
 Generalizable All Variables.
 
-(*
 Section Pact.
 
 Import ListNotations.
@@ -36,6 +37,7 @@ Definition Pact_HostTypes : HostTypes Pact := {|
     end
 |}.
 
+(*
 Definition ℤ := TyHost (H:=Pact_HostTypes) TyInteger.
 Arguments ℤ /.
 (* Definition ℝ := TyHost TyDecimal. *)
@@ -263,6 +265,8 @@ Example exp_call_FAdd :
   run 10 (APP (HostedFun FAdd) (Pair (num 123) (num 456))) =
     MkΣ (num 579) Empty MT.
 Proof. reflexivity. Qed.
+*)
+
+Compute run 10 (APP (LAM (APP (VAR ZV) (LAM (VAR ZV)))) (LAM (VAR ZV))).
 
 End Pact.
-*)

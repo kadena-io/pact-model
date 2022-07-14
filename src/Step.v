@@ -1,3 +1,5 @@
+Set Warnings "-cannot-remove-as-expected".
+
 Require Import
   Lib
   Ltac
@@ -6,7 +8,8 @@ Require Import
   Value
   Ren
   Sub
-  Sem.
+  Sem
+  Log.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -35,25 +38,21 @@ Inductive Ctxt Γ τ' : Ty → Type :=
 
   | C_AppL {dom cod} :
     Ctxt Γ τ' (dom ⟶ cod) → Exp Γ dom → Ctxt Γ τ' cod
-  | C_AppR {dom cod} {v : Exp Γ (dom ⟶ cod)} :
-    ValueP v → Ctxt Γ τ' dom → Ctxt Γ τ' cod.
+  | C_AppR {dom cod} :
+    Exp Γ (dom ⟶ cod) → Ctxt Γ τ' dom → Ctxt Γ τ' cod.
 
 Derive Signature NoConfusion for Ctxt.
 
-Arguments C_Hole {_ _}.
-Arguments C_AppL {_ _ _ _} _ _.
-Arguments C_AppR {_ _ _ _ _} _ _.
-
 (* [Ctxt] forms a category with objects = types and morphisms = contexts. *)
 
-Definition Ctxt_id {Γ τ} : Ctxt Γ τ τ := C_Hole.
+Definition Ctxt_id {Γ τ} : Ctxt Γ τ τ := C_Hole _ _.
 Arguments Ctxt_id {_ _} /.
 
 Equations Ctxt_comp {Γ τ τ' τ''} (C : Ctxt Γ τ' τ) (C' : Ctxt Γ τ'' τ') :
   Ctxt Γ τ'' τ :=
-  Ctxt_comp C_Hole       c' := c';
-  Ctxt_comp (C_AppL c _) c' := C_AppL (Ctxt_comp c c') _;
-  Ctxt_comp (C_AppR H c) c' := C_AppR _ (Ctxt_comp c c').
+  Ctxt_comp (C_Hole _ _)     c' := c';
+  Ctxt_comp (C_AppL _ _ c _) c' := C_AppL _ _ (Ctxt_comp c c') _;
+  Ctxt_comp (C_AppR _ _ _ c) c' := C_AppR _ _ _ (Ctxt_comp c c').
 
 Theorem Ctxt_id_left {Γ τ τ'} {C : Ctxt Γ τ' τ} :
   Ctxt_comp Ctxt_id C = C.
@@ -86,6 +85,7 @@ Inductive Plug {Γ τ'} (e : Exp Γ τ') : nat → ∀ {τ}, Ctxt Γ τ' τ → 
     Plug e (S n) (C_AppL _ _ C e1) (APP e' e1)
   | Plug_AppR {n dom cod} {C : Ctxt Γ τ' dom}
               {e' : Exp Γ dom} {e1 : Exp Γ (dom ⟶ cod)} :
+    ValueP e1 →
     Plug e n C e' →
     Plug e (S n) (C_AppR _ _ e1 C) (APP e1 e').
 
@@ -171,35 +171,23 @@ Proof.
       now eauto 6.
     + dependent elimination V1.
       dependent elimination E2.
-      right.
-      now eexists; eapply StepError; eauto.
-    + dependent elimination H2'.
-      * now eauto 6.
-      * now right; eexists; eapply StepError; eauto.
+      now eauto 6.
+    + dependent elimination H2';
+      now eauto 6.
     + dependent elimination V2.
-      dependent elimination E1.
-      right.
-      now eexists; eapply StepError; eauto.
+      dependent elimination E1;
+      now eauto 6.
     + dependent elimination E1.
-      right.
-      now eexists; eapply StepError; eauto.
+      now eauto 6.
     + dependent elimination E1.
-      right.
-      now eexists; eapply StepError; eauto.
-    + dependent elimination H1'.
-      * now eauto 6.
-      * right.
-        now eexists; eapply StepError; eauto.
-    + dependent elimination H1'.
-      * eauto 6.
-      * right.
-        now eexists; eapply StepError; eauto.
-    + dependent elimination H1'.
-      dependent elimination H2'.
-      * now eauto 6.
-      * now eauto 6.
-      * right.
-        now eexists; eapply StepError; eauto.
+      now eauto 6.
+    + dependent elimination H1';
+      now eauto 6.
+    + dependent elimination H1';
+      now eauto 6.
+    + dependent elimination H1';
+      dependent elimination H2';
+      now eauto 6.
 Qed.
 
 Lemma Plug_not_value {Γ τ} {C : Ctxt Γ τ τ} (e v : Exp Γ τ) :
@@ -218,104 +206,90 @@ Proof.
   now inv H1.
 Qed.
 
-Lemma Plug_deterministic {Γ τ τ' n} {C : Ctxt Γ τ' τ} e2 :
-  ∀ e1 e1', Redex e1 e1' →
-  ∀ τ'' f1 f1', Redex f1 f1' →
-  Plug e1 n C e2 →
-  ∀ m (C' : Ctxt Γ τ'' τ),
-  Plug f1 m C' e2 →
+Lemma Plug_deterministic {Γ τ} e2 :
+  ∀ τ' (C : Ctxt Γ τ' τ) n e1 e1',
+    Redex e1 e1' → Plug e1 n C e2 →
+  ∀ τ'' (C' : Ctxt Γ τ'' τ) m f1 f1',
+    Redex f1 f1' → Plug f1 m C' e2 →
     τ' = τ'' ∧ n = m ∧ C ~= C' ∧ e1 ~= f1.
 Proof.
+  intros τ' C n e1 e1' R1 P1 τ'' C' m f1 f1' R2 P2.
+  generalize dependent C'.
+  generalize dependent m.
+  induction P1; intros; subst.
+  inv P2; auto.
+  - exfalso.
+    dependent elimination R1.
+    dependent elimination R2.
+    now inv H4.
+  - exfalso.
+    dependent elimination R1.
+    dependent elimination R2.
+    now inv H5.
+  - dependent elimination P2.
+    + exfalso.
+      dependent elimination R1.
+      dependent elimination R2.
+      now inv P1.
+    + intuition.
+      now destruct (IHP1 _ _ p); reduce.
+    + exfalso.
+      dependent elimination R1.
+      dependent elimination R2.
+      now inv P1.
+  - dependent elimination P2.
+    + exfalso.
+      dependent elimination R1.
+      dependent elimination R2.
+      now inv P1.
+    + exfalso.
+      dependent elimination R1.
+      dependent elimination R2.
+      now inv p.
+    + intuition.
+      now destruct (IHP1 _ _ p0); reduce.
+Qed.
+
+Lemma Plug_error_deterministic {Γ τ} (e : Exp Γ τ) :
+  ∀ τ' {C : Ctxt Γ τ' τ} n x,
+    Plug (Error x) n C e →
+  ∀ τ'' (C' : Ctxt Γ τ'' τ) m x',
+    Plug (Error x') m C' e →
+    τ' = τ'' ∧ n = m ∧ x = x' ∧ C ~= C'.
+Proof.
+  intros τ' C n x P1 τ'' C' m x' P2.
   intros.
   generalize dependent C'.
   generalize dependent m.
-  induction H2; intros; subst.
-  inv H3; auto.
-  - exfalso.
-    dependent elimination H0.
-    dependent elimination H1.
-    now inv H7.
-  - exfalso.
-    dependent elimination H0.
-    dependent elimination H1.
-    now inv H8.
-  - dependent elimination H3.
+  generalize dependent x'.
+  generalize dependent τ''.
+  induction P1; intros; subst.
+  - now dependent elimination P2.
+  - dependent elimination P2.
+    + now destruct (IHP1 _ _ _ _ p); reduce.
     + exfalso.
-      dependent elimination H0.
-      dependent elimination H1.
-      now inv H2.
-    + intuition.
-      now destruct (IHPlug _ _ p); reduce.
+      clear -P1 v.
+      dependent elimination v.
+      now inv P1.
+  - dependent elimination P2.
     + exfalso.
-      dependent elimination H0.
-      dependent elimination H1.
-      now inv H2.
-  - dependent elimination H3.
-    + exfalso.
-      dependent elimination H0.
-      dependent elimination H1.
-      now inv H2.
-    + exfalso.
-      dependent elimination H0.
-      dependent elimination H1.
+      clear -p v.
+      dependent elimination v.
       now inv p.
-    + intuition.
-      now destruct (IHPlug _ _ p0); reduce.
+    + now destruct (IHP1 _ _ _ _ p0); reduce.
 Qed.
 
 (*
-Lemma Plug_deterministic_error {Γ τ τ' n} {C : Ctxt Γ τ' τ} e2 :
-  ∀ e1 e1', Redex e1 e1' →
-  Plug e1 n C e2 →
-  ∀ m τ'' (C' : Ctxt Γ τ'' τ) x,
-  Plug (Error x) m C' e2 →
-    τ' = τ'' ∧ n = m ∧ C ~= C'.
-Proof.
-  intros.
-  generalize dependent C'.
-  generalize dependent m.
-  generalize dependent x.
-  induction H0; intros; subst.
-  inv H2.
-  - now inv H1.
-  -
-    dependent elimination H1.
-  inv H3; auto.
-  - exfalso.
-    dependent elimination H0.
-    dependent elimination H1.
-    now inv H7.
-  - exfalso.
-    dependent elimination H0.
-    dependent elimination H1.
-    now inv H8.
-  - dependent elimination H3.
-    + exfalso.
-      dependent elimination H0.
-      dependent elimination H1.
-      now inv H2.
-    + intuition.
-      now destruct (IHPlug _ _ p); reduce.
-    + exfalso.
-      dependent elimination H0.
-      dependent elimination H1.
-      now inv H2.
-  - dependent elimination H3.
-    + exfalso.
-      dependent elimination H0.
-      dependent elimination H1.
-      now inv H2.
-    + exfalso.
-      dependent elimination H0.
-      dependent elimination H1.
-      now inv p.
-    + intuition.
-      now destruct (IHPlug _ _ p0); reduce.
-Qed.
+Lemma Plug_errors_block_redex {Γ τ} e2 :
+  ∀ τ' (C : Ctxt Γ τ' τ) n e y,
+    Plug (Error y) n C e →
+  ∀ τ'' (C' : Ctxt Γ τ'' τ) m f1 f1',
+    Redex f1 f1' → Plug f1 m C' e2 →
+    τ' = τ'' ∧ n = m ∧ C ~= C' ∧ e1 ~= f1.
 *)
 
-Lemma Plug_functional {Γ τ τ' n} {C : Ctxt Γ τ' τ} e e1 :
-  Plug e n C e1 → ∀ e2, Plug e n C e2 → e1 = e2.
+Lemma Plug_functional {Γ τ τ' n} {C : Ctxt Γ τ' τ} e :
+  ∀ e1, Plug e n C e1 → ∀ e2, Plug e n C e2 → e1 = e2.
 Proof.
   intros.
   dependent induction H0.
@@ -326,8 +300,8 @@ Proof.
     now f_equal; auto.
 Qed.
 
-Lemma Plug_injective {Γ τ τ' n} {C : Ctxt Γ τ' τ} e e1 :
-  Plug e1 n C e → ∀ e2, Plug e2 n C e → e1 = e2.
+Lemma Plug_injective {Γ τ τ' n} {C : Ctxt Γ τ' τ} e :
+  ∀ e1, Plug e1 n C e → ∀ e2, Plug e2 n C e → e1 = e2.
 Proof.
   intros.
   dependent induction H0.
@@ -338,8 +312,8 @@ Proof.
     now f_equal; auto.
 Qed.
 
-Lemma Redex_deterministic : ∀ Γ τ (e e' : Exp Γ τ),
-  Redex e e' → ∀ e'', Redex e e'' → e' = e''.
+Lemma Redex_deterministic : ∀ Γ τ (e : Exp Γ τ),
+  ∀ e', Redex e e' → ∀ e'', Redex e e'' → e' = e''.
 Proof.
   intros.
   dependent elimination H0.
@@ -555,24 +529,92 @@ Proof.
     + now apply error_is_nf.
 Qed.
 
-Theorem errors_deterministic {Γ τ} {x x' : Exp Γ τ} {m} :
-  x ---> Error m → ∀ y, x ---> y → y = Error m.
-Proof.
-Admitted.
-
-Theorem Step_non_deterministic Γ dom cod τ
-        (e : Exp (dom :: Γ) (cod ⟶ τ)) (x : Exp Γ dom) m :
-  ValueP x →
-  APP (APP (LAM e) x) (Error m) ---> APP (SubExp {|| x ||} e) (Error m) ∨
-  APP (APP (LAM e) x) (Error m) ---> Error m.
+Lemma SubVar_ZV_of_value_never_error {Γ τ} {x : Exp Γ τ} :
+  ValueP x → ∀ m, ¬ (SubVar {|| x ||} ZV = Error m).
 Proof.
   intros.
-  (* left. *)
-  (* apply (StepRule (Plug_AppL _ (Plug_Hole _)) *)
-  (*                 (Plug_AppL _ (Plug_Hole _)) (R_Beta e _ H0)). *)
-  right.
-  Fail apply (StepError (Plug_AppR _ _ (Plug_Hole _))).
-Abort.
+  inv H0; simp SubVar.
+  now intro.
+Qed.
+
+Lemma SubVar_SV_of_value_never_error {Γ τ}
+      {x : Exp Γ τ} (v : Var Γ τ) :
+  ValueP x → ∀ m, ¬ (SubVar {|| x ||} (SV v) = Error m).
+Proof.
+  intros.
+  induction v; simp SubVar;
+  rewrite SubVar_idSub;
+  now intro.
+Qed.
+
+Lemma SubVar_of_value_never_error {Γ τ ty}
+      {x : Exp Γ ty} (v : Var (ty :: Γ) τ) :
+  ValueP x → ∀ m, ¬ (SubVar {|| x ||} v = Error m).
+Proof.
+  intros.
+  pose proof (SubVar_ZV_of_value_never_error H0 m).
+  dependent elimination v; simp SubVar in *.
+  rewrite SubVar_idSub.
+  intro.
+  apply H1.
+  now inv H2.
+Qed.
+
+Lemma SubExp_of_value_never_error {Γ τ ty}
+      {v : Exp Γ ty} {e : Exp (ty :: Γ) τ} :
+  ValueP v → ¬ ErrorP e → ∀ m, ¬ (SubExp {||v||} e = Error m).
+Proof.
+  intros.
+  dependent elimination e; simpl.
+  - exfalso.
+    now apply H1.
+  - now apply SubVar_of_value_never_error.
+  - now intro.
+  - now intro.
+Qed.
+
+Lemma SubExp_error {Γ τ ty}
+      {v : Exp Γ ty} {e : Exp (ty :: Γ) τ} {m} :
+  ValueP v → SubExp {||v||} e = Error m → e = Error m.
+Proof.
+  intros.
+  dependent elimination e; simpl in *.
+  - now inv H1.
+  - pose proof (SubVar_of_value_never_error v0 H0 m).
+    contradiction.
+  - congruence.
+  - congruence.
+Qed.
+
+Definition HasError {Γ τ} (m : Err) :=
+  ExpP (Γ:=Γ) (τ:=τ) (λ _ x, x ---> Error m).
+
+Definition has_error_impl {Γ τ} {x : Exp Γ τ} {m} :
+  HasError m x → x ---> Error m := ExpP_P _.
+
+Lemma has_error_propagates {Γ τ} {x : Exp Γ τ} {m} :
+  HasError m x → ∀ y, x ---> y → HasError m y.
+Proof.
+  intros H0 y S1.
+  induction τ.
+  now eapply IHτ1; eauto.
+Qed.
+
+Lemma have_error {Γ τ} {x : Exp Γ τ} {m} :
+  x ---> Error m → HasError m x.
+Proof.
+  intros H0.
+  now induction τ; auto.
+Qed.
+
+Lemma errors_deterministic {Γ τ} {x : Exp Γ τ} {m} :
+  x ---> Error m → ∀ y, x ---> y → y = Error m.
+Proof.
+  intros.
+  apply have_error in H0.
+  unfold HasError in H0.
+  now induction τ; simp ExpP in H0.
+Qed.
 
 Theorem Step_deterministic Γ τ :
   deterministic (Step (Γ:=Γ) (τ:=τ)).
@@ -589,11 +631,10 @@ Proof.
         by (eapply Redex_deterministic; eassumption).
       subst.
       now eapply Plug_functional; eauto.
-    + epose proof (errors_deterministic H9 _ H8).
-  - inv H1.
-    + admit.              (* same case as admit above *)
-    + admit.              (* there can never be multiple errors in a form? *)
-Admitted.
+    + now eapply errors_deterministic; eauto.
+  - symmetry.
+    now eapply errors_deterministic; eauto.
+Qed.
 
 End Step.
 

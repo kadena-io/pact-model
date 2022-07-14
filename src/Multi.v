@@ -86,7 +86,6 @@ Next Obligation.
   - rewrite <- IHmulti; clear IHmulti H1.
     dependent elimination H.
     destruct (AppR_LAM (e:= e) H0).
-Abort.
 *)
 
 (*
@@ -271,7 +270,7 @@ Qed.
 
 #[local] Hint Constructors ValueP Plug Redex Step : core.
 
-Lemma errors_final {Γ τ} {e e' : Γ ⊢ τ} :
+Lemma no_intermediate_errors {Γ τ} {e e' : Γ ⊢ τ} :
   ¬ ErrorP e' → (e --->* e') → ∀ i, i --->* e' → ¬ ErrorP i.
 Proof.
   repeat intro.
@@ -279,6 +278,26 @@ Proof.
   - contradiction.
   - apply error_is_nf in H2.
     now edestruct H2; eauto.
+Qed.
+
+Corollary values_final τ (e e' : Exp [] τ) :
+  e --->* e' → ValueP e → e = e'.
+Proof.
+  intros.
+  apply value_is_nf in H0.
+  unfold normal_form in H0.
+  induction H; auto.
+  now intuition.
+Qed.
+
+Corollary errors_final τ (e e' : Exp [] τ) :
+  e --->* e' → ErrorP e → e = e'.
+Proof.
+  intros.
+  apply error_is_nf in H0.
+  unfold normal_form in H0.
+  induction H; auto.
+  now intuition.
 Qed.
 
 Lemma multistep_AppR {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :

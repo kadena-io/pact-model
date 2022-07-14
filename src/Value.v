@@ -37,54 +37,24 @@ Derive Signature for ValueP.
 
 Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP _ v) :
   H1 = H2.
-Proof. now apply proof_irrelevance. Qed.
-
-Inductive Value : Ty → Type :=
-  (* | HostValue {ty}         : HostExp (TyHost ty) → Value (TyHost ty) *)
-  (* | VError {τ} (m : Err)   : Value τ *)
-  (* | VUnit                  : Value TyUnit *)
-  (* | VTrue                  : Value TyBool *)
-  (* | VFalse                 : Value TyBool *)
-  (* | VPair {τ1 τ2}          : Value τ1 → Value τ2 → Value (TyPair τ1 τ2) *)
-  (* | VNil {τ}               : Value (TyList τ) *)
-  (* | VCons {τ}              : Value τ → Value (TyList τ) → Value (TyList τ) *)
-  | ClosureExp {dom cod}   : Closure dom cod → Value (dom ⟶ cod)
-
-with Closure : Ty → Ty → Type :=
-  | Lambda {dom cod}   : Exp [dom] cod → Closure dom cod
-  (* | Func {dom cod}     : HostExp (dom ⟶ cod) → Closure dom cod *)
-.
-
-Derive Signature NoConfusion NoConfusionHom for Value.
-(*
-Next Obligation.
-  destruct x, y.
-  - destruct (eq_dec e e0); subst.
-    + now left.
-    + right.
-      intro.
-      inversion H0.
-      apply inj_pair2 in H2.
-      apply inj_pair2 in H2.
-      contradiction.
-Defined.
-*)
-Derive Signature NoConfusion NoConfusionHom Subterm for Closure.
-
-Inductive ValEnv : Env → Type :=
-  | Empty : ValEnv []
-  | Val {Γ τ} : Value τ → ValEnv Γ → ValEnv (τ :: Γ).
-
-Derive Signature NoConfusion NoConfusionHom for ValEnv.
-
-Equations get_value `(s : ValEnv Γ) `(v : Var Γ τ) : Value τ :=
-  get_value (Val x _)  ZV     := x;
-  get_value (Val _ xs) (SV v) := get_value xs v.
+Proof.
+  dependent elimination H1.
+  dependent elimination H2.
+  reflexivity.
+Qed.
 
 Inductive ErrorP Γ : ∀ {τ}, Exp Γ τ → Prop :=
   | IsError {τ} m : ErrorP Γ (Error (τ:=τ) m).
 
 Derive Signature for ErrorP.
+
+Lemma ErrorP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ErrorP _ v) :
+  H1 = H2.
+Proof.
+  dependent elimination H1.
+  dependent elimination H2.
+  reflexivity.
+Qed.
 
 End Value.
 

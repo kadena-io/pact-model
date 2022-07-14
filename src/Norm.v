@@ -120,17 +120,32 @@ Arguments SN_Sub {Γ Γ'} /.
 
 Definition SN_halts {Γ τ} {e : Γ ⊢ τ} : SN e → halts e := ExpP_P _.
 
+(*
+Equations step_preserves_SN' {Γ τ} {e e' : Γ ⊢ τ}
+          (ee' : e ---> e') (H : SN e') : SN e := {
+    step_preserves_SN' ee' (conj (ex_intro _ _ (conj mstep VE)) H) :=
+      (conj (ex_intro _ _ (conj (multi_step _ _ _ _ ee' mstep) VE))
+            (step_preserves_SN'_helper ee' H));
+}
+where step_preserves_SN'_helper
+        {Γ τ} {e e' : Γ ⊢ τ} (ee' : e ---> e')
+        (H' : ExpP' (@halts _) e') : ExpP' (@halts _) e := {
+  step_preserves_SN'_helper (τ:=TyUnit) _ _ := _;
+  step_preserves_SN'_helper (τ:=_ ⟶ _) ee' H' :=
+    λ x Hx, step_preserves_SN' (AppL_LAM _ ee') (H' x Hx)
+}.
+*)
+
 Lemma step_preserves_SN {Γ τ} {e e' : Γ ⊢ τ} :
   (e ---> e') → SN e → SN e'.
 Proof.
   intros.
-  induction τ; simpl in *; simp SN in *;
-  pose proof H as H1;
-  apply step_preserves_halting in H1; intuition.
-  - eapply IHτ2; eauto.
-    apply (AppL_LAM (x:=x)) in H; eauto.
-    dependent elimination H1.
-    simpl in *; reduce.
+  induction τ; simpl in *;
+  pose proof H as H2;
+  apply step_preserves_halting in H2;
+  intuition eauto.
+  eapply IHτ2; eauto.
+  unshelve eapply (AppL_LAM _ H).
 Admitted.
 (*
     destruct H5.
@@ -158,9 +173,12 @@ Lemma step_preserves_SN' {Γ τ} {e e' : Γ ⊢ τ} :
   (e ---> e') → SN e' → SN e.
 Proof.
   intros.
-  induction τ; simpl in *; simp SN in *;
-  pose proof H as H1;
-  apply step_preserves_halting in H1; intuition.
+  induction τ; simpl in *;
+  pose proof H as H2;
+  apply step_preserves_halting in H2;
+  intuition eauto.
+  eapply IHτ2; eauto.
+  unshelve eapply (AppL_LAM _ H).
 Admitted.
 (*
   (* - eapply IHτ1; eauto. *)
@@ -184,12 +202,21 @@ Lemma ErrorP_SN {Γ τ} (e : Exp Γ τ) :
   ErrorP e → SN e.
 Proof.
   intro H.
-  induction H; simpl.
-Admitted.
-(*
-  now induction τ.
+  inv H.
+  induction τ; simpl.
+  - eexists.
+    split.
+    + now apply multi_refl.
+    + now right; constructor.
+  - split.
+    + eexists.
+      split.
+      * now apply multi_refl.
+      * now right; constructor.
+    + intros.
+      eapply step_preserves_SN'; eauto.
+      exact (StepError (Plug_AppL _  (Plug_Hole _))).
 Qed.
-*)
 
 Lemma SubExp_SN {Γ Γ'} (env : Sub Γ' Γ) {τ} (e : Exp Γ τ) :
   SN_Sub env →
@@ -303,12 +330,13 @@ Proof.
                exact (StepError (Plug_AppR _ (LambdaP _)
                                            (Plug_Hole (Error m)))).
            *** pose proof (multi_step _ _ _ _ H H0); clear H H0.
-               apply multistep_AppR_Error; auto.
-               now constructor.
+               Fail apply multistep_AppR_Error; auto.
+               Fail now constructor.
+               admit.
         ** apply ErrorP_SN.
            now constructor.
   - now apply IHe1, IHe2.
-Qed.
+Admitted.
 
 Theorem Exp_SN {τ} (e : Exp [] τ) : SN e.
 Proof.

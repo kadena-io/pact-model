@@ -30,10 +30,6 @@ Proof.
   intros.
   unfold Sound.
   induction τ; simp ExpP.
-  - now exists e.
-  - intuition.
-    + now exists e.
-    + admit.
 Admitted.
 
 Theorem soundness {Γ τ} {e : Exp Γ τ} {v} :
@@ -42,7 +38,7 @@ Proof.
   intros.
   pose proof (Step_sound H).
   apply ExpP_P in H0.
-Abort.
+Admitted.
 
 (*
   exact (IHτ1 e e' H).

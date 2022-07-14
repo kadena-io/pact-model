@@ -23,9 +23,7 @@ Variable P : ∀ {τ}, Exp Γ τ → Prop.
 (** [ExpP] is a logical predicate that permits type-directed induction on
     expressions. *)
 Equations ExpP `(e : Exp Γ τ) : Prop :=
-  ExpP (τ:=_ ⟶ _) f := P f ∧ (∀ x, ExpP x → ExpP (APP f x));
-  (* ExpP (τ:=_ × _)    p := P p ∧ ExpP (Fst p) ∧ ExpP (Snd p); *)
-  (* ExpP (τ:=TyList _) l := P l ∧ (∀ d, ExpP d → ExpP (Car d l)); *)
+  ExpP (τ:=_ ⟶ _) e := P e ∧ (∀ x, ExpP x → ExpP (APP e x));
   ExpP e := P e.
 
 Inductive SubP : ∀ {Γ'}, Sub Γ Γ' → Prop :=

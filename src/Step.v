@@ -144,9 +144,9 @@ Inductive Step {Γ τ} : Exp Γ τ → Exp Γ τ → Prop :=
     Redex e1 e2 →
     e1' ---> e2'
 
-  | StepError {τ' n} {C : Ctxt Γ τ' τ} {m : Err} {e1' : Exp Γ τ} :
-    Plug (Error m) (S n) C e1' →
-    e1' ---> Error m
+  | StepError {τ' n} {C : Ctxt Γ τ' τ} {m : Err} {e' : Exp Γ τ} :
+    Plug (Error m) (S n) C e' →
+    e' ---> Error m
 
   where " t '--->' t' " := (Step t t').
 
@@ -462,88 +462,6 @@ Proof.
     now apply H0.
 Qed.
 
-Lemma AppL_LAM {Γ dom cod} {e e' : Exp Γ (dom ⟶ cod)} {x : Exp Γ dom} :
-  e ---> e' →
-  APP e x ---> APP e' x
-    ∨ (∃ m, e' = Error m ∧ APP e x ---> Error m).
-Proof.
-  intros.
-  dependent induction H0.
-  - left.
-    exact (StepRule (Plug_AppL _ H0)
-                    (Plug_AppL _ H1) H2).
-  - right.
-    exists m.
-    split.
-    + now constructor.
-    + exact (StepError (Plug_AppL _ H0)).
-Qed.
-
-Lemma AppR_LAM {Γ dom cod} {e : Exp (dom :: Γ) cod} {x x' : Exp Γ dom} :
-  x ---> x' →
-  APP (LAM e) x ---> APP (LAM e) x'
-    ∨ (∃ m, x' = Error m ∧ APP (LAM e) x ---> Error m).
-Proof.
-  intros.
-  dependent induction H0.
-  - left.
-    exact (StepRule (Plug_AppR _ (LambdaP _) H0)
-                    (Plug_AppR _ (LambdaP _) H1) H2).
-  - right.
-    exists m.
-    split.
-    + now constructor.
-    + exact (StepError (Plug_AppR _ (LambdaP _) H0)).
-Qed.
-
-(* Definition normal_form `(R : relation X) (t : X) : Prop := *)
-(*   ¬ ∃ t', R t t'. *)
-Definition normal_form `(R : relation X) (t : X) : Prop :=
-  ∀ t', ¬ R t t'.
-
-Definition deterministic `(R : relation X) : Prop :=
-  ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
-
-Lemma value_is_nf {Γ τ} (v : Exp Γ τ) :
-  ValueP v → normal_form Step v.
-Proof.
-  repeat intro.
-  dependent elimination H0.
-  dependent induction H1.
-  - inv H0.
-    now inv H2.
-  - now inv H0.
-Qed.
-
-Lemma error_is_nf {Γ τ} (v : Exp Γ τ) :
-  ErrorP v → normal_form Step v.
-Proof.
-  repeat intro.
-  dependent elimination H0.
-  dependent induction H1.
-  - inv H0.
-    now inv H2.
-  - now inv H0.
-Qed.
-
-Lemma nf_is_value_or_error {τ} (v : Exp [] τ) :
-  normal_form Step v → ValueP v ∨ ErrorP v.
-Proof.
-  intros.
-  destruct (strong_progress v); intuition eauto; reduce.
-  now edestruct H0; eauto.
-Qed.
-
-Theorem nf_same_as_value_or_error {τ} (v : Exp [] τ) :
-  normal_form Step v ↔ ValueP v ∨ ErrorP v.
-Proof.
-  split.
-  - now apply nf_is_value_or_error.
-  - intros [?|?].
-    + now apply value_is_nf.
-    + now apply error_is_nf.
-Qed.
-
 Lemma SubVar_ZV_of_value_never_error {Γ τ} {x : Exp Γ τ} :
   ValueP x → ∀ m, ¬ (SubVar {|| x ||} ZV = Error m).
 Proof.
@@ -601,6 +519,101 @@ Proof.
   - congruence.
 Qed.
 
+Lemma AppL_LAM {Γ dom cod} {e e' : Exp Γ (dom ⟶ cod)} {x : Exp Γ dom} :
+  ¬ ErrorP e' →
+  e ---> e' →
+  APP e x ---> APP e' x.
+Proof.
+  intros.
+  dependent induction H1.
+  - exact (StepRule (Plug_AppL _ H1)
+                    (Plug_AppL _ H2) H3).
+  - exfalso.
+    now apply H0.
+Qed.
+
+Lemma AppL_LAM_error {Γ dom cod} {e : Exp Γ (dom ⟶ cod)} {x : Exp Γ dom} m :
+  e ---> Error m →
+  APP e x ---> Error m.
+Proof.
+  intros.
+  dependent induction e;
+  dependent elimination H0.
+  - dependent elimination p.
+    now dependent elimination r.
+  - now dependent elimination p1.
+  - dependent elimination p.
+    now dependent elimination r.
+  - now dependent elimination p1.
+  - dependent elimination p0.
+    now dependent destruction p.
+  - now dependent elimination p1.
+  - dependent elimination p0.
+    dependent destruction p.
+    dependent destruction r.
+Abort.
+
+Lemma AppR_LAM {Γ dom cod} {e : Exp (dom :: Γ) cod} {x x' : Exp Γ dom} :
+  ¬ ErrorP x' →
+  x ---> x' →
+  APP (LAM e) x ---> APP (LAM e) x'.
+Proof.
+  intros.
+  dependent induction H1.
+  - exact (StepRule (Plug_AppR _ (LambdaP _) H1)
+                    (Plug_AppR _ (LambdaP _) H2) H3).
+  - exfalso.
+    now apply H0.
+Qed.
+
+(* Definition normal_form `(R : relation X) (t : X) : Prop := *)
+(*   ¬ ∃ t', R t t'. *)
+Definition normal_form `(R : relation X) (t : X) : Prop :=
+  ∀ t', ¬ R t t'.
+
+Definition deterministic `(R : relation X) : Prop :=
+  ∀ x y1 y2 : X, R x y1 → R x y2 → y1 = y2.
+
+Lemma value_is_nf {Γ τ} (v : Exp Γ τ) :
+  ValueP v → normal_form Step v.
+Proof.
+  repeat intro.
+  dependent elimination H0.
+  dependent induction H1.
+  - inv H0.
+    now inv H2.
+  - now inv H0.
+Qed.
+
+Lemma error_is_nf {Γ τ} (v : Exp Γ τ) :
+  ErrorP v → normal_form Step v.
+Proof.
+  repeat intro.
+  dependent elimination H0.
+  dependent induction H1.
+  - inv H0.
+    now inv H2.
+  - now inv H0.
+Qed.
+
+Lemma nf_is_value_or_error {τ} (v : Exp [] τ) :
+  normal_form Step v → ValueP v ∨ ErrorP v.
+Proof.
+  intros.
+  destruct (strong_progress v); intuition eauto; reduce.
+  now edestruct H0; eauto.
+Qed.
+
+Theorem nf_same_as_value_or_error {τ} (v : Exp [] τ) :
+  normal_form Step v ↔ ValueP v ∨ ErrorP v.
+Proof.
+  split.
+  - now apply nf_is_value_or_error.
+  - intros [?|?].
+    + now apply value_is_nf.
+    + now apply error_is_nf.
+Qed.
+
 Definition HasError {Γ τ} (m : Err) :=
   ExpP (Γ:=Γ) (τ:=τ) (λ _ x, x ---> Error m).
 
@@ -616,11 +629,6 @@ Proof.
   generalize dependent y.
   generalize dependent m.
   induction τ; simpl; simp ExpP; intros; simp ExpP in *.
-  - admit.
-  - intuition.
-    + admit.                    (* should be possible *)
-    + eapply IHτ2; eauto.
-      admit.                    (* easy *)
 Admitted.
 
 Lemma have_error {Γ τ} {x : Exp Γ τ} {m} :
@@ -630,15 +638,9 @@ Proof.
   intros.
   generalize dependent x.
   generalize dependent m.
-  induction τ; simpl; simp ExpP; intros; simp ExpP in *.
+  induction τ; simpl; simp ExpP;
+  intros; simp ExpP in *.
   intuition.
-  dependent elimination H0.
-  - dependent elimination p0.
-    inv r.
-    apply SubExp_error in H3; auto; subst.
-    inv p.
-    admit.
-  - admit.
 Admitted.
 
 Lemma errors_deterministic {Γ τ} {x : Exp Γ τ} {m} :

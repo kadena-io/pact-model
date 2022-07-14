@@ -280,7 +280,7 @@ Proof.
     now edestruct H2; eauto.
 Qed.
 
-Corollary values_final τ (e e' : Exp [] τ) :
+Corollary values_final {Γ τ} {e e' : Exp Γ τ} :
   e --->* e' → ValueP e → e = e'.
 Proof.
   intros.
@@ -290,7 +290,7 @@ Proof.
   now intuition.
 Qed.
 
-Corollary errors_final τ (e e' : Exp [] τ) :
+Corollary errors_final {Γ τ} {e e' : Exp Γ τ} :
   e --->* e' → ErrorP e → e = e'.
 Proof.
   intros.
@@ -300,24 +300,24 @@ Proof.
   now intuition.
 Qed.
 
+Lemma not_error_backpropagate {Γ τ} {x y : Γ ⊢ τ} :
+  ¬ ErrorP y → x --->* y → ¬ ErrorP x.
+Proof.
+  intros.
+  now eapply no_intermediate_errors in H; eauto.
+Qed.
+
 Lemma multistep_AppR {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :
   ValueP v → ¬ ErrorP e' → (e --->* e') → APP v e --->* APP v e'.
 Proof.
   intros.
   induction H1.
   - now apply multi_refl.
-  - dependent elimination H.
+  - rewrite <- IHmulti; clear IHmulti; auto.
+    inv H.
     eapply (AppR_LAM (e:=e)) in H1.
-    rewrite <- IHmulti; clear IHmulti; auto.
-    destruct H1.
     + now apply multi_R.
-    + reduce.
-      inv H2.
-      * exfalso.
-        now apply H0.
-      * apply error_is_nf in H.
-        ** contradiction.
-        ** now constructor.
+    + now eapply not_error_backpropagate; eauto.
 Qed.
 
 Lemma multistep_AppR_Error {Γ dom cod} {e : Γ ⊢ dom}
@@ -330,16 +330,12 @@ Proof.
   - apply multi_R.
     exact (StepError (Plug_AppR _ (LambdaP _)
                                 (Plug_Hole (Error m)))).
-  - apply (AppR_LAM (e:=e0)) in H.
-    destruct H.
-    + now econstructor; eauto.
-    + reduce.
-      inv H0.
-      * now apply multi_R.
-      * apply error_is_nf in H.
-        ** contradiction.
-        ** now constructor.
-Qed.
+  - specialize (IHmulti _ _ _ e0 m eq_refl JMeq_refl JMeq_refl JMeq_refl).
+    rewrite <- IHmulti.
+    apply (multistep_AppR (v:=LAM e0)); eauto.
+    + intro.
+      clear -H0 H1.
+Abort.
 
 End Multi.
 

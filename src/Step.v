@@ -48,24 +48,26 @@ Derive Signature NoConfusion for Ctxt.
 Definition Ctxt_id {Γ τ} : Ctxt Γ τ τ := C_Hole _ _.
 Arguments Ctxt_id {_ _} /.
 
-Equations Ctxt_comp {Γ τ τ' τ''} (C : Ctxt Γ τ' τ) (C' : Ctxt Γ τ'' τ') :
+Fixpoint Ctxt_comp {Γ τ τ' τ''} (C : Ctxt Γ τ' τ) (C' : Ctxt Γ τ'' τ') :
   Ctxt Γ τ'' τ :=
-  Ctxt_comp (C_Hole _ _)     c' := c';
-  Ctxt_comp (C_AppL _ _ c _) c' := C_AppL _ _ (Ctxt_comp c c') _;
-  Ctxt_comp (C_AppR _ _ _ c) c' := C_AppR _ _ _ (Ctxt_comp c c').
+  match C with
+  | C_Hole _ _       => C'
+  | C_AppL _ _ c1 e2 => C_AppL _ _ (Ctxt_comp c1 C') e2
+  | C_AppR _ _ e1 c2 => C_AppR _ _ e1 (Ctxt_comp c2 C')
+  end.
 
 Theorem Ctxt_id_left {Γ τ τ'} {C : Ctxt Γ τ' τ} :
   Ctxt_comp Ctxt_id C = C.
-Proof. induction C; simp Ctxt_comp; auto; now f_equal. Qed.
+Proof. induction C; simpl; auto; now f_equal. Qed.
 
 Theorem Ctxt_id_right {Γ τ τ'} {C : Ctxt Γ τ' τ} :
   Ctxt_comp C Ctxt_id = C.
-Proof. induction C; simp Ctxt_comp; auto; now f_equal. Qed.
+Proof. induction C; simpl; auto; now f_equal. Qed.
 
 Theorem Ctxt_comp_assoc {Γ τ τ' τ'' τ'''}
         {C : Ctxt Γ τ' τ} {C' : Ctxt Γ τ'' τ'} {C'' : Ctxt Γ τ''' τ''} :
   Ctxt_comp C (Ctxt_comp C' C'') = Ctxt_comp (Ctxt_comp C C') C''.
-Proof. induction C; simp Ctxt_comp; auto; now f_equal. Qed.
+Proof. induction C; simpl; auto; now f_equal. Qed.
 
 Unset Elimination Schemes.
 
@@ -101,27 +103,23 @@ Scheme Plug_ind := Induction for Plug Sort Prop.
 Definition Plug_id {Γ τ} {x : Exp Γ τ} : Plug x 0 (C_Hole Γ τ) x := Plug_Hole _.
 Arguments Plug_id {_ _ _} /.
 
-Equations Plug_comp {Γ τ τ' τ'' n m}
-          {x : Exp Γ τ''} {y : Exp Γ τ'} {z : Exp Γ τ}
-          {C : Ctxt Γ τ' τ} {C' : Ctxt Γ τ'' τ'}
-          (P : Plug x n C' y) (P' : Plug y m C z) :
+Fixpoint Plug_comp {Γ τ τ' τ'' n m}
+         {x : Exp Γ τ''} {y : Exp Γ τ'} {z : Exp Γ τ}
+         {C : Ctxt Γ τ' τ} {C' : Ctxt Γ τ'' τ'}
+         (P : Plug x n C' y) (P' : Plug y m C z) :
   Plug x (m + n) (Ctxt_comp C C') z :=
-  Plug_comp p (Plug_Hole _)      := p;
-  Plug_comp p (Plug_AppL _ p')   := Plug_AppL _ (Plug_comp p p');
-  Plug_comp p (Plug_AppR _ H p') := Plug_AppR _ H (Plug_comp p p').
+  match P' with
+  | Plug_Hole _      => P
+  | Plug_AppL _ p'   => Plug_AppL _ (Plug_comp P p')
+  | Plug_AppR _ V p' => Plug_AppR _ V (Plug_comp P p')
+  end.
 
 (* This should be provable, but the dependent types get in the way. *)
 Theorem Plug_id_left {Γ τ τ' n} {C : Ctxt Γ τ' τ} {x : Exp Γ τ'} {y : Exp Γ τ}
         (P : Plug x n C y) :
   Plug_comp Plug_id P ~= P.
 Proof.
-  dependent induction P; auto.
-  - rewrite (Plug_comp_equation_2 _ _ _ _ _ _ _ _ _ _ _ _ _ Plug_id P).
-    unfold Ctxt_comp_obligations_obligation_1.
-    pose proof (@Ctxt_id_right _ _ _ C).
-    simpl in *.
-    Fail rewrite H0 in IHP.
-    Fail now rewrite IHP.
+  dependent induction P; simpl in *; auto.
 Abort.
 (*
   - rewrite (Plug_comp_equation_3 _ _ _ _ _ _ _ _ _ _ _ Plug_id _ P).

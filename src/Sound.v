@@ -3,6 +3,7 @@ Require Import
   Ltac
   Ty
   Exp
+  Log
   Sub
   Sem
   Step
@@ -20,9 +21,32 @@ Import ListNotations.
 Context {A : Type}.
 Context `{S : HostLang A}.
 
-Theorem Step_sound {Γ τ} (e : Exp Γ τ) v :
+Definition Sound {Γ τ} :=
+  ExpP (Γ:=Γ) (τ:=τ) (λ _ e, ∃ e', SemExp e = SemExp e').
+
+Theorem Step_sound {Γ τ} {e e' : Exp Γ τ} :
+  e ---> e' → Sound e.
+Proof.
+  intros.
+  unfold Sound.
+  induction τ; simp ExpP.
+  - now exists e.
+  - intuition.
+    + now exists e.
+    + admit.
+Admitted.
+
+Theorem soundness {Γ τ} {e : Exp Γ τ} {v} :
   e ---> v → SemExp e = SemExp v.
 Proof.
+  intros.
+  pose proof (Step_sound H).
+  apply ExpP_P in H0.
+Abort.
+
+(*
+  exact (IHτ1 e e' H).
+
   intros.
   induction H; simpl; auto;
   extensionality se;
@@ -85,6 +109,7 @@ Proof.
   induction y; intro; inv H.
   now eapply IHy2; eauto.
 Qed.
+*)
 *)
 
 End Sound.

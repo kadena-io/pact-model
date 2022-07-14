@@ -20,7 +20,7 @@ Import ListNotations.
 Fixpoint SemTy `{HostExprs A} (τ : Ty) : Type :=
   match τ with
   (* | TyHost τ        => HostTySem τ *)
-  (* | TyUnit          => unit *)
+  | TyUnit          => unit
   (* | TyBool          => bool *)
   (* | TyList τ        => list (SemTy τ) *)
   (* | TyPair t1 t2    => SemTy t1 * SemTy t2 *)

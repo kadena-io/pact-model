@@ -145,6 +145,7 @@ Definition inject {τ : Ty} (e : Exp [] τ) : Σ τ := MkΣ (Closure e NoCl) MT.
 
 Definition run (gas : nat) {τ : Ty} (e : Exp [] τ) : Σ τ := loop gas (inject e).
 
+(*
 Definition Completes {τ} :=
   ExpP (Γ:=[]) (τ:=τ) (λ _ e, ∃ e' gas, loop gas (inject e) = inject e').
 
@@ -168,5 +169,6 @@ Proof.
   induction τ.
   exact (IHτ1 e e' H).
 Qed.
+*)
 
 End Eval.

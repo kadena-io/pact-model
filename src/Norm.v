@@ -127,13 +127,23 @@ Proof.
   induction τ; simpl in *; simp SN in *;
   pose proof H as H1;
   apply step_preserves_halting in H1; intuition.
-  (* - eapply IHτ1; eauto. *)
-  (*   now constructor. *)
+  - eapply IHτ2; eauto.
+    apply (AppL_LAM (x:=x)) in H; eauto.
+    dependent elimination H1.
+    simpl in *; reduce.
+Admitted.
+(*
+    destruct H5.
+    -
+    exact (StepRule (Plug).
+    eauto 6.
+    now constructor.
   (* - eapply IHτ2; eauto. *)
   (*   now constructor. *)
   (* - eapply IHτ2; eauto. *)
   (*   now constructor. *)
 Qed.
+*)
 
 Lemma multistep_preserves_SN {Γ τ} {e e' : Γ ⊢ τ} :
   (e --->* e') → SN e → SN e'.
@@ -151,6 +161,8 @@ Proof.
   induction τ; simpl in *; simp SN in *;
   pose proof H as H1;
   apply step_preserves_halting in H1; intuition.
+Admitted.
+(*
   (* - eapply IHτ1; eauto. *)
   (*   now constructor. *)
   (* - eapply IHτ2; eauto. *)
@@ -158,6 +170,7 @@ Proof.
   (* - eapply IHτ2; eauto. *)
   (*   now constructor. *)
 Qed.
+*)
 
 Lemma multistep_preserves_SN' {Γ τ} {e e' : Γ ⊢ τ} :
   (e --->* e') → SN e' → SN e.
@@ -172,8 +185,11 @@ Lemma ErrorP_SN {Γ τ} (e : Exp Γ τ) :
 Proof.
   intro H.
   induction H; simpl.
+Admitted.
+(*
   now induction τ.
 Qed.
+*)
 
 Lemma SubExp_SN {Γ Γ'} (env : Sub Γ' Γ) {τ} (e : Exp Γ τ) :
   SN_Sub env →
@@ -289,7 +305,8 @@ Proof.
            *** pose proof (multi_step _ _ _ _ H H0); clear H H0.
                apply multistep_AppR_Error; auto.
                now constructor.
-        ** now induction cod; intuition eauto.
+        ** apply ErrorP_SN.
+           now constructor.
   - now apply IHe1, IHe2.
 Qed.
 
@@ -305,7 +322,7 @@ Qed.
 Corollary strong_normalization {τ} (e : Exp [] τ) : e ⇓.
 Proof.
   pose proof (Exp_SN e) as H.
-  now induction τ; intuition eauto.
+  now apply SN_halts.
 Qed.
 
 End Norm.

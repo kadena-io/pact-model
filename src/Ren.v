@@ -189,5 +189,3 @@ Defined.
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RenExp skip1.
 
 End Ren.
-
-Extraction RcR.

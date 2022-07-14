@@ -27,7 +27,7 @@ Context `{HostTypes A}.
 Inductive Ty : Type :=
   (* | TyHost : HostTy → Ty *)
 
-  (* | TyUnit : Ty *)
+  | TyUnit : Ty
   (* | TyBool : Ty *)
   (* | TyList : Ty → Ty *)
   (* | TyPair : Ty → Ty → Ty *)

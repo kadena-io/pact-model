@@ -464,6 +464,23 @@ Proof.
     now apply H0.
 Qed.
 
+Lemma AppL_LAM {Γ dom cod} {e e' : Exp Γ (dom ⟶ cod)} {x : Exp Γ dom} :
+  e ---> e' →
+  APP e x ---> APP e' x
+    ∨ (∃ m, e' = Error m ∧ APP e x ---> Error m).
+Proof.
+  intros.
+  dependent induction H0.
+  - left.
+    exact (StepRule (Plug_AppL _ H0)
+                    (Plug_AppL _ H1) H2).
+  - right.
+    exists m.
+    split.
+    + now constructor.
+    + exact (StepError (Plug_AppL _ H0)).
+Qed.
+
 Lemma AppR_LAM {Γ dom cod} {e : Exp (dom :: Γ) cod} {x x' : Exp Γ dom} :
   x ---> x' →
   APP (LAM e) x ---> APP (LAM e) x'
@@ -595,17 +612,36 @@ Definition has_error_impl {Γ τ} {x : Exp Γ τ} {m} :
 Lemma has_error_propagates {Γ τ} {x : Exp Γ τ} {m} :
   HasError m x → ∀ y, x ---> y → HasError m y.
 Proof.
+  unfold HasError.
   intros H0 y S1.
-  induction τ.
-  now eapply IHτ1; eauto.
-Qed.
+  generalize dependent x.
+  generalize dependent y.
+  generalize dependent m.
+  induction τ; simpl; simp ExpP; intros; simp ExpP in *.
+  - admit.
+  - intuition.
+    + admit.                    (* should be possible *)
+    + eapply IHτ2; eauto.
+      admit.                    (* easy *)
+Admitted.
 
 Lemma have_error {Γ τ} {x : Exp Γ τ} {m} :
   x ---> Error m → HasError m x.
 Proof.
-  intros H0.
-  now induction τ; auto.
-Qed.
+  unfold HasError.
+  intros.
+  generalize dependent x.
+  generalize dependent m.
+  induction τ; simpl; simp ExpP; intros; simp ExpP in *.
+  intuition.
+  dependent elimination H0.
+  - dependent elimination p0.
+    inv r.
+    apply SubExp_error in H3; auto; subst.
+    inv p.
+    admit.
+  - admit.
+Admitted.
 
 Lemma errors_deterministic {Γ τ} {x : Exp Γ τ} {m} :
   x ---> Error m → ∀ y, x ---> y → y = Error m.
@@ -613,8 +649,8 @@ Proof.
   intros.
   apply have_error in H0.
   unfold HasError in H0.
-  now induction τ; simp ExpP in H0.
-Qed.
+  induction τ; simp ExpP in *.
+Admitted.
 
 Theorem Step_deterministic Γ τ :
   deterministic (Step (Γ:=Γ) (τ:=τ)).

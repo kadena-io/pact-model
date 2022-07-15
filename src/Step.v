@@ -360,7 +360,7 @@ Proof.
 Qed.
 *)
 
-Lemma Value_irreducible {Γ τ} (e e' : Exp Γ τ) :
+Lemma Value_irreducible {Γ τ} {e e' : Exp Γ τ} :
   ValueP e → ¬ (e ---> e').
 Proof.
   repeat intro.
@@ -374,7 +374,7 @@ Proof.
   (* - now inv p1. *)
 Qed.
 
-Lemma Value_cannot_start {Γ τ} (e e' : Exp Γ τ) :
+Lemma Value_cannot_start {Γ τ} {e e' : Exp Γ τ} :
   (e ---> e') → ¬ ValueP e.
 Proof.
   repeat intro.
@@ -387,7 +387,7 @@ Proof.
   (* - now inv p1. *)
 Qed.
 
-Lemma Error_irreducible {Γ τ} (e e' : Exp Γ τ) :
+Lemma Error_irreducible {Γ τ} {e e' : Exp Γ τ} :
   ErrorP e → ¬ (e ---> e').
 Proof.
   repeat intro.
@@ -398,7 +398,7 @@ Proof.
   (* - now inv p1. *)
 Qed.
 
-Lemma Error_cannot_start {Γ τ} (e e' : Exp Γ τ) :
+Lemma Error_cannot_start {Γ τ} {e e' : Exp Γ τ} :
   (e ---> e') → ¬ ErrorP e.
 Proof.
   repeat intro.

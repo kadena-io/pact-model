@@ -35,6 +35,13 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
 
 Derive Signature for ValueP.
 
+Inductive ErrorP Γ : ∀ {τ}, Exp Γ τ → Prop :=
+  | IsError {τ} m : ErrorP Γ (Error (τ:=τ) m).
+
+Derive Signature for ErrorP.
+
+#[local] Hint Constructors ValueP ErrorP : core.
+
 Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP _ v) :
   H1 = H2.
 Proof.
@@ -42,17 +49,20 @@ Proof.
   dependent elimination H2; auto.
 Qed.
 
-Inductive ErrorP Γ : ∀ {τ}, Exp Γ τ → Prop :=
-  | IsError {τ} m : ErrorP Γ (Error (τ:=τ) m).
-
-Derive Signature for ErrorP.
-
 Lemma ErrorP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ErrorP _ v) :
   H1 = H2.
 Proof.
   dependent elimination H1;
   dependent elimination H2; auto.
 Qed.
+
+Lemma ValueP_dec {Γ τ} (e : Exp Γ τ) :
+  ValueP Γ e ∨ ¬ ValueP Γ e.
+Proof. induction e; solve [now left|now right]. Qed.
+
+Lemma ErrorP_dec {Γ τ} (e : Exp Γ τ) :
+  ErrorP Γ e ∨ ¬ ErrorP Γ e.
+Proof. induction e; solve [now left|now right]. Qed.
 
 End Value.
 

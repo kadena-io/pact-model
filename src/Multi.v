@@ -268,7 +268,10 @@ Proof.
 Qed.
 *)
 
-#[local] Hint Constructors ValueP Plug Redex Step : core.
+#[local] Hint Constructors ValueP Step : core.
+
+#[local] Hint Extern 1 (¬ ErrorP _) => inversion 1 : core.
+#[local] Hint Extern 7 (_ ---> _) => repeat econstructor : core.
 
 Lemma no_intermediate_errors {Γ τ} {e e' : Γ ⊢ τ} :
   ¬ ErrorP e' → (e --->* e') → ∀ i, i --->* e' → ¬ ErrorP i.
@@ -308,33 +311,29 @@ Proof.
 Qed.
 
 Lemma multistep_AppR {Γ dom cod} {e e' : Γ ⊢ dom} {v : Γ ⊢ (dom ⟶ cod)} :
-  ValueP v → ¬ ErrorP e' → (e --->* e') → APP v e --->* APP v e'.
+  ¬ ErrorP e' → (e --->* e') → ValueP v → APP v e --->* APP v e'.
 Proof.
   intros.
-  induction H1.
+  induction H0.
   - now apply multi_refl.
   - rewrite <- IHmulti; clear IHmulti; auto.
-    inv H.
-    eapply (AppR_LAM (e:=e)) in H1.
+    inv H1.
+    eapply (AppR_LAM (e:=e)) in H0.
     + now apply multi_R.
     + now eapply not_error_backpropagate; eauto.
 Qed.
 
 Lemma multistep_AppR_Error {Γ dom cod} {e : Γ ⊢ dom}
       {v : Γ ⊢ (dom ⟶ cod)} {m : Err} :
-  ValueP v → (e --->* Error m) → APP v e --->* Error m.
+  (e --->* Error m) → ValueP v → APP v e --->* Error m.
 Proof.
   intros.
-  dependent elimination H.
-  dependent induction H0.
+  dependent induction H.
   - apply multi_R.
-    exact (StepError (Plug_AppR _ (LambdaP _)
-                                (Plug_Hole (Error m)))).
-  - specialize (IHmulti _ _ _ e0 m eq_refl JMeq_refl JMeq_refl JMeq_refl).
+    now eauto 6.
+  - specialize (IHmulti _ _ _ _ v m eq_refl JMeq_refl JMeq_refl JMeq_refl H1).
     rewrite <- IHmulti.
-    apply (multistep_AppR (v:=LAM e0)); eauto.
-    + intro.
-      clear -H0 H1.
+    apply multistep_AppR; auto.
 Abort.
 
 End Multi.

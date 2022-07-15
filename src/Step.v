@@ -27,6 +27,8 @@ Context `{HostExprs A}.
 
 Open Scope Ty_scope.
 
+(*
+
 (* A context defines a hole which, after substitution, yields an expression of
    the index type. *)
 Inductive Frame Γ : Ty → Ty → Type :=
@@ -157,6 +159,148 @@ Derive Signature for Step.
 
 #[local] Hint Constructors ValueP ErrorP Plug Redex Step : core.
 
+*)
+
+Reserved Notation " t '--->' t' " (at level 40).
+
+Inductive Step : ∀ {Γ τ}, Exp Γ τ → Exp Γ τ → Prop :=
+(*
+  | ST_Seq1 Γ τ τ' (e1 e1' : Exp Γ τ') (e2 : Exp Γ τ) :
+    e1 ---> e1' →
+    Seq e1 e2 ---> Seq e1' e2
+  | ST_Seq1Err Γ τ τ' (m : Err) (e2 : Exp Γ τ) :
+    Seq (τ':=τ') (Error m) e2 ---> Error m
+  | ST_Seq2 Γ τ τ' (e1 : Exp Γ τ') (e2 : Exp Γ τ) :
+    ValueP e1 →
+    Seq e1 e2 ---> e2
+
+  | ST_Host Γ τ (h : HostExp τ) :
+    HostedExp h ---> projT1 (Reduce (Γ:=Γ) h)
+
+  | ST_IfTrue Γ τ (t e : Exp Γ τ) :
+    If ETrue t e ---> t
+  | ST_IfFalse Γ τ (t e : Exp Γ τ) :
+    If EFalse t e ---> e
+  | ST_If Γ b b' τ (t e : Exp Γ τ) :
+    b ---> b' →
+    If b t e ---> If b' t e
+  | ST_IfErr Γ τ (m : Err) (t e : Exp Γ τ) :
+    If (Error m) t e ---> Error m
+
+  | ST_Pair1 Γ τ1 τ2 (x x' : Exp Γ τ1) (y : Exp Γ τ2) :
+    x ---> x' →
+    Pair x y ---> Pair x' y
+  | ST_Pair2 Γ τ1 τ2 (x : Exp Γ τ1) (y y' : Exp Γ τ2) :
+    ValueP x →
+    y ---> y' →
+    Pair x y ---> Pair x y'
+  | ST_Pair1Err Γ τ1 τ2 (m : Err) (y : Exp Γ τ2) :
+    Pair (τ1:=τ1) (Error m) y ---> Error m
+  | ST_Pair2Err Γ τ1 τ2 (x : Exp Γ τ1) (m : Err) :
+    ValueP x →
+    Pair (τ2:=τ2) x (Error m) ---> Error m
+
+  | ST_Fst1 Γ τ1 τ2 (p p' : Exp Γ (TyPair τ1 τ2)) :
+    p ---> p' →
+    Fst p ---> Fst p'
+  | ST_Fst1Err Γ τ1 τ2 (m : Err) :
+    Fst (Γ:=Γ) (τ1:=τ1) (τ2:=τ2) (Error m) ---> Error m
+  | ST_FstPair Γ τ1 τ2 (v1 : Exp Γ τ1) (v2 : Exp Γ τ2) :
+    ValueP v1 →
+    ValueP v2 →
+    Fst (Pair v1 v2) ---> v1
+
+  | ST_Snd1 Γ τ1 τ2 (p p' : Exp Γ (TyPair τ1 τ2)) :
+    p ---> p' →
+    Snd p ---> Snd p'
+  | ST_Snd1Err Γ τ1 τ2 (m : Err) :
+    Snd (Γ:=Γ) (τ1:=τ1) (τ2:=τ2) (Error m) ---> Error m
+  | ST_SndPair Γ τ1 τ2 (v1 : Exp Γ τ1) (v2 : Exp Γ τ2) :
+    ValueP v1 →
+    ValueP v2 →
+    Snd (Pair v1 v2) ---> v2
+
+  | ST_Cons1 Γ τ (x : Exp Γ τ) x' (xs : Exp Γ (TyList τ)) :
+    x ---> x' →
+    Cons x xs ---> Cons x' xs
+  | ST_Cons2 Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) xs' :
+    ValueP x →
+    xs ---> xs' →
+    Cons x xs ---> Cons x xs'
+  | ST_Cons1Err Γ τ (m : Err) (xs : Exp Γ (TyList τ)) :
+    Cons (Error m) xs ---> Error m
+  | ST_Cons2Err Γ τ (x : Exp Γ τ) (m : Err) :
+    ValueP x →
+    Cons x (Error m) ---> Error m
+
+  | ST_Car1 Γ τ (l l' : Exp Γ (TyList τ)) :
+    l ---> l' →
+    Car l ---> Car l'
+  | ST_Car1Err Γ τ (m : Err) :
+    Car (Γ:=Γ) (τ:=τ) (Error m) ---> Error m
+  | ST_CarNil Γ τ :
+    Car (Nil (Γ:=Γ) (τ:=τ)) ---> Error CarOfNil
+  | ST_CarCons Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) :
+    ValueP x →
+    ValueP xs →
+    Car (Cons x xs) ---> x
+
+  | ST_Cdr1 Γ τ (l l' : Exp Γ (TyList τ)) :
+    l ---> l' →
+    Cdr l ---> Cdr l'
+  | ST_Cdr1Err Γ τ (m : Err) :
+    Cdr (Γ:=Γ) (τ:=τ) (Error m) ---> Error m
+  | ST_CdrNil Γ τ :
+    Cdr (Nil (Γ:=Γ) (τ:=τ)) ---> Nil
+  | ST_CdrCons Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) :
+    ValueP x →
+    ValueP xs →
+    Cdr (Cons x xs) ---> xs
+
+  | ST_IsNil1 Γ τ (l l' : Exp Γ (TyList τ)) :
+    l ---> l' →
+    IsNil l ---> IsNil l'
+  | ST_IsNil1Err Γ τ (m : Err) :
+    IsNil (Γ:=Γ) (τ:=τ) (Error m) ---> Error m
+  | ST_IsNilNil Γ τ :
+    IsNil (Nil (Γ:=Γ) (τ:=τ)) ---> ETrue
+  | ST_IsNilCons Γ τ (x : Exp Γ τ) (xs : Exp Γ (TyList τ)) :
+    ValueP x →
+    ValueP xs →
+    IsNil (Cons x xs) ---> EFalse
+
+  | ST_AppHost Γ dom cod (f : HostExp (dom ⟶ cod)) (v : Exp Γ dom) :
+    ∀ H : ValueP v,
+    APP (HostedFun f) v ---> CallHost f v H
+*)
+
+  | ST_AppAbs Γ dom cod (e : Exp (dom :: Γ) cod) (v : Exp Γ dom) :
+    ValueP v →
+    APP (LAM e) v ---> SubExp {|| v ||} e
+
+  | ST_AppL Γ dom cod (e1 : Exp Γ (dom ⟶ cod)) e1' (e2 : Exp Γ dom) :
+    e1 ---> e1' →
+    APP e1 e2 ---> APP e1' e2
+  | ST_AppLErr Γ dom cod (m : Err) (e2 : Exp Γ dom) :
+    APP (dom:=dom) (cod:=cod) (Error m) e2 ---> Error m
+
+  | ST_AppR Γ dom cod (v1 : Exp Γ (dom ⟶ cod)) (e2 : Exp Γ dom) e2' :
+    ValueP v1 →
+    e2 ---> e2' →
+    APP v1 e2 ---> APP v1 e2'
+  | ST_AppRErr Γ dom cod (v1 : Exp Γ (dom ⟶ cod)) (m : Err) :
+    ValueP v1 →
+    APP v1 (Error m) ---> Error m
+
+  where " t '--->' t' " := (Step t t').
+
+Derive Signature for Step.
+
+#[local] Hint Constructors ValueP ErrorP Step : core.
+
+#[local] Hint Extern 1 (¬ ErrorP _) => inversion 1 : core.
+#[local] Hint Extern 7 (_ ---> _) => repeat econstructor : core.
+
 Theorem strong_progress {τ} (e : Exp [] τ) :
   ValueP e ∨ ErrorP e ∨ ∃ e', e ---> e'.
 Proof.
@@ -169,7 +313,7 @@ Proof.
     destruct IHe1 as [V1|[E1|[e1' H1']]];
     destruct IHe2 as [V2|[E2|[e2' H2']]].
     + dependent elimination V1;  now eauto 6.
-    + dependent elimination V1.
+    + dependent elimination V1;
       dependent elimination E2;  now eauto 6.
     + dependent elimination H2'; now eauto 6.
     + dependent elimination V2;
@@ -182,6 +326,7 @@ Proof.
       dependent elimination H2'; now eauto 6.
 Qed.
 
+(*
 Lemma Plug_value {Γ τ} {C : Ctxt Γ τ τ} (e v : Exp Γ τ) :
   ValueP v → Plug e C v → C = C_Nil _ ∧ e = v.
 Proof.
@@ -213,6 +358,7 @@ Proof.
   dependent elimination H0;
   now inv H1.
 Qed.
+*)
 
 Lemma Value_irreducible {Γ τ} (e e' : Exp Γ τ) :
   ValueP e → ¬ (e ---> e').
@@ -220,12 +366,12 @@ Proof.
   repeat intro.
   dependent elimination H0;
   dependent elimination H1.
-  - inv p.
-    now inv r.
-  - now inv p1.
-  - inv p.
-    now inv r.
-  - now inv p1.
+  (* - inv p. *)
+  (*   now inv r. *)
+  (* - now inv p1. *)
+  (* - inv p. *)
+  (*   now inv r. *)
+  (* - now inv p1. *)
 Qed.
 
 Lemma Value_cannot_start {Γ τ} (e e' : Exp Γ τ) :
@@ -234,11 +380,11 @@ Proof.
   repeat intro.
   dependent elimination H0;
   dependent elimination H1.
-  - inv p.
-    now inv r.
-  - now inv p.
-  - inv p1.
-  - now inv p1.
+  (* - inv p. *)
+  (*   now inv r. *)
+  (* - now inv p. *)
+  (* - inv p1. *)
+  (* - now inv p1. *)
 Qed.
 
 Lemma Error_irreducible {Γ τ} (e e' : Exp Γ τ) :
@@ -247,9 +393,9 @@ Proof.
   repeat intro.
   dependent elimination H0;
   dependent elimination H1.
-  - inv p.
-    now inv r.
-  - now inv p1.
+  (* - inv p. *)
+  (*   now inv r. *)
+  (* - now inv p1. *)
 Qed.
 
 Lemma Error_cannot_start {Γ τ} (e e' : Exp Γ τ) :
@@ -258,11 +404,12 @@ Proof.
   repeat intro.
   dependent elimination H0;
   dependent elimination H1.
-  - inv p.
-    now inv r.
-  - now inv p1.
+  (* - inv p. *)
+  (*   now inv r. *)
+  (* - now inv p1. *)
 Qed.
 
+(*
 Lemma Plug_deterministic {Γ τ} e2 :
   ∀ τ' (C : Ctxt Γ τ' τ) e1 e1',
     Redex e1 e1' → Plug e1 C e2 →
@@ -375,10 +522,8 @@ Proof.
   dependent elimination H1.
   reflexivity.
 Qed.
+*)
 
-Lemma App_Lam_loop {Γ τ ty} {v : Exp Γ ty} {e : Exp (ty :: Γ) τ} :
-  ¬ (SubExp {||v||} e = APP (LAM e) v).
-Abort.
 (*
 Proof.
   dependent induction e; repeat intro; inv H.
@@ -412,29 +557,6 @@ Proof.
   now eapply IHy2; eauto.
 Qed.
 *)
-
-(* A term never reduces to itself. *)
-(*
-#[export]
-Program Instance Step_Irreflexive {Γ τ} :
-  Irreflexive (Step (Γ:=Γ) (τ:=τ)).
-Next Obligation.
-  inv H0.
-  - pose proof (Plug_injective _ _ H1 _ H2); subst.
-    inv H3.
-    Fail now eapply App_Lam_loop; eauto.
-Abort.
-*)
-(*
-  - now inv H1.
-Qed.
-*)
-
-Corollary Step_productive {Γ τ} {x x' : Exp Γ τ} : x ---> x' → x ≠ x'.
-Proof.
-  repeat intro; subst.
-  Fail now eapply Step_Irreflexive; eauto.
-Abort.
 
 (*
 #[export]
@@ -504,6 +626,7 @@ Abort.
 Qed.
 *)
 
+(*
 Lemma pluggable {Γ τ} {e1 e2 : Exp Γ τ} {τ'}
       {C : Ctxt Γ τ' τ} {f1 f2 : Exp Γ τ'} :
   ¬ ErrorP e1 →
@@ -518,6 +641,7 @@ Proof.
   - exfalso.
     dependent elimination H1.
 Abort.
+*)
 
 Lemma SubVar_ZV_of_value_never_error {Γ τ} {x : Exp Γ τ} :
   ValueP x → ∀ m, ¬ (SubVar {|| x ||} ZV = Error m).
@@ -578,6 +702,7 @@ Proof.
   - congruence.
 Qed.
 
+(*
 Lemma Step_Error_ind (Γ : Env) (τ : Ty) (e0 : Exp Γ τ) (m0 : Err)
       (P : ∀ τ (e : Exp Γ τ) m, e ---> Error m → Prop)
       (Pbeta : ∀ dom (e : Exp (dom :: Γ) τ) v (V : ValueP v) m
@@ -616,7 +741,9 @@ Lemma Plug_can_diverge {Γ τ} {e : Exp (TyUnit :: Γ) τ}
        (C_Cons _ (F_AppR _ (LAM (VAR ZV)))
                (C_Cons _ (F_AppL _ EUnit) (C_Nil _))) f.
 Proof. now simpl; eauto 6. Qed.
+*)
 
+(*
 Theorem diamond_property {Γ τ} {r s t : Exp Γ τ} {m : Err} :
   r ---> s → r ---> t → s ≠ t → ∃ u, s ---> u ∧ t ---> u.
 Proof.
@@ -631,14 +758,24 @@ Proof.
     contradiction.
   - exfalso.
     inv H2.
-    admit.
+    ...
   - exfalso.
-    admit.
+    ...
   - pose proof (Plug_error_deterministic _ _ H0 _ _ _ H1).
     reduce.
     contradiction.
 Abort.
+*)
 
+Theorem diamond_property {Γ τ} {r s t : Exp Γ τ} :
+  r ---> s → r ---> t → s ≠ t → ∃ u, s ---> u ∧ t ---> u.
+Proof.
+  intros Hrs Hrt snt.
+  dependent induction r; try now inv Hrs.
+  intuition auto.
+Abort.
+
+(*
 Lemma Step_Error_impl {Γ τ} {e' : Exp Γ τ} {m : Err} :
   e' ---> Error m →
       (∃ dom (v : Exp Γ dom) (e : Exp (dom :: Γ) τ),
@@ -670,10 +807,11 @@ Proof.
       generalize dependent τ'.
       induction p1; intros.
       * inv H1; auto.
-      * admit.
-      * admit.
+      * ...
+      * ...
     + now apply p1.
 Qed.
+*)
 
 Lemma AppL_LAM {Γ dom cod} {e e' : Exp Γ (dom ⟶ cod)} {x : Exp Γ dom} :
   ¬ ErrorP e' →
@@ -681,10 +819,7 @@ Lemma AppL_LAM {Γ dom cod} {e e' : Exp Γ (dom ⟶ cod)} {x : Exp Γ dom} :
   APP e x ---> APP e' x.
 Proof.
   intros.
-  dependent induction H1.
-  - now eauto 6.
-  - exfalso.
-    now apply H0.
+  dependent induction H1; now eauto 6.
 Qed.
 
 Corollary AppL_LAM_error {Γ dom cod} {x : Exp Γ dom} m :
@@ -697,11 +832,7 @@ Lemma AppR_LAM {Γ dom cod} {e : Exp (dom :: Γ) cod} {x x' : Exp Γ dom} :
   APP (LAM e) x ---> APP (LAM e) x'.
 Proof.
   intros.
-  dependent induction H1.
-  - exact (StepRule (Plug_AppR _ (LambdaP _) H1)
-                    (Plug_AppR _ (LambdaP _) H2) H3).
-  - exfalso.
-    now apply H0.
+  dependent induction H1; now eauto 6.
 Qed.
 
 Corollary AppR_LAM_error {Γ dom cod} {v : Exp Γ (dom ⟶ cod)} m :
@@ -723,11 +854,7 @@ Proof.
   repeat intro.
   dependent elimination H0.
   dependent induction H1.
-  - inv H0.
-    now inv H1.
-  - now inv H0.
-  - inv H1;
-    now inv H0.
+  now inv H1.
 Qed.
 
 Lemma error_is_nf {Γ τ} (v : Exp Γ τ) :
@@ -736,9 +863,6 @@ Proof.
   repeat intro.
   dependent elimination H0.
   dependent induction H1.
-  - inv H0.
-    now inv H1.
-  - now inv H0.
 Qed.
 
 Lemma nf_is_value_or_error {τ} (v : Exp [] τ) :
@@ -804,60 +928,92 @@ Lemma errors_deterministic {Γ τ} {x : Exp Γ τ} {m} :
   x ---> Error m → ∀ y, x ---> y → y = Error m.
 Proof.
   intros.
-  apply Step_Error_impl in H0.
-  destruct H0; reduce.
-  - inv H4.
-    dependent elimination H1.
-    + inv r.
-      dependent elimination p.
-      * rewrite H10 in p0.
-        now inv p0.
-      * inv p0.
-        exfalso.
-        now inv p.
-      * inv p0.
-        exfalso.
-        now inv p1; inv H6.
-    + inv p1.
-      * now inv H2.
-      * now inv H13.
-  - dependent elimination H1.
-    + inv r.
-      dependent elimination p0.
-      * inv p.
-        inv H2.
-        inv H6.
-        now inv H12; inv H5.
-      * exfalso.
-        inv p.
-        admit.
-      * exfalso.
-        inv p.
-        admit.
-    + epose proof (Plug_error_deterministic _ _ _ H2 _ _ _ p1).
-      now reduce.
-Admitted.
+  inv H0;
+  inv H1; auto.
+  inv H4.
+Abort.
 
 Theorem Step_deterministic Γ τ :
   deterministic (Step (Γ:=Γ) (τ:=τ)).
 Proof.
   repeat intro.
-  pose proof H0 as H8.
-  pose proof H1 as H9.
-  dependent elimination H0.
+  induction H0.
+  - inv H1; auto.
+    + now inv H5.
+    + eapply Value_cannot_start in H0; eauto; tauto.
+    + now inv H0.
   - inv H1.
-    + assert (τ' = τ'0 ∧ C ~= C0 ∧ e1 ~= e0)
-        by (eapply Plug_deterministic; eassumption).
-      intuition idtac; subst.
-      assert (e2 = e3)
-        by (eapply Redex_deterministic; eassumption).
-      subst.
-      now eapply Plug_functional; eauto.
-    + now eapply errors_deterministic; eauto.
-  - symmetry.
-    now eapply errors_deterministic; eauto.
+    + now inv H0.
+    + now f_equal; intuition.
+    + now inv H0.
+    + eapply Value_cannot_start in H6; eauto; tauto.
+    + eapply Value_cannot_start in H5; eauto; tauto.
+  - inv H1; auto.
+    + now inv H4.
+    + now inv H5.
+    + now inv H4.
+  - inv H1.
+    + eapply Value_cannot_start in H6; eauto; tauto.
+    + eapply Value_cannot_start in H0; eauto; tauto.
+    + now inv H0.
+    + now f_equal; intuition.
+    + now inv H2.
+  - inv H1; auto.
+    + now inv H5.
+    + eapply Value_cannot_start in H0; eauto; tauto.
+    + now inv H0.
+    + now inv H9.
 Qed.
 
 End Step.
 
 Notation " t '--->' t' " := (Step t t') (at level 40).
+
+Section Irr.
+
+Import ListNotations.
+
+Lemma App_Lam_loop_var `{HostExprs A}
+      {Γ τ ty} {v : Exp Γ ty} {v0 : Var (ty :: Γ) τ} :
+  ¬ (SubVar {||v||} v0 = APP (LAM (VAR v0)) v).
+Proof.
+  intro.
+  dependent induction v0;
+  simp SubVar in H0.
+  - induction v; inv H0.
+    now eapply IHv2; eauto.
+  - rewrite SubVar_idSub in H0.
+    now inv H0.
+Qed.
+
+Lemma App_Lam_loop `{HostExprs A}
+      {Γ τ ty} {v : Exp Γ ty} {e : Exp (ty :: Γ) τ} :
+  ¬ (SubExp {||v||} e = APP (LAM e) v).
+Proof.
+  intro H0.
+  generalize dependent v.
+  dependent induction e; simpl; intros;
+  try congruence.
+  - now eapply App_Lam_loop_var; eauto.
+  - inv H0.
+    (* impossible *)
+Admitted.
+
+(* A term never reduces to itself. *)
+#[export]
+Program Instance Step_Irreflexive `{HostExprs A} {Γ τ} :
+  Irreflexive (Step (Γ:=Γ) (τ:=τ)).
+Next Obligation.
+  dependent induction H0; try tauto.
+  now eapply App_Lam_loop; eauto.
+Qed.
+
+Corollary Step_productive `{HostExprs A} {Γ τ} {x x' : Exp Γ τ} :
+  x ---> x' → x ≠ x'.
+Proof.
+  repeat intro; subst.
+  eapply Step_Irreflexive.
+  exact H0.
+Qed.
+
+End Irr.

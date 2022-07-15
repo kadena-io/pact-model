@@ -32,20 +32,33 @@ Inductive Var : Env → Ty → Type :=
 Derive Signature NoConfusion EqDec for Var.
 
 Inductive Err : Type :=
-  | CarOfNil
-  | HostedErr : HostErr → Err.
+  | Err_Hosted : HostErr → Err
+  | Err_CarNil.
 
-Derive NoConfusion NoConfusionHom EqDec for Err.
+Derive NoConfusion NoConfusionHom Subterm EqDec for Err.
 Next Obligation.
-  destruct x, y.
-  - now left.
-  - now right.
-  - now right.
+  generalize dependent y.
+  induction x;
+  intros;
+  destruct y;
+  try solve [ now left | now right ].
   - destruct (HostErr_EqDec h h0); subst.
     + now left.
     + right; intro.
       inversion H0.
       contradiction.
+  (* - destruct (IHx y); subst. *)
+  (*   + now left. *)
+  (*   + right. *)
+  (*     intro. *)
+  (*     inversion H0. *)
+  (*     contradiction. *)
+  (* - destruct (IHx y); subst. *)
+  (*   + now left. *)
+  (*   + right. *)
+  (*     intro. *)
+  (*     inversion H0. *)
+  (*     contradiction. *)
 Defined.
 
 Inductive Exp Γ : Ty → Type :=

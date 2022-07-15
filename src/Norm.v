@@ -27,6 +27,11 @@ Import ListNotations.
 Context {A : Type}.
 Context `{L : HostLang A}.
 
+#[local] Hint Constructors ValueP ErrorP Step : core.
+
+#[local] Hint Extern 1 (¬ ErrorP _) => inversion 1 : core.
+#[local] Hint Extern 7 (_ ---> _) => repeat econstructor : core.
+
 Definition normalizing `(R : relation X) : Prop :=
   ∀ t, ∃ t', multi R t t' ∧ normal_form R t'.
 
@@ -144,21 +149,7 @@ Proof.
   pose proof H as H2;
   apply step_preserves_halting in H2;
   intuition eauto.
-  eapply IHτ2; eauto.
-  unshelve eapply (AppL_LAM _ H).
-Admitted.
-(*
-    destruct H5.
-    -
-    exact (StepRule (Plug).
-    eauto 6.
-    now constructor.
-  (* - eapply IHτ2; eauto. *)
-  (*   now constructor. *)
-  (* - eapply IHτ2; eauto. *)
-  (*   now constructor. *)
 Qed.
-*)
 
 Lemma multistep_preserves_SN {Γ τ} {e e' : Γ ⊢ τ} :
   (e --->* e') → SN e → SN e'.
@@ -177,18 +168,7 @@ Proof.
   pose proof H as H2;
   apply step_preserves_halting in H2;
   intuition eauto.
-  eapply IHτ2; eauto.
-  unshelve eapply (AppL_LAM _ H).
-Admitted.
-(*
-  (* - eapply IHτ1; eauto. *)
-  (*   now constructor. *)
-  (* - eapply IHτ2; eauto. *)
-  (*   now constructor. *)
-  (* - eapply IHτ2; eauto. *)
-  (*   now constructor. *)
 Qed.
-*)
 
 Lemma multistep_preserves_SN' {Γ τ} {e e' : Γ ⊢ τ} :
   (e --->* e') → SN e' → SN e.
@@ -207,15 +187,14 @@ Proof.
   - eexists.
     split.
     + now apply multi_refl.
-    + now right; constructor.
+    + now right; eauto.
   - split.
     + eexists.
       split.
       * now apply multi_refl.
-      * now right; constructor.
+      * now right; eauto.
     + intros.
-      eapply step_preserves_SN'; eauto.
-      exact (StepError (Plug_AppL _  (Plug_Hole _))).
+      now eapply step_preserves_SN'.
 Qed.
 
 Lemma SubExp_SN {Γ Γ'} (env : Sub Γ' Γ) {τ} (e : Exp Γ τ) :
@@ -314,30 +293,27 @@ Proof.
       * apply (multistep_preserves_SN' (e':=SubExp (Push v env) e)); auto.
         eapply multi_trans; eauto.
         ** eapply multistep_AppR; eauto.
-           now constructor.
            intro.
            now inv H1; inv Q.
         ** apply multi_R; auto.
-           rewrite SubExp_Push.
-           now repeat econstructor.
+           now rewrite SubExp_Push; eauto 6.
         ** apply IHe.
            constructor; auto.
            now eapply multistep_preserves_SN; eauto.
       * inv R.
-        apply (multistep_preserves_SN' (e':=Error m)); auto.
-        ** remember (SubExp (Keepₛ env) e) as s; clear -P.
-           inv P.
-           *** apply multi_R.
-               exact (StepError (Plug_AppR _ (LambdaP _)
-                                           (Plug_Hole (Error m)))).
-           *** pose proof (multi_step _ _ _ _ H H0); clear H H0.
-               Fail apply multistep_AppR_Error; auto.
-               Fail now constructor.
-               admit.
-        ** apply ErrorP_SN.
-           now constructor.
+        remember (SubExp (Keepₛ env) e) as s; clear Heqs.
+
+        clear -P.
+        dependent induction P.
+        ** apply (multistep_preserves_SN' (e':=Error m)); auto.
+           apply multi_R; eauto.
+           now apply ErrorP_SN.
+        ** specialize (IHP _ _ _ _ eq_refl JMeq_refl JMeq_refl JMeq_refl s).
+           apply (multistep_preserves_SN' (e':=APP (LAM s) y)); auto.
+           apply multi_R.
+           now eauto.
   - now apply IHe1, IHe2.
-Admitted.
+Qed.
 
 Theorem Exp_SN {τ} (e : Exp [] τ) : SN e.
 Proof.

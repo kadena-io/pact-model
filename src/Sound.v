@@ -22,14 +22,22 @@ Context {A : Type}.
 Context `{S : HostLang A}.
 
 Definition Sound {Γ τ} :=
-  ExpP (Γ:=Γ) (τ:=τ) (λ _ e, ∃ e', SemExp e = SemExp e').
+  ExpR (Γ:=Γ) (τ:=τ) (λ _ e e', e ---> e' ∧ SemExp e = SemExp e').
 
 Theorem Step_sound {Γ τ} {e e' : Exp Γ τ} :
-  e ---> e' → Sound e.
+  e ---> e' → Sound e e'.
 Proof.
   intros.
   unfold Sound.
-  induction τ; simp ExpP.
+  induction τ; simp ExpR.
+  - split; auto.
+    admit.
+  - split.
+    + split; auto.
+      admit.
+    + intros.
+      apply ExpR_R in H0; reduce.
+      eapply IHτ2.
 Admitted.
 
 Theorem soundness {Γ τ} {e : Exp Γ τ} {v} :
@@ -37,8 +45,8 @@ Theorem soundness {Γ τ} {e : Exp Γ τ} {v} :
 Proof.
   intros.
   pose proof (Step_sound H).
-  apply ExpP_P in H0.
-Admitted.
+  now apply ExpR_R in H0.
+Qed.
 
 (*
   exact (IHτ1 e e' H).

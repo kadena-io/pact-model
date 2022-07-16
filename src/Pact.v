@@ -24,6 +24,32 @@ Derive NoConfusion NoConfusionHom Subterm EqDec for bool.
 
 Generalizable All Variables.
 
+Section Constrained.
+
+Class HasDecLt (A : Type) := {
+  lt (x y : A) : bool;
+  lt_dec (x y : A) : { lt x y = true } + { lt x y = false };
+  lt_irr x : lt x x = false;
+  lt_trans x y z : lt x y = true → lt y z = true → lt x z = true
+}.
+
+(** A partial magma defines a constrained version of its binary operation.
+    This operation is typically not associative, since order of operation can
+    matter. *)
+Class PartialMagma (A : Type) := {
+  pappendLim (x y : A) : option A;
+}.
+
+Instance nat_PartialMagma (limit : nat) : PartialMagma nat := {
+  pappendLim := λ (x y : nat),
+    let z := x + y in
+    if limit <? z
+    then None
+    else Some z
+}.
+
+End Constrained.
+
 Section Pact.
 
 Import ListNotations.
@@ -70,7 +96,11 @@ Fixpoint denoteTy (t : Ty) : Set :=
   | TList t   => list (denoteTy t)
   end.
 
-Notation "⟦ t ⟧" := (denoteTy t) (at level 9).
+Declare Scope Type_scope.
+Bind Scope Type_scope with Ty.
+Delimit Scope Ty_scope with ty.
+
+Notation "⟦ t ⟧" := (denoteTy t%ty) (at level 9) : type_scope.
 
 (* This couldn't be derived due to the recursion at [VList]. *)
 Equations Value_EqDec t : EqDec ⟦t⟧ :=
@@ -135,11 +165,10 @@ Arguments Token {n S} _.
 Program Instance Cap_EqDec `(S : CapSig n) : EqDec (Cap S).
 Next Obligation.
   destruct x, y, S; simpl in *.
-  destruct (@eq_dec _ (Value_EqDec (paramTy0)) d d1); subst.
-  - destruct (@eq_dec _ (Value_EqDec (valueTy0)) d0 d2); subst.
-    + now left.
-    + right; congruence.
-  - right; congruence.
+  destruct (@eq_dec _ (Value_EqDec (paramTy0)) d d1); subst;
+  destruct (@eq_dec _ (Value_EqDec (valueTy0)) d0 d2); subst;
+  try (right; congruence).
+  now left.
 Defined.
 
 Record ACap : Set := {
@@ -215,14 +244,57 @@ Program Definition install_capability `(D : DefCap C) : PactM () :=
 
      jww (2022-07-15): What if the resource had already been installed? *)
 
-  (* "Installing" a capability means assigning a resource amount with that
-     capability to be referenced by future calls to [with_capability]. *)
+  (* "Installing" a capability means assigning a resource amount associated
+     with that capability, that is consumed by future calls to
+     [with_capability]. *)
   modify (λ st, {| resources := λ c : ACap,
                       match eq_dec c C with
                       | left H  => Some val
                       | right _ => resources st c
                       end |}).
 
+Definition __claim_resource `(D : DefCap C) : PactM () :=
+  let '(Token arg val) := cap C in
+
+  (* Check the current amount of resource associated with this capability, and
+     whether the requested amount is available. If so, update the available
+     amount. Note: unit is used to represent unmanaged capabilities. *)
+  st <- get ;
+  match valueTy (sig C), resources st C with
+  | TUnit, _    => pure ()
+  | _, None     => throw (Err_Capability (CapErr_NoResourceAvailable C))
+  | _, Some mng =>
+    mng' <- manager D mng val ;
+    put {| resources := λ c : ACap,
+              match eq_dec c C with
+              | left H  => Some (rew <- H in mng')
+              | right _ => resources st c
+              end |}
+  end.
+
+(** [with_capability] grants a capability [C] to the evaluation of [f].
+
+    There are three results of this operation:
+
+    1. a predicate is evaluated to determine if the operation can proceed,
+       which raises an exception if not;
+
+    2. [f] is able to evaluate more permissively;
+
+    3. a resource is consumed in order to grant the capability.
+
+    (2) is easily modeled by imagining that [with_capability] introduces a
+    dynamic boolean variable (in the Lisp sense) for each capability [C] and
+    sets it to true for the scope of evaluating [f], if the predicate in (1)
+    succeeds. Later, [require_capability] tests if this boolean is true and
+    raises an exception otherwise. There is no other functionality for
+    unmanaged capabilities.
+
+    A managed capability provides the same, but in addition deducts from a
+    stateful resource after the predicate, but before defining and setting the
+    dynamic boolean. If there is not enough resource avialable, it raises an
+    exception. [install_capability] sets the initial amount of the
+    resource. *)
 Definition with_capability `(D : DefCap C) `(f : PactM a) : PactM a :=
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
@@ -237,21 +309,7 @@ Definition with_capability `(D : DefCap C) `(f : PactM a) : PactM a :=
        with this one. *)
     compCaps <- predicate D arg ;
 
-    (* Also check the current resource associated with this capability, and
-       check whether the requested amount is available. If so, update the
-       available amount. *)
-    st <- get ;
-    match valueTy (sig C), resources st C with
-    | TUnit, _    => pure ()
-    | _, None     => throw (Err_Capability (CapErr_NoResourceAvailable C))
-    | _, Some mng =>
-      mng' <- manager D mng val ;
-      put {| resources := λ c : ACap,
-                match eq_dec c C with
-                | left H  => Some (rew <- H in mng')
-                | right _ => resources st c
-                end |}
-    end ;;
+    __claim_resource D ;;
 
     (* The process of "granting" consists merely of making the capability
        visible in the reader environment to the provided expression. *)

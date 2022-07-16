@@ -35,9 +35,14 @@ Theorem Step_sound {Γ Γ' τ} (env : Sub Γ' Γ) {e e' : Exp Γ τ} :
   Sound (SubExp env e) (SubExp env e').
 Proof.
   generalize dependent env.
-  induction e; intros; simpl; try solve [ inv H0 ].
-  dependent induction H0.
-  simpl.
+  generalize dependent e'.
+  induction e; intros; simpl; inv H0.
+  (* - *)
+  (* - simpl. *)
+  (*   specialize (IHe1 _ _ H H4). *)
+  (*   apply ExpR_R in IHe1. *)
+  (*   unfold denoted in IHe1; reduce. *)
+  (*   admit. *)
 Admitted.
 
 Theorem Exp_sound {τ} (e e' : Exp [] τ) : e ---> e' → Sound e e'.
@@ -60,15 +65,14 @@ Proof.
   pose proof (Exp_sound e e') as H1.
   apply (ExpR_R (@denoted [])).
   now apply H1.
-Qed.
-
 (*
-    (* rewrite <- SemExp_SubSem. *)
-    (* f_equal; simpl. *)
-    (* simp SubSem. *)
-    (* now rewrite SubSem_idSub. *)
+  (* - rewrite <- SemExp_SubSem. *)
+  (*   f_equal; simpl. *)
+  (*   simp SubSem. *)
+  (*   now rewrite SubSem_idSub. *)
   (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
   (*   now rewrite H1. *)
 *)
+Qed.
 
 End Sound.

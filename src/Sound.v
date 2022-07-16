@@ -42,7 +42,6 @@ Proof.
   (*   specialize (IHe1 _ _ H H4). *)
   (*   apply ExpR_R in IHe1. *)
   (*   unfold denoted in IHe1; reduce. *)
-  (*   admit. *)
 Admitted.
 
 Theorem Exp_sound {τ} (e e' : Exp [] τ) : e ---> e' → Sound e e'.

@@ -2,6 +2,7 @@ Require Import Hask.Prelude.
 Require Import Hask.Ltac.
 Require Import Hask.Control.Monad.
 Require Import Hask.Data.Monoid.
+Require Import Hask.Data.Either.
 Require Import Coq.Unicode.Utf8.
 
 Generalizable All Variables.
@@ -58,7 +59,7 @@ Definition RWSE_join `(x : RWSE (RWSE a)) :
   RWSE a := λ r s w,
   match x r s w with
   | inl e => inl e
-  | inr (y, (s', w')) => y r s w
+  | inr (y, (s', w')) => y r s' w'
   end.
 
 #[export]
@@ -86,19 +87,103 @@ Qed.
 
 Program Instance RWSE_FunctorLaws {r s w e : Type} :
   FunctorLaws (@RWSE r s w e).
-Next Obligation. Admitted.
-Next Obligation. Admitted.
+Next Obligation.
+  extensionality x.
+  extensionality r0.
+  extensionality s0.
+  extensionality w0.
+  rewrite first_id.
+  unfold id.
+  now destruct (x r0 s0 w0).
+Qed.
+Next Obligation.
+  unfold comp.
+  extensionality x.
+  extensionality r0.
+  extensionality s0.
+  extensionality w0.
+  unfold Either_map, first.
+  destruct (x r0 s0 w0); simpl; auto.
+  now destruct p.
+Qed.
 
 Program Instance RWSE_Applicative {r s w e : Type} :
   ApplicativeLaws (@RWSE r s w e).
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
+Next Obligation.
+  extensionality x.
+  extensionality r0.
+  extensionality s0.
+  extensionality w0.
+  unfold RWSE_ap.
+  rewrite first_id.
+  simpl.
+  unfold Either_map, id.
+  now destruct (x r0 s0 w0).
+Qed.
+Next Obligation.
+  extensionality r1.
+  extensionality s1.
+  extensionality w1.
+  unfold RWSE_ap; simpl.
+  destruct (u r1 s1 w1); simpl; auto.
+  destruct p; simpl.
+  destruct p; simpl.
+  destruct (v r1 s0 w2); simpl; auto.
+  destruct p; simpl.
+  destruct p; simpl.
+  destruct (w0 r1 s2 w3); simpl; auto.
+  destruct p; simpl.
+  destruct p; simpl.
+  reflexivity.
+Qed.
+Next Obligation.
+  extensionality r1.
+  extensionality s1.
+  extensionality w1.
+  unfold RWSE_ap; simpl.
+  destruct (u r1 s1 w1); simpl; auto.
+  destruct p; simpl.
+  destruct p; simpl.
+  reflexivity.
+Qed.
 
 Program Instance RWSE_Monad {r s w e : Type} :
   MonadLaws (@RWSE r s w e).
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
+Next Obligation.
+  unfold comp.
+  extensionality x.
+  extensionality r1.
+  extensionality s1.
+  extensionality w1.
+  unfold RWSE_join; simpl.
+  destruct (x r1 s1 w1); simpl; auto.
+  destruct p; simpl.
+  destruct p; simpl.
+  reflexivity.
+Qed.
+Next Obligation.
+  unfold comp.
+  extensionality x.
+  extensionality r1.
+  extensionality s1.
+  extensionality w1.
+  unfold RWSE_join, id; simpl.
+  destruct (x r1 s1 w1); simpl; auto.
+  destruct p; simpl.
+  destruct p; simpl.
+  reflexivity.
+Qed.
+Next Obligation.
+  unfold comp.
+  extensionality x.
+  extensionality r1.
+  extensionality s1.
+  extensionality w1.
+  unfold RWSE_join, id; simpl.
+  destruct (x r1 s1 w1); simpl; auto.
+  destruct p; simpl.
+  destruct p; simpl.
+  reflexivity.
+Qed.
 
 End RWSELaws.

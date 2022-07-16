@@ -212,6 +212,9 @@ Program Definition install_capability `(D : DefCap C) : PactM () :=
      contexts, otherwise a user could install as much resource as they needed.
 
      jww (2022-07-15): What if the resource had already been installed? *)
+
+  (* "Installing" a capability means assigning a resource amount with that
+     capability to be referenced by future calls to [with_capability]. *)
   modify (λ st, {| resources := λ c : ACap,
                       match eq_dec c C with
                       | left H  => Some val
@@ -219,14 +222,22 @@ Program Definition install_capability `(D : DefCap C) : PactM () :=
                       end |}).
 
 Definition with_capability `(D : DefCap C) `(f : PactM a) : PactM a :=
+  (* Check whether the capability has already been granted. If so, this
+     operation is a no-op. *)
   env <- ask ;
   if in_dec eq_dec C (granted env)
   then f
   else
     let '(Token arg val) := cap C in
 
+    (* If the predicate passes, we are good to grant the capability. Note that
+       the predicate may return a list of other capabilities to be "composed"
+       with this one. *)
     compCaps <- predicate D arg ;
 
+    (* Also check the current resource associated with this capability, and
+       check whether the requested amount is available. If so, update the
+       available amount. *)
     st <- get ;
     match valueTy (sig C), resources st C with
     | TUnit, _    => pure ()
@@ -240,6 +251,8 @@ Definition with_capability `(D : DefCap C) `(f : PactM a) : PactM a :=
                 end |}
     end ;;
 
+    (* The process of "granting" consists merely of making the capability
+       visible in the reader environment to the provided expression. *)
     local (λ r, {| granted := C :: compCaps ++ granted r |}) f.
 
 Definition require_capability `(D : DefCap C) : PactM () :=
@@ -249,6 +262,9 @@ Definition require_capability `(D : DefCap C) : PactM () :=
      with-capability exactly.
 
      jww (2022-07-15): Is this intended? *)
+
+  (* Requiring a capability means checking whether it has been granted at any
+     point within the current scope of evaluation. *)
   env <- ask ;
   if in_dec eq_dec C (granted env)
   then pure ()

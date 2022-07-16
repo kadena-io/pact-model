@@ -302,7 +302,6 @@ Proof.
            now eapply multistep_preserves_SN; eauto.
       * inv R.
         remember (SubExp (Keepₛ env) e) as s; clear Heqs.
-
         clear -P.
         dependent induction P.
         ** apply (multistep_preserves_SN' (e':=Error m)); auto.

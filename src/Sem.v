@@ -102,15 +102,9 @@ Proof.
       now rewrite <- IHΓ; simp RcR; simp RenSem.
 Qed.
 
-(*
-Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : Err + SemTy τ :=
-  SemExp (Error e)   se := inl e;
-  SemExp (VAR v)     se := pure (SemVar v se);
-  SemExp (LAM e)     se := pure (λ x, SemExp e (x, se));
-  SemExp (APP e1 e2) se := e1' <- SemExp e1 se ;
-                           e2' <- SemExp e2 se ;
-                           e1' e2'.
-*)
+Definition liftJoin2 `{Monad m} `(f : a -> b -> m c)
+           (ma : m a) (mb : m b) : m c :=
+   join (liftA2 f ma mb).
 
 Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → Err + SemTy τ :=
   match e with
@@ -122,12 +116,10 @@ Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → Err + SemTy τ :=
   (* | ETrue         => λ _,  pure true *)
   (* | EFalse        => λ _,  pure false *)
   (* | If b t e      => λ se, b' <- SemExp b se ; *)
-  (*                          if b' : bool *)
-  (*                          then SemExp t se *)
-  (*                          else SemExp e se *)
-  (* | Pair x y      => λ se, x' <- SemExp x se ; *)
-  (*                          y' <- SemExp y se ; *)
-  (*                          pure (x', y') *)
+  (*                          SemExp (if b' : bool *)
+  (*                                  then t *)
+  (*                                  else e) se *)
+  (* | Pair x y      => λ se, liftA2 prod (SemExp x se) (SemExp ys se) *)
   (* | Fst p         => λ se, fst <$> SemExp p se *)
   (* | Snd p         => λ se, snd <$> SemExp p se *)
   (* | Nil           => λ se, pure nil *)
@@ -140,33 +132,26 @@ Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → Err + SemTy τ :=
   (*                          | x :: _ => pure x *)
   (*                          end *)
   (* | Cdr xs        => λ se, xs' <- SemExp xs se ; *)
-  (*                          match xs' with *)
-  (*                          | []      => pure nil *)
-  (*                          | _ :: xs => pure xs *)
-  (*                          end *)
+  (*                          pure (match xs' with *)
+  (*                                | []      => nil *)
+  (*                                | _ :: xs => xs *)
+  (*                                end) *)
   (* | IsNil xs      => λ se, xs' <- SemExp xs se ; *)
-  (*                          match xs' with *)
-  (*                          | []      => pure true *)
-  (*                          | _ :: xs => pure false *)
-  (*                          end *)
+  (*                          pure (match xs' with *)
+  (*                                | []      => true *)
+  (*                                | _ :: xs => false *)
+  (*                                end) *)
   (* | Seq exp1 exp2 => λ se, SemExp exp1 se >> SemExp exp2 se *)
 
   | VAR v         => λ se, pure (SemVar v se)
   | LAM e         => λ se, pure (λ x, SemExp e (x, se))
-  | APP e1 e2     => λ se, e1' <- SemExp e1 se ;
-                           e2' <- SemExp e2 se ;
-                           e1' e2'
+  | APP e1 e2     => λ se, liftJoin2 id (SemExp e1 se) (SemExp e2 se)
   end.
+
+Definition sem `(e : Exp [] τ) : Err + SemTy τ := SemExp e tt.
+Arguments sem {_} _ /.
 
 (*
-Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → SemTy τ :=
-  match e with
-  | VAR v         => λ se, SemVar v se
-  | LAM e         => λ se, λ x, SemExp e (x, se)
-  | APP e1 e2     => λ se, SemExp e1 se (SemExp e2 se)
-  end.
-*)
-
 Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ') :
   SemExp e (RenSem r se) = SemExp (RenExp r e) se.
 Proof.
@@ -425,6 +410,7 @@ Proof.
   dependent elimination s; simp RcS; simp SubSem; simp RenSem.
   now rewrite IHr.
 Qed.
+*)
 *)
 
 End Sem.

@@ -1,16 +1,26 @@
 Require Import
+  Coq.Arith.Arith
   Coq.ZArith.ZArith
+  Coq.micromega.Lia
+  Coq.Strings.String
+  Hask.Control.Monad
+  Hask.Data.Monoid
+  ilist
   Lib
-  Ty
-  Exp
-  Sub
-  Sem
-  Norm
-  Lang
-  Eval.
+  Ltac
+  RWSE.
+
+Set Universe Polymorphism.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
+
+Derive NoConfusion NoConfusionHom Subterm EqDec for Ascii.ascii.
+Derive NoConfusion NoConfusionHom Subterm EqDec for string.
+Derive NoConfusion NoConfusionHom Subterm EqDec for Z.
+Next Obligation. now apply Z.eq_dec. Defined.
+Derive NoConfusion NoConfusionHom Subterm EqDec for nat.
+Derive NoConfusion NoConfusionHom Subterm EqDec for bool.
 
 Generalizable All Variables.
 
@@ -18,258 +28,230 @@ Section Pact.
 
 Import ListNotations.
 
-Open Scope Ty_scope.
-Open Scope Z_scope.
+Inductive Ty : Set :=
+  | TUnit
+  | TPair : Ty → Ty → Ty
+  | TString
+  | TInteger
+  | TDecimal
+  | TBool
+  | TTime
+  (* | TKeyset *)
+  (* | TGuard *)
+  | TList : Ty → Ty
+  (* | TObject *)
+  (* | TFunc *)
+  (* | TPact *)
+  (* | TTable *)
+  (* | TSchema *)
+.
 
-Inductive Pact := PactLang.     (* this is just a type-level tag *)
+Derive NoConfusion NoConfusionHom Subterm EqDec for Ty.
 
-Derive NoConfusion NoConfusionHom for Pact.
+Inductive Value : Ty → Type :=
+  | VUnit       : Value TUnit
+  | VPair {a b} : Value a → Value b → Value (TPair a b)
+  | VString     : string → Value TString
+  | VInteger    : Z → Value TInteger
+  | VDecimal    : nat → Value TDecimal
+  | VBool       : bool → Value TBool
+  | VTime       : nat → Value TTime
+  | VList {ty}  : list (Value ty) → Value (TList ty).
 
-Inductive PactTy := TyInteger.
+Derive Signature NoConfusion NoConfusionHom Subterm for Value.
 
-Derive NoConfusion NoConfusionHom for PactTy.
+(* This couldn't be derived due to the recursion at [VList]. *)
+Equations Value_EqDec {t} : EqDec (Value t) :=
+  Value_EqDec (t:=TUnit)       VUnit         VUnit         := left _;
+  Value_EqDec (t:=TPair t1 t2) (VPair x1 y1) (VPair x2 y2)
+    with @eq_dec _ (Value_EqDec (t:=t1)) x1 x2 := {
+      | left  _ with @eq_dec _ (Value_EqDec (t:=t2)) y1 y2 := {
+        | left _  => left _
+        | right _ => right _
+      }
+      | right _ => right _
+  };
+  Value_EqDec (t:=TString) (VString s1) (VString s2)
+    with eq_dec s1 s2 := {
+      | left _  => left _
+      | right _ => right _
+    };
+  Value_EqDec (t:=TInteger) (VInteger i1) (VInteger i2)
+    with eq_dec i1 i2 := {
+      | left _  => left _
+      | right _ => right _
+    };
+  Value_EqDec (t:=TDecimal) (VDecimal d1) (VDecimal d2)
+    with eq_dec d1 d2 := {
+      | left _  => left _
+      | right _ => right _
+    };
+  Value_EqDec (t:=TBool) (VBool b1) (VBool b2)
+    with eq_dec b1 b2 := {
+      | left _  => left _
+      | right _ => right _
+    };
+  Value_EqDec (t:=TTime) (VTime t1) (VTime t2)
+    with eq_dec t1 t2 := {
+      | left _  => left _
+      | right _ => right _
+    };
+  Value_EqDec (t:=TList _)   (VList []) (VList []) := left _;
+  Value_EqDec (t:=TList _)   (VList (_ :: _)) (VList []) := right _;
+  Value_EqDec (t:=TList _)   (VList []) (VList (_ :: _)) := right _;
+  Value_EqDec (t:=TList ty)  (VList (x1 :: xs1)) (VList (y1 :: ys1))
+    with @eq_dec _ (Value_EqDec (t:=ty)) x1 y1 := {
+      | left _  with @eq_dec _ (list_eqdec (Value_EqDec (t:=ty))) xs1 ys1 := {
+        | left _  => left _
+        | right _ => right _
+      }
+      | right _ => right _
+    }.
 
-Definition Pact_HostTypes : HostTypes Pact := {|
-  HostTy := PactTy;
-  HostTySem := λ ty,
-    match ty with
-    | TyInteger => Z
-    end
-|}.
+#[export]
+Instance Value_EqDec' {t} : EqDec (Value t) := Value_EqDec (t:=t).
 
-(*
-Definition ℤ := TyHost (H:=Pact_HostTypes) TyInteger.
-Arguments ℤ /.
-(* Definition ℝ := TyHost TyDecimal. *)
-(* Definition 𝕋 := TyHost TyTime. *)
-(* Definition 𝕊 := TyHost TyString. *)
-Definition 𝔹 := TyBool (H:=Pact_HostTypes).
+Record CapSig (n : string) : Set := {
+  paramTy : Ty;               (* this could be a product (i.e. pair) *)
+  valueTy : Ty                (* is TUnit for unmanaged caps *)
+}.
 
-Inductive PactExp : Ty (H:=Pact_HostTypes) → Type :=
-  | PInteger : Z → PactExp ℤ
-  | FAdd     : PactExp (ℤ × ℤ ⟶ ℤ).
+Derive NoConfusion NoConfusionHom Subterm EqDec for CapSig.
 
-Derive Signature NoConfusion Subterm for PactExp.
+Arguments paramTy {n} _.
+Arguments valueTy {n} _.
 
-Definition Pact_HostExprs : HostExprs Pact := {|
-  has_host_types := Pact_HostTypes;
-  HostExp := PactExp
-|}.
+Inductive Cap `(S : CapSig n) : Set :=
+  | Token : Value (paramTy S) → Value (valueTy S) → Cap S.
 
-Equations Pact_HostExpSem `(e : PactExp τ) : SemTy (H:=Pact_HostTypes) τ :=
-  Pact_HostExpSem (PInteger z) := z;
-  Pact_HostExpSem FAdd         := uncurry Z.add.
+Derive NoConfusion NoConfusionHom Subterm for Cap.
 
-Definition fun1 {Γ} `(f : SemTy dom → SemTy cod) (e : PactExp (dom ⟶ cod))
-           (v : Exp (H:=Pact_HostExprs) Γ dom) (V : ValueP v) : Exp Γ cod.
-Proof.
-  dependent destruction e.
-  - inv V.
-    inv X;  inv x0; rename H into x.
-    inv X0; inv x0; rename H into y.
-    exact (HostedVal (H:=Pact_HostExprs) (PInteger (f (x, y)))).
+Arguments Token {n S} _.
+
+(* jww (2022-07-15): This couldn't be derived due to an anomaly. *)
+#[export]
+Program Instance Cap_EqDec `(S : CapSig n) : EqDec (Cap S).
+Next Obligation.
+  destruct x, y, S; simpl in *.
+  destruct (@eq_dec _ (Value_EqDec (t:=paramTy0)) v v1); subst.
+  - destruct (@eq_dec _ (Value_EqDec (t:=valueTy0)) v0 v2); subst.
+    + now left.
+    + right; congruence.
+  - right; congruence.
 Defined.
 
-Fail Equations PactF {Γ : Env (H:=Pact_HostExprs)}
-          {dom cod : Ty (H:=Pact_HostTypes)}
-          (e : PactExp (dom ⟶ cod)) :
-  ∀ v : Exp (H:=Pact_HostExprs) Γ dom,
-    ValueP (H:=Pact_HostExprs) v → Exp Γ cod :=
-  PactF FAdd := fun1 Z.add.
+Record ACap : Set := {
+  name : string;
+  sig  : CapSig name;
+  cap  : Cap sig
+}.
 
-Definition PactF {Γ : Env (H:=Pact_HostExprs)}
-           {dom cod : Ty (H:=Pact_HostTypes)}
-           (e : PactExp (dom ⟶ cod)) :
-  ∀ v : Exp (H:=Pact_HostExprs) Γ dom,
-    ValueP (H:=Pact_HostExprs) v → Exp Γ cod.
-Proof.
-  inversion e; subst.
-  - now apply fun1; auto; apply (uncurry Z.add).
-Defined.
+Derive NoConfusion NoConfusionHom Subterm EqDec for ACap.
 
-Instance Pact_HostExprsSem : HostExprsSem Pact := {|
-  has_host_exprs := Pact_HostExprs;
-  HostExpSem := @Pact_HostExpSem;
-  CallHost := @PactF;
-  Reduce := λ _ _ x,
-    match x with
-    | PInteger x => existT _ (HostedVal (H:=Pact_HostExprs) (PInteger x)) (HostedValP _)
-    | FAdd       => existT _ (HostedFun (H:=Pact_HostExprs) FAdd) (HostedFunP _)
-    end
-|}.
+Inductive CapError : Set :=
+  | CapErr_UnknownCapability      : string → CapError
+  | CapErr_InvalidParameter {t}   : Value t → CapError
+  | CapErr_InvalidValue {t}       : Value t → CapError
+  | CapErr_CapabilityNotAvailable : ACap → CapError
+  | CapErr_ManagedError           : string → CapError
+  | CapErr_NoResourceAvailable    : ACap → CapError
+  | CapErr_TypeError.
 
-Program Instance Pact_HostLang : HostLang Pact := {|
-  has_host_exprs_sem := Pact_HostExprsSem;
-|}.
-Next Obligation.
-  dependent destruction f.
-  (* FAdd *)
-  - dependent elimination H; reduce.
-    dependent elimination v0; reduce.
-    dependent elimination v1; reduce.
-    dependent elimination x0; reduce.
-    dependent elimination x; reduce.
-    now simp Pact_HostExpSem.
-Qed.
-Next Obligation.
-  dependent destruction f.
-  (* FAdd *)
-  - dependent elimination H; reduce.
-    dependent elimination v0; reduce.
-    dependent elimination v1; reduce.
-    dependent elimination x0; reduce.
-    dependent elimination x; reduce.
-    simpl in H0.
-    unfold solution_right in H0.
-    unfold eq_rect_r in H0.
-    unfold eq_rect in H0.
-    simpl in H0.
-    now inversion H0.
-Qed.
-Next Obligation.
-  dependent destruction f.
-  (* FAdd *)
-  - pose proof (ST_AppHost Γ' _ _ FAdd (RenExp σ v) (RenExp_ValueP σ H)).
-    dependent elimination H; reduce.
-    dependent elimination v0; reduce.
-    dependent elimination v1; reduce.
-    dependent elimination x0; reduce.
-    dependent elimination x; reduce.
-    simpl in *.
-    unfold solution_right in H0.
-    unfold eq_rect_r in H0.
-    unfold eq_rect in H0.
-    simpl in H0.
-    now apply H0.
-Qed.
-Next Obligation.
-  dependent destruction f.
-  (* FAdd *)
-  - pose proof (ST_AppHost Γ' _ _ FAdd (SubExp σ v) (SubExp_ValueP σ H)).
-    dependent elimination H; reduce.
-    dependent elimination v0; reduce.
-    dependent elimination v1; reduce.
-    dependent elimination x0; reduce.
-    dependent elimination x; reduce.
-    simpl in *.
-    unfold solution_right in H0.
-    unfold eq_rect_r in H0.
-    unfold eq_rect in H0.
-    simpl in H0.
-    now apply H0.
-Qed.
-Next Obligation.
-  dependent destruction h.
-  (* PInteger *)
-  - now simpl.
-  - now simpl.
-Qed.
-Next Obligation.
-  dependent destruction h.
-  (* PInteger *)
-  - now simpl.
-  - now simpl.
-Qed.
-Next Obligation.
-  dependent destruction h.
-  (* PInteger *)
-  - now constructor.
-  - now constructor.
-Qed.
-Next Obligation.
-  dependent destruction h.
-  (* PInteger *)
-  - now constructor.
-  - now constructor.
-Qed.
+Derive NoConfusion NoConfusionHom Subterm EqDec for CapError.
 
-Definition num {Γ} (z : Z) : Exp Γ ℤ := HostedVal (PInteger z).
-Arguments num {Γ} z /.
+Inductive Err : Type :=
+  | Err_Capability : CapError → Err.
 
-Example exp_constant :
-  run 10 (num 123) =
-    MkΣ (num 123) Empty MT.
-Proof. reflexivity. Qed.
+Derive NoConfusion NoConfusionHom Subterm EqDec for Err.
 
-Example exp_if_true :
-  run 20 (If ETrue (num 123) (num 456)) =
-    MkΣ (num 123) Empty MT.
-Proof. reflexivity. Qed.
+Record PactEnv := {
+  (* We cannot refer to capability tokens by their type here, because
+     capability predicates execute in a state monad that reference this
+     record type. *)
+  granted : list ACap
+}.
 
-Example exp_if_false :
-  run 20 (If EFalse (num 123) (num 456)) =
-    MkΣ (num 456) Empty MT.
-Proof. reflexivity. Qed.
+Derive NoConfusion NoConfusionHom Subterm EqDec for PactEnv.
 
-Example exp_pair :
-  run 20 (Pair (num 123) (num 456)) =
-    MkΣ (Pair (num 123) (num 456)) Empty MT.
-Proof. reflexivity. Qed.
+Record PactState := {
+  (* We cannot refer to capability tokens by their type here, because
+     capability predicates execute in a state monad that reference this
+     record type. *)
+  resources : ∀ c : ACap, option (Value (valueTy (sig c)))
+}.
 
-Example exp_fst:
-  run 20 (Fst (Pair (num 123) (num 456))) =
-    MkΣ (num 123) Empty MT.
-Proof. reflexivity. Qed.
+Derive NoConfusion NoConfusionHom Subterm for PactState.
 
-Example exp_snd :
-  run 20 (Snd (Pair (num 123) (num 456))) =
-    MkΣ (num 456) Empty MT.
-Proof. reflexivity. Qed.
+Record PactLog := {}.
 
-Example exp_list :
-  run 20 (Cons (num 123) (Cons (num 456) Nil)) =
-    MkΣ (Cons (num 123) (Cons (num 456) Nil)) Empty MT.
-Proof. reflexivity. Qed.
+Derive NoConfusion NoConfusionHom EqDec for PactLog.
 
-Example exp_car:
-  run 20 (Car (num 0) (Cons (num 123) (Cons (num 456) Nil))) =
-    MkΣ (num 123) Empty MT.
-Proof. reflexivity. Qed.
+Definition PactM := @RWSE PactEnv PactState PactLog Err.
 
-Example exp_car_nil:
-  run 20 (Car (num 0) Nil) =
-    MkΣ (num 0) Empty MT.
-Proof. reflexivity. Qed.
+(******************************************************************************
+ * Capabilities
+ *)
 
-Example exp_cdr :
-  run 20 (Cdr (Cons (num 123) (Cons (num 456) Nil))) =
-    MkΣ (Cons (num 456) Nil) Empty MT.
-Proof. reflexivity. Qed.
+Record DefCap `(C : ACap) : Type := {
+  predicate : Value (paramTy (sig C)) → PactM (list ACap);
+  manager   : Value (valueTy (sig C)) → Value (valueTy (sig C)) →
+              PactM (Value (valueTy (sig C)))
+}.
 
-Example exp_cdr_nil :
-  run 20 (Cdr (τ:=TyHost TyInteger) Nil) =
-    MkΣ Nil Empty MT.
-Proof. reflexivity. Qed.
+Derive NoConfusion NoConfusionHom Subterm for DefCap.
 
-Example exp_isnil_cons :
-  run 20 (IsNil (Cons (num 123) (Cons (num 456) Nil))) =
-    MkΣ EFalse Empty MT.
-Proof. reflexivity. Qed.
+Arguments predicate {C} _.
+Arguments manager {C} _.
 
-Example exp_isnil_nil :
-  run 20 (IsNil (τ:=TyHost TyInteger) Nil) =
-    MkΣ ETrue Empty MT.
-Proof. reflexivity. Qed.
+Import EqNotations.
 
-Example exp_lam τ :
-  run 10 (LAM (cod:=τ) (VAR ZV)) =
-    MkΣ (LAM (VAR ZV)) Empty MT.
-Proof. reflexivity. Qed.
+Program Definition install_capability `(D : DefCap C) : PactM () :=
+  let '(Token arg val) := cap C in
 
-Example exp_app :
-  run 10 (APP (LAM (VAR ZV)) (num 123)) =
-    MkΣ (num 123) Empty MT.
-Proof. reflexivity. Qed.
+  (* jww (2022-07-15): This should only be possible to do in specific
+     contexts, otherwise a user could install as much resource as they needed.
 
-Example exp_call_FAdd :
-  run 10 (APP (HostedFun FAdd) (Pair (num 123) (num 456))) =
-    MkΣ (num 579) Empty MT.
-Proof. reflexivity. Qed.
-*)
+     jww (2022-07-15): What if the resource had already been installed? *)
+  modify (λ st, {| resources := λ c : ACap,
+                      match eq_dec c C with
+                      | left H  => Some val
+                      | right _ => resources st c
+                      end |}).
 
-Compute run 20 (APP (APP (LAM (APP (VAR ZV)
-                                   (LAM EUnit)))
-                         (LAM (VAR ZV)))
-                    EUnit).
+Definition with_capability `(D : DefCap C) `(f : PactM a) : PactM a :=
+  env <- ask ;
+  if in_dec eq_dec C (granted env)
+  then f
+  else
+    let '(Token arg val) := cap C in
+
+    compCaps <- predicate D arg ;
+
+    st <- get ;
+    match valueTy (sig C), resources st C with
+    | TUnit, _    => pure ()
+    | _, None     => throw (Err_Capability (CapErr_NoResourceAvailable C))
+    | _, Some mng =>
+      mng' <- manager D mng val ;
+      put {| resources := λ c : ACap,
+                match eq_dec c C with
+                | left H  => Some (rew <- H in mng')
+                | right _ => resources st c
+                end |}
+    end ;;
+
+    local (λ r, {| granted := C :: compCaps ++ granted r |}) f.
+
+Definition require_capability `(D : DefCap C) : PactM () :=
+  let '(Token arg val) := cap C in
+
+  (* Note that the request resource amount must match the original
+     with-capability exactly.
+
+     jww (2022-07-15): Is this intended? *)
+  env <- ask ;
+  if in_dec eq_dec C (granted env)
+  then pure ()
+  else throw (Err_Capability (CapErr_CapabilityNotAvailable C)).
 
 End Pact.

@@ -21,99 +21,54 @@ Import ListNotations.
 Context {A : Type}.
 Context `{S : HostLang A}.
 
-Definition Sound {Γ τ} :=
-  ExpR (Γ:=Γ) (τ:=τ) (λ _ e e', e ---> e' ∧ SemExp e = SemExp e').
+Definition denoted {Γ τ} (e e' : Exp Γ τ) :=
+  e ---> e' ∧ SemExp e = SemExp e'.
 
-Theorem Step_sound {Γ τ} {e e' : Exp Γ τ} :
-  e ---> e' → Sound e e'.
+Definition Sound {Γ τ} := ExpR (Γ:=Γ) (τ:=τ) (@denoted Γ).
+
+Definition Sound_Sub {Γ Γ'} : Sub Γ' Γ → Prop := SubR (@denoted Γ').
+Arguments Sound_Sub {Γ Γ'} /.
+
+Theorem Step_sound {Γ Γ' τ} (env : Sub Γ' Γ) {e e' : Exp Γ τ} :
+  Sound_Sub env →
+  e ---> e' →
+  Sound (SubExp env e) (SubExp env e').
 Proof.
-  intros.
-  unfold Sound.
-  induction τ; simp ExpR.
-  - split; auto.
-    admit.
-  - split.
-    + split; auto.
-      admit.
-    + intros.
-      apply ExpR_R in H0; reduce.
-      eapply IHτ2.
+  generalize dependent env.
+  induction e; intros; simpl; try solve [ inv H0 ].
+  dependent induction H0.
+  simpl.
 Admitted.
 
-Theorem soundness {Γ τ} {e : Exp Γ τ} {v} :
-  e ---> v → SemExp e = SemExp v.
+Theorem Exp_sound {τ} (e e' : Exp [] τ) : e ---> e' → Sound e e'.
 Proof.
   intros.
-  pose proof (Step_sound H).
-  now apply ExpR_R in H0.
+  replace e with (SubExp (Γ:=[]) NoSub e).
+  - replace e' with (SubExp (Γ:=[]) NoSub e').
+    + apply Step_sound; auto.
+      now constructor.
+    + rewrite NoSub_idSub.
+      now rewrite SubExp_idSub.
+  - rewrite NoSub_idSub.
+    now rewrite SubExp_idSub.
+Qed.
+
+Theorem soundness {τ} {e e' : Exp [] τ} :
+  e ---> e' → SemExp e = SemExp e'.
+Proof.
+  intros.
+  pose proof (Exp_sound e e') as H1.
+  apply (ExpR_R (@denoted [])).
+  now apply H1.
 Qed.
 
 (*
-  exact (IHτ1 e e' H).
-
-  intros.
-  induction H; simpl; auto;
-  extensionality se;
-  rewrite ?IHStep, ?sum_id; auto.
-  (* - destruct (SemExp_ValueP _ se X) as [? H]. *)
-  (*   simpl; rewrite H; simpl. *)
-  (*   now rewrite sum_id. *)
-  (* - now erewrite <- Reduce_sound. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H]. *)
-  (*   now simpl; rewrite H. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   destruct (SemExp_ValueP _ se X0) as [? H2]. *)
-  (*   now simpl; rewrite H1, H2. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   destruct (SemExp_ValueP _ se X0) as [? H2]. *)
-  (*   now simpl; rewrite H1, H2. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H]. *)
-  (*   now simpl; rewrite H. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   destruct (SemExp_ValueP _ se X0) as [? H2]. *)
-  (*   now simpl; rewrite H1, H2. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   destruct (SemExp_ValueP _ se X0) as [? H2]. *)
-  (*   now simpl; rewrite H1, H2. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   destruct (SemExp_ValueP _ se X0) as [? H2]. *)
-  (*   now simpl; rewrite H1, H2. *)
-  (* - now apply CallHost_sound. *)
-  (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
-  (*   rewrite H1; simpl. *)
-  (*   rewrite sum_id. *)
-  (*   now erewrite <- SemExp_SubExp. *)
-  (* -  *)
     (* rewrite <- SemExp_SubSem. *)
     (* f_equal; simpl. *)
     (* simp SubSem. *)
     (* now rewrite SubSem_idSub. *)
   (* - destruct (SemExp_ValueP _ se X) as [? H1]. *)
   (*   now rewrite H1. *)
-Abort.
-
-(*
-Lemma If_loop_true {Γ τ} b {x : Exp Γ τ} {y : Exp Γ τ} :
-  ¬ (If b x y = x).
-Proof.
-  induction x; intro; inv H.
-  now eapply IHx2; eauto.
-Qed.
-
-Lemma If_loop_false {Γ τ} b {x : Exp Γ τ} {y : Exp Γ τ} :
-  ¬ (If b x y = y).
-Proof.
-  induction y; intro; inv H.
-  now eapply IHy3; eauto.
-Qed.
-
-Lemma Seq_loop {Γ τ ty} {x : Exp Γ ty} {y : Exp Γ τ} :
-  ¬ (Seq x y = y).
-Proof.
-  induction y; intro; inv H.
-  now eapply IHy2; eauto.
-Qed.
-*)
 *)
 
 End Sound.

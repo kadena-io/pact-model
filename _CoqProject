@@ -1,9 +1,9 @@
 -R src Kadena
-src/Lib.v
-src/Ltac.v
 src/ilist.v
 src/EnsemblesExt.v
 src/Group.v
+src/Lib.v
+src/Ltac.v
 src/Ty.v
 src/Exp.v
 src/Pat.v

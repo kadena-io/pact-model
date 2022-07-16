@@ -26,15 +26,15 @@ Equations ExpP `(e : Exp Γ τ) : Prop :=
   ExpP (τ:=_ ⟶ _) e := P e ∧ (∀ x, ExpP x → ExpP (APP e x));
   ExpP e := P e.
 
+Lemma ExpP_P {τ} {e : Γ ⊢ τ} : ExpP e → P e.
+Proof. intros; induction τ; simpl in *; simp ExpP in H; now reduce. Qed.
+
 Inductive SubP : ∀ {Γ'}, Sub Γ Γ' → Prop :=
   | NoSubP : SubP (NoSub (Γ:=Γ))
   | PushP {Γ' τ} (e : Exp Γ τ) (s : Sub Γ Γ') :
     ExpP e → SubP s → SubP (Push e s).
 
 Derive Signature for SubP.
-
-Lemma ExpP_P {τ} {e : Γ ⊢ τ} : ExpP e → P e.
-Proof. intros; induction τ; simpl in *; simp ExpP in H; now reduce. Qed.
 
 Variable R : ∀ {τ}, Exp Γ τ → Exp Γ τ → Prop.
 
@@ -47,5 +47,12 @@ Equations ExpR {τ} (e1 e2 : Exp Γ τ) : Prop :=
 
 Lemma ExpR_R {τ} {e1 e2 : Γ ⊢ τ} : ExpR e1 e2 → R e1 e2.
 Proof. intros; induction τ; simpl in *; simp ExpR in H; now reduce. Qed.
+
+Inductive SubR : ∀ {Γ'}, Sub Γ Γ' → Prop :=
+  | NoSubR : SubR (NoSub (Γ:=Γ))
+  | PushR {Γ' τ} (e e' : Exp Γ τ) (s : Sub Γ Γ') :
+    ExpR e e' → SubR s → SubR (Push e s).
+
+Derive Signature for SubR.
 
 End Log.

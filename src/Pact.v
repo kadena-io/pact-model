@@ -236,6 +236,10 @@ Arguments manager {C} _.
 
 Import EqNotations.
 
+(* The functions below all take a [DefCap] rather than [ACap] because name
+   resolution must happen in the parser, since capability predicates can
+   themselves refer to the current module. *)
+
 Program Definition install_capability `(D : DefCap C) : PactM () :=
   let '(Token arg val) := cap C in
 
@@ -292,7 +296,7 @@ Definition __claim_resource `(D : DefCap C) : PactM () :=
 
     A managed capability provides the same, but in addition deducts from a
     stateful resource after the predicate, but before defining and setting the
-    dynamic boolean. If there is not enough resource avialable, it raises an
+    dynamic boolean. If there is not enough resource available, it raises an
     exception. [install_capability] sets the initial amount of the
     resource. *)
 Definition with_capability `(D : DefCap C) `(f : PactM a) : PactM a :=

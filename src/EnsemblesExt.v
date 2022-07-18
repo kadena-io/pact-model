@@ -13,6 +13,9 @@ Require Coq.Logic.Classical_Prop.
 Require Coq.Lists.List.
 Require Classical_Pred_Type.
 
+From Equations Require Import Equations.
+Set Equations With UIP.
+
 Generalizable All Variables.
 
 Definition first {A B C} (f : A -> C) (p : A * B) : C * B :=
@@ -34,10 +37,6 @@ Tactic Notation "by" tactic(H) :=
 
 Notation "'IF' c1 'then' c2 'else' c3" := (c1 /\ c2 \/ ~ c1 /\ c3)
   (at level 200, right associativity).
-
-Class EqDec (A : Type) := {
-    eq_dec : ∀ x y : A, {x = y} + {x ≠ y}
-}.
 
 Ltac breakdown :=
   match goal with
@@ -98,24 +97,21 @@ Instance list_Membership : Membership list := {|
 #[export]
 Program Instance Same_set_Equivalence {A} : Equivalence (@Same_set A).
 Next Obligation.
-  intro x.
   constructor; intros y H; exact H.
 Qed.
 Obligation 2.
-  intros x y H.
   destruct H.
   split; trivial.
 Qed.
 Obligation 3.
-  intros x y z H1 H2.
-  destruct H1, H2.
+  destruct H, H0.
   split; trivial.
     intros w H3.
-    apply H1.
+    apply H0.
     apply H.
     exact H3.
   intros w H3.
-  apply H0.
+  apply H1.
   apply H2.
   exact H3.
 Qed.
@@ -160,10 +156,6 @@ Next Obligation. intros; reflexivity. Qed.
 #[export]
 Program Instance In_Same_set A :
   Proper (Same_set A ==> Same_set A) (In A).
-Next Obligation.
-  repeat intro.
-  exact H.
-Qed.
 
 
 #[export]
@@ -182,7 +174,7 @@ Program Instance In_Same_set_eq' A :
 Next Obligation.
   repeat intro; subst.
   destruct H.
-  now apply H0.
+  now apply H1.
 Qed.
 
 
@@ -192,7 +184,7 @@ Program Instance In_Same_set_eq'' A :
 Next Obligation.
   repeat intro; subst.
   destruct H.
-  now apply H0.
+  now apply H1.
 Qed.
 
 
@@ -289,7 +281,6 @@ Next Obligation. repeat intro; now apply H. Qed.
 Program Instance Finite_Proper A :
   Proper (Same_set A ==> impl) (Finite A).
 Next Obligation.
-  intros ????.
   eapply Finite_sets_facts.Finite_downward_closed; eauto with sets.
   intros ? H1.
   rewrite <- H in H1.
@@ -301,7 +292,6 @@ Qed.
 Program Instance Finite_Proper_flip A :
   Proper (Same_set A --> flip impl) (Finite A).
 Next Obligation.
-  intros ????.
   eapply Finite_sets_facts.Finite_downward_closed; eauto with sets.
   intros ? H1.
   rewrite H in H1.
@@ -314,8 +304,7 @@ Definition Map_set {A B} (f : A -> B) (r : Ensemble A) : Ensemble B :=
 Lemma Map_set_left_identity {A} (r : Ensemble A) : Same_set A r (Map_set id r).
 Proof.
   unfold Map_set; split; intros.
-    eexists; intuition.
-    assumption.
+    now eexists; intuition.
   intros ??.
   do 2 destruct H.
   unfold id in H0.
@@ -329,8 +318,7 @@ Proof.
     do 2 destruct H.
     unfold id in H0.
     congruence.
-  eexists; intuition.
-  assumption.
+  now eexists; intuition.
 Qed.
 
 Lemma Map_set_composition {A B C} (r : Ensemble A) :
@@ -494,7 +482,6 @@ Program Definition EmptyF : FinMap := exist _ Empty _.
 Next Obligation. constructor. Qed.
 
 Program Definition EmptyU : FunMap := exist _ nil _.
-Next Obligation. inversion H. Qed.
 
 Definition Single (a : A) (b : B) : Map := Singleton _ (a, b).
 
@@ -577,11 +564,11 @@ Qed.
 
 Global Program Instance Lookup_Proper :
   Proper (eq ==> eq ==> Same ==> Basics.impl) Lookup.
-Next Obligation. repeat intro; subst; now apply H1. Qed.
+Next Obligation. repeat intro; subst; now apply H. Qed.
 
 Global Program Instance Lookup_Proper_flip :
   Proper (eq ==> eq ==> Same --> Basics.impl) Lookup.
-Next Obligation. repeat intro; subst; now apply H1. Qed.
+Next Obligation. repeat intro; subst; now apply H. Qed.
 
 Definition Member (a : A) (r : Map) := exists b, Lookup a b r.
 
@@ -1224,8 +1211,8 @@ Global Program Instance Remove_Proper A B :
   Proper (eq ==> @Same _ _ ==> @Same _ _) (@Remove A B).
 Next Obligation.
   split; repeat intro; subst; repeat teardown.
-    rewrite <- H0; assumption.
-  rewrite H0; assumption.
+    rewrite <- H; assumption.
+  rewrite H; assumption.
 Qed.
 
 Global Program Instance Map_value_Proper A B :

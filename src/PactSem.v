@@ -4,11 +4,12 @@ Require Import
   Coq.micromega.Lia
   Coq.Strings.String
   Hask.Control.Monad
-  Hask.Data.Monoid
-  ilist
+  Data.Monoid
+  Data.PartialMap
+  EnsemblesExt
   Lib
   Ltac
-  RWSE.
+  RWSP.
 
 Set Universe Polymorphism.
 
@@ -23,6 +24,21 @@ Derive NoConfusion NoConfusionHom Subterm EqDec for nat.
 Derive NoConfusion NoConfusionHom Subterm EqDec for bool.
 
 Generalizable All Variables.
+
+(** A partial magma defines a constrained version of its binary operation.
+    This operation is typically not associative, since order of operation can
+    matter. *)
+Class PartialMagma (A : Type) := {
+  pappendLim (x y : A) : option A;
+}.
+
+Instance nat_PartialMagma (limit : nat) : PartialMagma nat := {
+  pappendLim := λ (x y : nat),
+    let z := x + y in
+    if limit <? z
+    then None
+    else Some z
+}.
 
 Section Pact.
 
@@ -60,8 +76,8 @@ Fixpoint denoteTy (t : Ty) : Set :=
   | TList t   => list (denoteTy t)
   end.
 
-Declare Scope Ty_scope.
-Bind Scope Ty_scope with Ty.
+Declare Scope Type_scope.
+Bind Scope Type_scope with Ty.
 Delimit Scope Ty_scope with ty.
 
 Notation "⟦ t ⟧" := (denoteTy t%ty) (at level 9) : type_scope.
@@ -118,145 +134,97 @@ Equations Value_EqDec t : EqDec ⟦t⟧ :=
 Instance Value_EqDec' {t} : EqDec ⟦t⟧ := Value_EqDec t.
 
 (******************************************************************************
- * The Pact environment
+ * Capability Semantics
  *)
 
 Record CapSig : Set := {
   name : string;
-  paramTy : Ty;               (* this could be a product (i.e. pair) *)
-  valueTy : Ty                (* TUnit for unmanaged caps *)
+  paramTy : Ty
 }.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for CapSig.
 
-Inductive Cap `(S : CapSig) : Set :=
-  | Token : ⟦paramTy S⟧ → ⟦valueTy S⟧ → Cap S.
+Record Cap (s : CapSig) : Set := MkCap {
+  param : ⟦paramTy s⟧
+}.
 
-Derive NoConfusion NoConfusionHom Subterm for Cap.
+Derive NoConfusion NoConfusionHom Subterm EqDec for Cap.
 
-Arguments Token {S} _.
+Record MCapSig : Set := {
+  baseSig : CapSig;
+  valueTy : Ty
+}.
 
-(* jww (2022-07-15): This couldn't be derived due to an anomaly. *)
-#[export]
-Program Instance Cap_EqDec `(S : CapSig) : EqDec (Cap S).
-Next Obligation.
-  destruct x, y, S; simpl in *.
-  destruct (@eq_dec _ (Value_EqDec (paramTy0)) d d1); subst;
-  destruct (@eq_dec _ (Value_EqDec (valueTy0)) d0 d2); subst;
-  try (right; congruence).
-  now left.
-Defined.
+Derive NoConfusion NoConfusionHom Subterm EqDec for MCapSig.
 
-Inductive CapError : Set :=
-  | CapErr_UnknownCapability          : string → CapError
-  | CapErr_InvalidParameter {t}       : ⟦t⟧ → CapError
-  | CapErr_InvalidValue {t}           : ⟦t⟧ → CapError
-  | CapErr_CapabilityNotAvailable {s} : Cap s → CapError
-  | CapErr_ManagedError               : string → CapError
-  | CapErr_NoResourceAvailable {s}    : Cap s → CapError
-  | CapErr_TypeError.
+Record MCap (s : MCapSig) : Set := MkMCap {
+  base : Cap (baseSig s);
+  value : ⟦valueTy s⟧
+}.
 
-Derive NoConfusion NoConfusionHom Subterm EqDec for CapError.
+Derive NoConfusion NoConfusionHom Subterm EqDec for MCap.
 
-Inductive Err : Type :=
-  | Err_Capability : CapError → Err.
+Inductive ACap : Set :=
+  | Unmanaged {csig : CapSig}  : Cap csig  → ACap
+  | Managed   {csig : MCapSig} : MCap csig → ACap.
 
-Derive NoConfusion NoConfusionHom Subterm EqDec for Err.
+Derive NoConfusion NoConfusionHom Subterm EqDec for ACap.
 
 Record PactEnv := {
-  (* We cannot refer to capability tokens by their type here, because
-     capability predicates execute in a state monad that reference this
-     record type. *)
-  granted : list { s : CapSig & Cap s }
+  granted : Ensemble ACap;
 }.
-
-Derive NoConfusion NoConfusionHom Subterm EqDec for PactEnv.
 
 Record PactState := {
-  (* We cannot refer to capability tokens by their type here, because
-     capability predicates execute in a state monad that reference this
-     record type. *)
-  resources : list { s : CapSig & ⟦valueTy s⟧ }
+  resources : Ensemble { s : MCapSig & ⟦valueTy s⟧ };
 }.
 
-Derive NoConfusion NoConfusionHom Subterm for PactState.
+Record PactLog := MkPactLog {}.
 
-Record PactLog := {}.
+#[export]
+Program Instance PactLog_Semigroup : Semigroup PactLog := {
+  mappend := λ _ _, MkPactLog
+}.
 
-Derive NoConfusion NoConfusionHom EqDec for PactLog.
+#[export]
+Program Instance PactLog_Monoid : Monoid PactLog := {
+  mempty := MkPactLog
+}.
+Next Obligation.
+  destruct a.
+  split; intros.
+Qed.
+Next Obligation.
+  destruct a.
+  split; intros.
+Qed.
 
-Definition PactM := @RWSE PactEnv PactState PactLog Err.
-
-(******************************************************************************
- * Capabilities
- *)
+Definition PactM := @RWSP PactEnv PactState PactLog.
 
 Record DefCap `(s : CapSig) : Type := {
-  predicate : ⟦paramTy s⟧ → ⟦valueTy s⟧ → PactM (list { s : CapSig & Cap s});
-  manager   : ⟦valueTy s⟧ → ⟦valueTy s⟧ → PactM ⟦valueTy s⟧
+  predicate : Cap s → PactM (Ensemble ACap)
 }.
 
 Derive NoConfusion NoConfusionHom Subterm for DefCap.
 
 Arguments predicate {s} _.
+
+Record DefMCap `(s : MCapSig) : Type := {
+  base_def : DefCap (baseSig s);
+  manager  : ⟦valueTy s⟧ → ⟦valueTy s⟧ → PactM ⟦valueTy s⟧
+}.
+
+Derive NoConfusion NoConfusionHom Subterm for DefMCap.
+
 Arguments manager {s} _.
 
 Import EqNotations.
-
-Fixpoint is_member `{EqDec a} {B : a → Type} (k : a)
-         (l : list { k : a & B k }) : bool :=
-  match l with
-  | [] => false
-  | existT _ k' _ :: xs =>
-      match eq_dec k k' with
-      | left H  => true
-      | right _ => is_member k xs
-      end
-  end.
-
-Program Fixpoint get_value `{EqDec a} {B : a → Type} (k : a)
-        (l : list { k : a & B k }) : option (B k) :=
-  match l with
-  | [] => None
-  | existT _ k' x' :: xs =>
-      match eq_dec k k' with
-      | left H  => Some x'
-      | right _ => get_value k xs
-      end
-  end.
-
-Fixpoint set_value `{EqDec a} {B : a → Type} (k : a) (x : B k)
-         (l : list { k : a & B k }) : list { k : a & B k } :=
-  match l with
-  | [] => [existT _ k x]
-  | existT _ k' x' :: xs =>
-      match eq_dec k k' with
-      | left _  => existT _ k x :: xs
-      | right _ => existT _ k' x' :: set_value k x xs
-      end
-  end.
-
-Program Fixpoint has_value `{EqDec a} {B : a → Type} (k : a)
-        `{EqDec (B k)} (x : B k) (l : list { k : a & B k }) : bool :=
-  match l with
-  | [] => false
-  | existT _ k' x' :: xs =>
-      match eq_dec k k' with
-      | left _  =>
-          match eq_dec x x' with
-          | left _  => true
-          | right _ => has_value k x xs
-          end
-      | right _ => has_value k x xs
-      end
-  end.
 
 (* The functions below all take a [DefCap] because name resolution must happen
    in the parser, since capability predicates can themselves refer to the
    current module. *)
 
-Definition install_capability `(D : DefCap s) (c : Cap s) : PactM () :=
-  let '(Token arg val) := c in
+Definition install_capability `(D : DefMCap s) (c : MCap s) : PactM () :=
+  let '(MkMCap _ (MkCap _ arg) val) := c in
 
   (* jww (2022-07-15): This should only be possible to do in specific
      contexts, otherwise a user could install as much resource as they needed.
@@ -266,22 +234,18 @@ Definition install_capability `(D : DefCap s) (c : Cap s) : PactM () :=
   (* "Installing" a capability means assigning a resource amount associated
      with that capability, that is consumed by future calls to
      [with_capability]. *)
-  modify (λ st, {| resources := set_value s val (resources st) |}).
+  modify (λ st, {| resources := insert_dep s val (resources st) |}).
 
-Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
-  let '(Token arg val) := c in
+Definition __claim_resource `(D : DefMCap s) (c : MCap s) : PactM () :=
+  let '(MkMCap _ (MkCap _ arg) val) := c in
 
   (* Check the current amount of resource associated with this capability, and
      whether the requested amount is available. If so, update the available
      amount. Note: unit is used to represent unmanaged capabilities. *)
-  st <- get ;
-  match valueTy s, get_value s (resources st) with
-  | TUnit, _    => pure ()
-  | _, None     => throw (Err_Capability (CapErr_NoResourceAvailable c))
-  | _, Some mng =>
-    mng' <- manager D mng val ;
-    put {| resources := set_value s mng' (resources st) |}
-  end.
+  st   <- get ;
+  mng  <- demand (find_dep s (resources st)) ;
+  mng' <- manager D mng val ;
+  put {| resources := insert_dep s mng' (resources st) |}.
 
 (** [with_capability] grants a capability [C] to the evaluation of [f].
 
@@ -306,30 +270,55 @@ Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
     dynamic boolean. If there is not enough resource available, it raises an
     exception. [install_capability] sets the initial amount of the
     resource. *)
-Definition with_capability `(D : DefCap s) (c : Cap s)
+Definition with_capability__unmanaged `(D : DefCap s) (c : Cap s)
            `(f : PactM a) : PactM a :=
+  let acap := Unmanaged c in
+
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
   env <- ask ;
-  if has_value s c (granted env)
+  b   <- decide (acap ∈ granted env) ;
+  if b : bool
   then f
   else
-    let '(Token arg val) := c in
+    let '(MkCap _ arg) := c in
 
     (* If the predicate passes, we are good to grant the capability. Note that
        the predicate may return a list of other capabilities to be "composed"
        with this one. *)
-    compCaps <- predicate D arg val ;
-
-    __claim_resource D c ;;
+    compCaps <- predicate D c ;
 
     (* The process of "granting" consists merely of making the capability
        visible in the reader environment to the provided expression. *)
-    local (λ r, {| granted := set_value s c (compCaps ++ granted r) |}) f.
+    local (λ r, {| granted := Add _ (compCaps ∪ granted r) acap |}) f.
 
-Definition require_capability `(D : DefCap s) (c : Cap s) : PactM () :=
-  let '(Token arg val) := c in
+Definition with_capability__managed `(D : DefMCap s) (c : MCap s)
+           `(f : PactM a) : PactM a :=
+  let acap := Managed c in
 
+  (* Check whether the capability has already been granted. If so, this
+     operation is a no-op. *)
+  env <- ask ;
+  b   <- decide (acap ∈ granted env) ;
+  if b : bool
+  then f
+  else
+    let '(MkMCap _ (MkCap _ arg) val) := c in
+
+    (* If the predicate passes, we are good to grant the capability. Note that
+       the predicate may return a list of other capabilities to be "composed"
+       with this one. *)
+    (* jww (2022-07-18): Can the predicate for a managed capability also see
+       the value passed to [with-capability]? *)
+    compCaps <- predicate (base_def s D) (base _ c) ;
+
+    __c
+
+    (* The process of "granting" consists merely of making the capability
+       visible in the reader environment to the provided expression. *)
+    local (λ r, {|  granted := Add _ (compCaps ∪ granted r) acap |}) f.
+
+Definition require_capability (c : ACap) : PactM () :=
   (* Note that the request resource amount must match the original
      with-capability exactly.
 
@@ -338,8 +327,6 @@ Definition require_capability `(D : DefCap s) (c : Cap s) : PactM () :=
   (* Requiring a capability means checking whether it has been granted at any
      point within the current scope of evaluation. *)
   env <- ask ;
-  if has_value s c (granted env)
-  then pure ()
-  else throw (Err_Capability (CapErr_CapabilityNotAvailable c)).
+  require (c ∈ granted env).
 
 End Pact.

@@ -181,57 +181,9 @@ Derive NoConfusion NoConfusionHom Subterm for DefCap.
 Arguments predicate {s} _.
 Arguments manager {s} _.
 
-Fixpoint is_member `{EqDec a} {B : a → Set} (k : a)
-         (l : list { k : a & B k }) : bool :=
-  match l with
-  | [] => false
-  | existT _ k' _ :: xs =>
-      match eq_dec k k' with
-      | left H  => true
-      | right _ => is_member k xs
-      end
-  end.
-
-Program Fixpoint get_value `{EqDec a} {B : a → Set} (k : a)
-        (l : list { k : a & B k }) : option (B k) :=
-  match l with
-  | [] => None
-  | existT _ k' x' :: xs =>
-      match eq_dec k k' with
-      | left H  => Some x'
-      | right _ => get_value k xs
-      end
-  end.
-
-Fixpoint set_value `{EqDec a} {B : a → Set} (k : a) (x : B k)
-         (l : list { k : a & B k }) : list { k : a & B k } :=
-  match l with
-  | [] => [existT _ k x]
-  | existT _ k' x' :: xs =>
-      match eq_dec k k' with
-      | left _  => existT _ k x :: xs
-      | right _ => existT _ k' x' :: set_value k x xs
-      end
-  end.
-
-Program Fixpoint has_value `{EqDec a} {B : a → Set} (k : a)
-        `{EqDec (B k)} (x : B k) (l : list { k : a & B k }) : bool :=
-  match l with
-  | [] => false
-  | existT _ k' x' :: xs =>
-      match eq_dec k k' with
-      | left _  =>
-          match eq_dec x x' with
-          | left _  => true
-          | right _ => has_value k x xs
-          end
-      | right _ => has_value k x xs
-      end
-  end.
-
 Import EqNotations.
 
-Definition get_resource `(c : Cap s)
+Definition get_value `(c : Cap s)
         (l : list { k : CapSig & Cap k }) : option (Value (valueTyDec s)) :=
   let '(Token p _) := c in
   let fix go (l : list {k : CapSig & Cap k}) :
@@ -250,7 +202,7 @@ Definition get_resource `(c : Cap s)
     end
   in go l.
 
-Definition set_resource `(c : Cap s)
+Definition set_value `(c : Cap s)
            (l : list { k : CapSig & Cap k }) : list { k : CapSig & Cap k } :=
   let '(Token p _) := c in
   let fix go (l : list {k : CapSig & Cap k}) : list { k : CapSig & Cap k } :=
@@ -281,20 +233,20 @@ Definition install_capability `(D : DefCap s) (c : Cap s) : PactM () :=
   (* "Installing" a capability means assigning a resource amount associated
      with that capability, that is consumed by future calls to
      [with_capability]. *)
-  modify (λ st, {| resources := set_value s c (resources st) |}).
+  modify (λ st, {| resources := set_value c (resources st) |}).
 
 Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
   (* Check the current amount of resource associated with this capability, and
      whether the requested amount is available. If so, update the available
      amount. Note: unit is used to represent unmanaged capabilities. *)
   st <- get ;
-  match valueTy s, get_resource c (resources st) with
+  match valueTy s, get_value c (resources st) with
   | TyPrim PrimUnit, _ => pure () (* unit is always available *)
   | _, None => throw (Err_Capability (CapErr_NoResourceAvailable c))
   | _, Some amt =>
     let '(Token p req) := c in
     amt' <- manager D amt req ;
-    put {| resources := set_resource (Token p amt') (resources st) |}
+    put {| resources := set_value (Token p amt') (resources st) |}
   end.
 
 (** [with_capability] grants a capability [C] to the evaluation of [f].
@@ -325,7 +277,7 @@ Definition with_capability `(D : DefCap s) (c : Cap s)
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
   env <- ask ;
-  if has_value s c (granted env)
+  if get_value c (granted env)
   then f
   else
     (* If the predicate passes, we are good to grant the capability. Note that
@@ -341,7 +293,7 @@ Definition with_capability `(D : DefCap s) (c : Cap s)
 
     (* The process of "granting" consists merely of making the capability
        visible in the reader environment to the provided expression. *)
-    local (λ r, {| granted := set_value s c (compCaps ++ granted r) |}) f.
+    local (λ r, {| granted := set_value c (compCaps ++ granted r) |}) f.
 
 Definition require_capability `(D : DefCap s) (c : Cap s) : PactM () :=
   (* Note that the request resource amount must match the original
@@ -352,7 +304,7 @@ Definition require_capability `(D : DefCap s) (c : Cap s) : PactM () :=
   (* Requiring a capability means checking whether it has been granted at any
      point within the current scope of evaluation. *)
   env <- ask ;
-  if has_value s c (granted env)
+  if get_value c (granted env)
   then pure ()
   else throw (Err_Capability (CapErr_CapabilityNotAvailable c)).
 

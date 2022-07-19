@@ -235,14 +235,18 @@ Definition set_value `(c : Cap s)
    in the parser, since capability predicates can themselves refer to the
    current module. *)
 
+(* "Installing" a capability assigns a resource amount associated with that
+   capability, to be consumed by future calls to [with-capability].
+
+   Note that a capability can be installed either by the user calling
+   [install-capability] directly, or by the chain calling this function if it
+   sees a signed capability as part of a transaction. *)
 Definition install_capability `(D : DefCap s) (c : Cap s) : PactM () :=
   env <- ask ;
   if in_dec EvalContext_EqDec InWithCapability (context env)
-  then throw (Err_Capability c CapErr_CannotInstallDuringWith)
+  then
+    throw (Err_Capability c CapErr_CannotInstallDuringWith)
   else
-    (* "Installing" a capability assigns a resource amount associated with
-       that capability, to be consumed by future calls to
-       [with_capability]. *)
     modify (λ st, {| resources := set_value c (resources st) |}).
 
 Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
@@ -291,7 +295,8 @@ Definition with_capability `(D : DefCap s) (c : Cap s)
      operation is a no-op. *)
   env <- ask ;
   if get_value c (granted env)
-  then f
+  then
+    f
   else
     (* If the predicate passes, we are good to grant the capability. Note that
        the predicate may return a list of other capabilities to be "composed"
@@ -322,7 +327,9 @@ Definition require_capability `(D : DefCap s) (c : Cap s) : PactM () :=
      point within the current scope of evaluation. *)
   env <- ask ;
   if get_value c (granted env)
-  then pure ()
-  else throw (Err_Capability c CapErr_CapabilityNotAvailable).
+  then
+    pure ()
+  else
+    throw (Err_Capability c CapErr_CapabilityNotAvailable).
 
 End Pact.

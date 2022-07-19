@@ -99,6 +99,15 @@ Defined.
  * The Pact environment
  *)
 
+(* (defcap TRANSFER (from:string to:string amount:decimal)
+      @managed amount TRANSFER_mgr
+      ...)
+
+   name    = "TRANSFER"
+   paramTy = (string × string)
+   valueTy = decimal
+*)
+
 Record CapSig : Set := {
   name       : string;
   paramTy    : Ty;              (* this could be a product (i.e. pair) *)
@@ -109,12 +118,18 @@ Record CapSig : Set := {
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for CapSig.
 
-Inductive Cap `(S : CapSig) : Set :=
-  | Token : Value (paramTyDec S) → Value (valueTyDec S) → Cap S.
+Inductive Cap `(s : CapSig) : Set :=
+  | Token : Value (paramTyDec s) → Value (valueTyDec s) → Cap s.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Cap.
 
-Arguments Token {S} _.
+Arguments Token {s} _.
+
+Definition paramOf `(c : Cap s) : Value (paramTyDec s) :=
+  match c with Token p _ => p end.
+
+Definition valueOf `(c : Cap s) : Value (valueTyDec s) :=
+  match c with Token _ v => v end.
 
 Inductive CapError : Set :=
   | CapErr_CapabilityNotAvailable {s} : Cap s → CapError
@@ -140,7 +155,7 @@ Record PactState : Set := {
   (* We cannot refer to capability tokens by their type here, because
      capability predicates execute in a state monad that reference this
      record type. *)
-  resources : list { s : CapSig & Value (valueTyDec s) }
+  resources : list { s : CapSig & Cap s }
 }.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for PactState.
@@ -156,8 +171,7 @@ Definition PactM : Set → Set := @RWSE PactEnv PactState PactLog Err.
  *)
 
 Record DefCap `(s : CapSig) : Set := {
-  predicate : Value (paramTyDec s) → Value (valueTyDec s) →
-              PactM (list { s : CapSig & Cap s});
+  predicate : Cap s → PactM (list { s : CapSig & Cap s});
   manager   : Value (valueTyDec s) → Value (valueTyDec s) →
               PactM (Value (valueTyDec s))
 }.
@@ -215,13 +229,50 @@ Program Fixpoint has_value `{EqDec a} {B : a → Set} (k : a)
       end
   end.
 
+Import EqNotations.
+
+Definition get_resource `(c : Cap s)
+        (l : list { k : CapSig & Cap k }) : option (Value (valueTyDec s)) :=
+  let '(Token p _) := c in
+  let fix go (l : list {k : CapSig & Cap k}) :
+    option (Value (valueTyDec s)) :=
+    match l with
+    | [] => None
+    | existT _ s' (Token p' x') :: xs =>
+        match eq_dec s s' with
+        | left  Hs =>
+            match eq_dec p (rew <- [λ x, Value (paramTyDec x)] Hs in p') with
+            | left _ => Some (rew <- [λ x, Value (valueTyDec x)] Hs in x')
+            | _ => go xs
+            end
+        | _ => go xs
+        end
+    end
+  in go l.
+
+Definition set_resource `(c : Cap s)
+           (l : list { k : CapSig & Cap k }) : list { k : CapSig & Cap k } :=
+  let '(Token p _) := c in
+  let fix go (l : list {k : CapSig & Cap k}) : list { k : CapSig & Cap k } :=
+    match l with
+    | [] => []
+    | existT _ s' (Token p' _) :: xs =>
+        match eq_dec s s' with
+        | left  Hs =>
+            match eq_dec p (rew <- [λ x, Value (paramTyDec x)] Hs in p') with
+            | left _ => existT _ s c :: go xs
+            | _ => go xs
+            end
+        | _ => go xs
+        end
+    end
+  in go l.
+
 (* The functions below all take a [DefCap] because name resolution must happen
    in the parser, since capability predicates can themselves refer to the
    current module. *)
 
 Definition install_capability `(D : DefCap s) (c : Cap s) : PactM () :=
-  let '(Token arg val) := c in
-
   (* jww (2022-07-15): This should only be possible to do in specific
      contexts, otherwise a user could install as much resource as they needed. *)
 
@@ -230,21 +281,20 @@ Definition install_capability `(D : DefCap s) (c : Cap s) : PactM () :=
   (* "Installing" a capability means assigning a resource amount associated
      with that capability, that is consumed by future calls to
      [with_capability]. *)
-  modify (λ st, {| resources := set_value s val (resources st) |}).
+  modify (λ st, {| resources := set_value s c (resources st) |}).
 
 Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
-  let '(Token arg val) := c in
-
   (* Check the current amount of resource associated with this capability, and
      whether the requested amount is available. If so, update the available
      amount. Note: unit is used to represent unmanaged capabilities. *)
   st <- get ;
-  match valueTy s, get_value s (resources st) with
-  | TyPrim PrimUnit, _ => pure ()
+  match valueTy s, get_resource c (resources st) with
+  | TyPrim PrimUnit, _ => pure () (* unit is always available *)
   | _, None => throw (Err_Capability (CapErr_NoResourceAvailable c))
-  | _, Some mng =>
-    mng' <- manager D mng val ;
-    put {| resources := set_value s mng' (resources st) |}
+  | _, Some amt =>
+    let '(Token p req) := c in
+    amt' <- manager D amt req ;
+    put {| resources := set_resource (Token p amt') (resources st) |}
   end.
 
 (** [with_capability] grants a capability [C] to the evaluation of [f].
@@ -278,13 +328,15 @@ Definition with_capability `(D : DefCap s) (c : Cap s)
   if has_value s c (granted env)
   then f
   else
-    let '(Token arg val) := c in
-
     (* If the predicate passes, we are good to grant the capability. Note that
        the predicate may return a list of other capabilities to be "composed"
        with this one. *)
-    compCaps <- predicate D arg val ;
+    compCaps <- predicate D c ;
 
+    (* Note that if the resource type is unit, the only thing this function
+       could do is throw an exception. But since this is semantically
+       equivalent to throwing the same exception at the end of the predicate,
+       there is no reason to avoid this invocation in that case. *)
     __claim_resource D c ;;
 
     (* The process of "granting" consists merely of making the capability
@@ -292,8 +344,6 @@ Definition with_capability `(D : DefCap s) (c : Cap s)
     local (λ r, {| granted := set_value s c (compCaps ++ granted r) |}) f.
 
 Definition require_capability `(D : DefCap s) (c : Cap s) : PactM () :=
-  let '(Token arg val) := c in
-
   (* Note that the request resource amount must match the original
      with-capability exactly. *)
 

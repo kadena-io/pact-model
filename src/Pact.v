@@ -253,9 +253,10 @@ Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
   (* Check the current amount of resource associated with this capability, and
      whether the requested amount is available. If so, update the available
      amount. Note: unit is used to represent unmanaged capabilities. *)
-  match valueTy s with
-  | TyPrim PrimUnit => pure ()  (* unit is always available *)
-  | _ =>
+  if eq_dec (valueTy s) (TyPrim PrimUnit)
+  then
+    pure ()  (* unit is always available *)
+  else
     st <- get ;
     match get_value c (resources st) with
     | None => throw (Err_Capability c CapErr_NoResourceAvailable)
@@ -263,8 +264,7 @@ Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
       let '(Token p req) := c in
       amt' <- manager D amt req ;
       put {| resources := set_value (Token p amt') (resources st) |}
-    end
-  end.
+    end.
 
 (** [with_capability] grants a capability [C] to the evaluation of [f].
 

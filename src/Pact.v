@@ -132,21 +132,29 @@ Definition valueOf `(c : Cap s) : Value (valueTyDec s) :=
   match c with Token _ v => v end.
 
 Inductive CapError : Set :=
-  | CapErr_CapabilityNotAvailable {s} : Cap s → CapError
-  | CapErr_NoResourceAvailable {s}    : Cap s → CapError.
+  | CapErr_CapabilityNotAvailable
+  | CapErr_NoResourceAvailable
+  | CapErr_CannotInstallDuringWith.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for CapError.
 
 Inductive Err : Set :=
-  | Err_Capability : CapError → Err.
+  | Err_Capability {s} : Cap s → CapError → Err.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Err.
+
+Inductive EvalContext : Set :=
+  | RegularEvaluation
+  | InWithCapability.
+
+Derive NoConfusion NoConfusionHom Subterm EqDec for EvalContext.
 
 Record PactEnv : Set := {
   (* We cannot refer to capability tokens by their type here, because
      capability predicates execute in a state monad that reference this
      record type. *)
-  granted : list { s : CapSig & Cap s }
+  granted : list { s : CapSig & Cap s };
+  context : list EvalContext;
 }.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for PactEnv.
@@ -184,7 +192,8 @@ Arguments manager {s} _.
 Import EqNotations.
 
 Definition get_value `(c : Cap s)
-        (l : list { k : CapSig & Cap k }) : option (Value (valueTyDec s)) :=
+           (l : list { k : CapSig & Cap k }) :
+  option (Value (valueTyDec s)) :=
   let '(Token p _) := c in
   let fix go (l : list {k : CapSig & Cap k}) :
     option (Value (valueTyDec s)) :=
@@ -203,9 +212,11 @@ Definition get_value `(c : Cap s)
   in go l.
 
 Definition set_value `(c : Cap s)
-           (l : list { k : CapSig & Cap k }) : list { k : CapSig & Cap k } :=
+           (l : list { k : CapSig & Cap k }) :
+  list { k : CapSig & Cap k } :=
   let '(Token p _) := c in
-  let fix go (l : list {k : CapSig & Cap k}) : list { k : CapSig & Cap k } :=
+  let fix go (l : list {k : CapSig & Cap k}) :
+    list { k : CapSig & Cap k } :=
     match l with
     | [] => []
     | existT _ s' (Token p' _) :: xs =>
@@ -225,28 +236,30 @@ Definition set_value `(c : Cap s)
    current module. *)
 
 Definition install_capability `(D : DefCap s) (c : Cap s) : PactM () :=
-  (* jww (2022-07-15): This should only be possible to do in specific
-     contexts, otherwise a user could install as much resource as they needed. *)
-
-  (* jww (2022-07-15): What if the resource had already been installed? *)
-
-  (* "Installing" a capability means assigning a resource amount associated
-     with that capability, that is consumed by future calls to
-     [with_capability]. *)
-  modify (λ st, {| resources := set_value c (resources st) |}).
+  env <- ask ;
+  if in_dec EvalContext_EqDec InWithCapability (context env)
+  then throw (Err_Capability c CapErr_CannotInstallDuringWith)
+  else
+    (* "Installing" a capability assigns a resource amount associated with
+       that capability, to be consumed by future calls to
+       [with_capability]. *)
+    modify (λ st, {| resources := set_value c (resources st) |}).
 
 Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
   (* Check the current amount of resource associated with this capability, and
      whether the requested amount is available. If so, update the available
      amount. Note: unit is used to represent unmanaged capabilities. *)
-  st <- get ;
-  match valueTy s, get_value c (resources st) with
-  | TyPrim PrimUnit, _ => pure () (* unit is always available *)
-  | _, None => throw (Err_Capability (CapErr_NoResourceAvailable c))
-  | _, Some amt =>
-    let '(Token p req) := c in
-    amt' <- manager D amt req ;
-    put {| resources := set_value (Token p amt') (resources st) |}
+  match valueTy s with
+  | TyPrim PrimUnit => pure ()  (* unit is always available *)
+  | _ =>
+    st <- get ;
+    match get_value c (resources st) with
+    | None => throw (Err_Capability c CapErr_NoResourceAvailable)
+    | Some amt =>
+      let '(Token p req) := c in
+      amt' <- manager D amt req ;
+      put {| resources := set_value (Token p amt') (resources st) |}
+    end
   end.
 
 (** [with_capability] grants a capability [C] to the evaluation of [f].
@@ -283,29 +296,33 @@ Definition with_capability `(D : DefCap s) (c : Cap s)
     (* If the predicate passes, we are good to grant the capability. Note that
        the predicate may return a list of other capabilities to be "composed"
        with this one. *)
-    compCaps <- predicate D c ;
+    compCaps <-
+      local (λ r, {| granted := granted r
+                   ; context := InWithCapability :: context r |})
+        (predicate D c) ;
 
     (* Note that if the resource type is unit, the only thing this function
        could do is throw an exception. But since this is semantically
        equivalent to throwing the same exception at the end of the predicate,
        there is no reason to avoid this invocation in that case. *)
-    __claim_resource D c ;;
+    local (λ r, {| granted := granted r
+                 ; context := InWithCapability :: context r |})
+      (__claim_resource D c) ;;
 
     (* The process of "granting" consists merely of making the capability
        visible in the reader environment to the provided expression. *)
-    local (λ r, {| granted := set_value c (compCaps ++ granted r) |}) f.
+    local (λ r, {| granted := existT _ _ c :: compCaps ++ granted r
+                 ; context := context r |}) f.
 
 Definition require_capability `(D : DefCap s) (c : Cap s) : PactM () :=
   (* Note that the request resource amount must match the original
-     with-capability exactly. *)
+     [with-capability] exactly.
 
-  (* jww (2022-07-15): Is this intended? *)
-
-  (* Requiring a capability means checking whether it has been granted at any
+     Requiring a capability means checking whether it has been granted at any
      point within the current scope of evaluation. *)
   env <- ask ;
   if get_value c (granted env)
   then pure ()
-  else throw (Err_Capability (CapErr_CapabilityNotAvailable c)).
+  else throw (Err_Capability c CapErr_CapabilityNotAvailable).
 
 End Pact.

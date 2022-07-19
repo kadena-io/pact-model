@@ -997,7 +997,7 @@ Proof.
   - now eapply App_Lam_loop_var; eauto.
   - inv H0.
     (* impossible *)
-Admitted.
+Abort.
 
 (* A term never reduces to itself. *)
 #[export]

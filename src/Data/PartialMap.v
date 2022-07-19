@@ -27,16 +27,15 @@ Definition Iso (a b : Type) : Type :=
    that type to the finite naturals for some value of [n]. *)
 Class Finite (a : Type) : Type := {
     cardinality : nat;
-    (* jww (2022-03-25): There is a drawback to this definition, which is that
-       it decides a single ordering, when in fact there are combinatorially
-       many witness to this proof. What we should really have here is the
-       space of all such isomorphisms. *)
+    (* There is a drawback to this definition, which is that it decides a
+       single ordering, when in fact there are combinatorially many witness to
+       this proof. What we should really have here is the space of all such
+       isomorphisms. *)
     cardinality_witness : Iso a (Fin.t cardinality)
 }.
 
 (* We can enumerate all inhabitants of a finite type by induction on the
    cardinality and asking for the witness. *)
-(* jww (2022-03-25): Change the return type to be a vector of Fin.t cardinality length. *)
 Definition enumerate `{F : Finite k} : list k.
 Proof.
   destruct F as [n [[_ h] [_ _]]]; simpl in *.

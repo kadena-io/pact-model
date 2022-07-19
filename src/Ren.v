@@ -13,15 +13,12 @@ Section Ren.
 
 Import ListNotations.
 
-Context {A : Type}.
-Context `{HostExprs A}.
-
-Inductive Ren : Env → Env → Type :=
+Inductive Ren : Env → Env → Set :=
   | NoRen : Ren [] []
   | Drop {τ Γ Γ'} : Ren Γ Γ' → Ren (τ :: Γ) Γ'
   | Keep {τ Γ Γ'} : Ren Γ Γ' → Ren (τ :: Γ) (τ :: Γ').
 
-Derive Signature NoConfusion EqDec for Ren.
+Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Ren.
 
 Fixpoint idRen {Γ} : Ren Γ Γ :=
   match Γ with
@@ -121,23 +118,19 @@ Qed.
 
 Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
-  (* | HostedExp x   => HostedExp x *)
-  (* | HostedVal x   => HostedVal x *)
-  (* | HostedFun x   => HostedFun x *)
   | Error e       => Error e
-  | EUnit         => EUnit
-  (* | ETrue         => ETrue *)
-  (* | EFalse        => EFalse *)
-  (* | If b t e      => If (RenExp r b) (RenExp r t) (RenExp r e) *)
-  (* | Pair x y      => Pair (RenExp r x) (RenExp r y) *)
-  (* | Fst p         => Fst (RenExp r p) *)
-  (* | Snd p         => Snd (RenExp r p) *)
-  (* | Nil           => Nil *)
-  (* | Cons x xs     => Cons (RenExp r x) (RenExp r xs) *)
-  (* | Car xs        => Car (RenExp r xs) *)
-  (* | Cdr xs        => Cdr (RenExp r xs) *)
-  (* | IsNil xs      => IsNil (RenExp r xs) *)
-  (* | Seq exp1 exp2 => Seq (RenExp r exp1) (RenExp r exp2) *)
+  | Lit l         => Lit l
+  | Bltn b        => Bltn b
+  | If b t e      => If (RenExp r b) (RenExp r t) (RenExp r e)
+  | Pair x y      => Pair (RenExp r x) (RenExp r y)
+  | Fst p         => Fst (RenExp r p)
+  | Snd p         => Snd (RenExp r p)
+  | Nil           => Nil
+  | Cons x xs     => Cons (RenExp r x) (RenExp r xs)
+  | Car xs        => Car (RenExp r xs)
+  | Cdr xs        => Cdr (RenExp r xs)
+  | IsNil xs      => IsNil (RenExp r xs)
+  | Seq exp1 exp2 => Seq (RenExp r exp1) (RenExp r exp2)
 
   | VAR v         => VAR (RenVar r v)
   | APP e1 e2     => APP (RenExp r e1) (RenExp r e2)

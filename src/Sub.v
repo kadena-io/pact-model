@@ -15,17 +15,14 @@ Section Sub.
 
 Import ListNotations.
 
-Context {A : Type}.
-Context `{HostExprs A}.
-
-Inductive Sub (Γ : Env) : Env → Type :=
+Inductive Sub (Γ : Env) : Env → Set :=
   | NoSub : Sub Γ []
   | Push {Γ' τ} : Exp Γ τ → Sub Γ Γ' → Sub Γ (τ :: Γ').
 
 #[global] Arguments NoSub {Γ}.
 #[global] Arguments Push {Γ Γ' τ} _ _.
 
-Derive Signature NoConfusion EqDec for Sub.
+Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Sub.
 
 Equations get `(s : Sub Γ' Γ) `(v : Var Γ τ) : Exp Γ' τ :=
   get (Push x _)   ZV    := x;
@@ -72,23 +69,19 @@ Equations SubVar {Γ Γ' τ} (s : Sub Γ Γ') (v : Var Γ' τ) : Exp Γ τ :=
 
 Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
-  (* | HostedExp x   => HostedExp x *)
-  (* | HostedVal x   => HostedVal x *)
-  (* | HostedFun x   => HostedFun x *)
   | Error e       => Error e
-  | EUnit         => EUnit
-  (* | ETrue         => ETrue *)
-  (* | EFalse        => EFalse *)
-  (* | If b t e      => If (SubExp s b) (SubExp s t) (SubExp s e) *)
-  (* | Pair x y      => Pair (SubExp s x) (SubExp s y) *)
-  (* | Fst p         => Fst (SubExp s p) *)
-  (* | Snd p         => Snd (SubExp s p) *)
-  (* | Nil           => Nil *)
-  (* | Cons x xs     => Cons (SubExp s x) (SubExp s xs) *)
-  (* | Car xs        => Car (SubExp s xs) *)
-  (* | Cdr xs        => Cdr (SubExp s xs) *)
-  (* | IsNil xs      => IsNil (SubExp s xs) *)
-  (* | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2) *)
+  | Lit l         => Lit l
+  | Bltn b        => Bltn b
+  | If b t e      => If (SubExp s b) (SubExp s t) (SubExp s e)
+  | Pair x y      => Pair (SubExp s x) (SubExp s y)
+  | Fst p         => Fst (SubExp s p)
+  | Snd p         => Snd (SubExp s p)
+  | Nil           => Nil
+  | Cons x xs     => Cons (SubExp s x) (SubExp s xs)
+  | Car xs        => Car (SubExp s xs)
+  | Cdr xs        => Cdr (SubExp s xs)
+  | IsNil xs      => IsNil (SubExp s xs)
+  | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
 
   | VAR v         => SubVar s v
   | APP e1 e2     => APP (SubExp s e1) (SubExp s e2)
@@ -397,4 +390,4 @@ Defined.
 
 End Sub.
 
-Notation "{|| e ; .. ; f ||}" := (Push e .. (Push f idSub) ..).
+Notation "{|| e ; .. ; f ||}" := (Push e%exp .. (Push f%exp idSub) ..).

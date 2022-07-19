@@ -22,13 +22,10 @@ Unset Transparent Obligations.
 (*
 Section Cat.
 
-Context {A : Type}.
-Context `{L : HostExprsSem A}.
-
 Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (VAR ZV).
 
 Lemma SemExp_identity {Γ τ} (se : SemEnv Γ) :
-  SemExp (identity Γ τ) se = Datatypes.inr Hask.Control.Applicative.pure.
+  SemExp (identity Γ τ) se = pure pure.
 Proof. now f_equal. Qed.
 
 Definition composition {Γ τ τ' τ''}
@@ -38,8 +35,7 @@ Definition composition {Γ τ τ' τ''}
 
 Lemma SemExp_composition `(E : SemEnv Γ)
       {τ τ' τ''} (f : Exp Γ (τ' ⟶ τ'')) (g : Exp Γ (τ ⟶ τ')) :
-  SemExp (composition f g) E =
-    Hask.Control.Monad.kleisli_compose (SemExp f E) (SemExp g E).
+  SemExp (composition f g) E = join (liftA2 (<=<) (SemExp f E) (SemExp g E)).
 Proof.
   extensionality z.
   fold SemTy in z.
@@ -120,7 +116,6 @@ Next Obligation.
   now apply H.
 Qed.
 
-(*
 #[export]
 Program Instance Pact_Terminal Γ : @Terminal (Pact Γ) := {
   terminal_obj := TyUnit;
@@ -267,7 +262,6 @@ Next Obligation.
   rewrite !RenSem_skip1.
   now setoid_rewrite RenSem_skip1.
 Qed.
-*)
 
 End Cat.
 *)

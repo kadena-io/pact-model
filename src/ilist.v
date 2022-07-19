@@ -11,11 +11,11 @@ Import ListNotations.
 
 Section ilist.
 
-Context {A : Type}.
+Context {A : Set}.
 
-Variable B : A → Type.
+Variable B : A → Set.
 
-Fixpoint ilist (l : list A) : Type :=
+Fixpoint ilist (l : list A) : Set :=
   match l with
   | []      => unit
   | x :: xs => B x * ilist xs

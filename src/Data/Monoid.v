@@ -15,6 +15,7 @@ Class Monoid (m : Type) := {
   mempty_right : forall a, mappend a mempty = a;
 }.
 
+#[global]
 Program Instance Monoid_option `{Monoid a} : Monoid (option a) := {
   mempty := None
 }.

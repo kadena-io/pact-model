@@ -1,9 +1,10 @@
 Require Import Hask.Prelude.
 Require Import Hask.Ltac.
 Require Import Hask.Control.Monad.
-Require Import Hask.Data.Monoid.
-Require Import Hask.Data.Either.
+Require Import Data.Semigroup.
+Require Import Data.Monoid.
 Require Import Coq.Unicode.Utf8.
+Require Import FunctionalExtensionality.
 
 Generalizable All Variables.
 Set Primitive Projections.
@@ -16,18 +17,18 @@ Unset Transparent Obligations.
 
 Section RWSE.
 
-Context {r s w e : Type}.
+Context {r s w e : Set}.
 
-Definition RWSE (a : Type) := r → s → w → e + (a * (s * w)).
+Definition RWSE (a : Set) := r → s → w → e + (a * (s * w)).
 
 Definition ask : RWSE r := λ r s w, inr (r, (s, w)).
 
 Definition local (f : r → r) `(x : RWSE a) : RWSE a :=
   λ r s w, x (f r) s w.
 
-Definition get                : RWSE s    := λ r s w, inr (s, (s, w)).
-Definition gets `(f : s → a)  : RWSE a    := λ r s w, inr (f s, (s, w)).
-Definition put (x : s)        : RWSE unit := λ _ _ w, inr (tt, (x, w)).
+Definition get : RWSE s := λ r s w, inr (s, (s, w)).
+Definition gets {a : Set} (f : s → a) : RWSE a := λ r s w, inr (f s, (s, w)).
+Definition put (x : s) : RWSE unit := λ _ _ w, inr (tt, (x, w)).
 Definition modify (f : s → s) : RWSE unit := λ _ s w, inr (tt, (f s, w)).
 
 Definition tell `{Monoid w} (v : w) : RWSE unit :=
@@ -42,7 +43,7 @@ Program Instance RWSE_Functor : Functor RWSE := {
   fmap := λ A B f (x : RWSE A), λ r s w, first f <$> x r s w
 }.
 
-Definition RWSE_ap {a b : Type} (f : RWSE (a → b)) (x : RWSE a) :
+Definition RWSE_ap {a b : Set} (f : RWSE (a → b)) (x : RWSE a) :
   RWSE b := λ r s w,
   match f r s w with
   | inl e => inl e
@@ -69,11 +70,9 @@ Program Instance RWSE_Monad : Monad RWSE := {
 
 End RWSE.
 
-Arguments RWSE r s w e a.
+Arguments RWSE : clear implicits.
 
 Module RWSELaws.
-
-Require Import FunctionalExtensionality.
 
 Include MonadLaws.
 
@@ -85,7 +84,8 @@ Proof.
   destruct x; auto.
 Qed.
 
-Program Instance RWSE_FunctorLaws {r s w e : Type} :
+#[global]
+Program Instance RWSE_FunctorLaws {r s w e : Set} :
   FunctorLaws (@RWSE r s w e).
 Next Obligation.
   extensionality x.
@@ -107,7 +107,8 @@ Next Obligation.
   now destruct p.
 Qed.
 
-Program Instance RWSE_Applicative {r s w e : Type} :
+#[global]
+Program Instance RWSE_Applicative {r s w e : Set} :
   ApplicativeLaws (@RWSE r s w e).
 Next Obligation.
   extensionality x.
@@ -147,7 +148,8 @@ Next Obligation.
   reflexivity.
 Qed.
 
-Program Instance RWSE_Monad {r s w e : Type} :
+#[global]
+Program Instance RWSE_Monad {r s w e : Set} :
   MonadLaws (@RWSE r s w e).
 Next Obligation.
   unfold comp.

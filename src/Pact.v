@@ -4,10 +4,13 @@ Require Import
   Coq.micromega.Lia
   Coq.Strings.String
   Hask.Control.Monad
-  Hask.Data.Monoid
-  ilist
+  Data.Monoid
   Lib
   Ltac
+  Ty
+  Exp
+  Value
+  Sem
   RWSE.
 
 Set Universe Polymorphism.
@@ -15,99 +18,59 @@ Set Universe Polymorphism.
 From Equations Require Import Equations.
 Set Equations With UIP.
 
-Derive NoConfusion NoConfusionHom Subterm EqDec for Ascii.ascii.
-Derive NoConfusion NoConfusionHom Subterm EqDec for string.
-Derive NoConfusion NoConfusionHom Subterm EqDec for Z.
-Next Obligation. now apply Z.eq_dec. Defined.
-Derive NoConfusion NoConfusionHom Subterm EqDec for nat.
-Derive NoConfusion NoConfusionHom Subterm EqDec for bool.
-
 Generalizable All Variables.
 
 Section Pact.
 
 Import ListNotations.
 
-Inductive Ty : Set :=
-  | TUnit
-  | TPair : Ty → Ty → Ty
-  | TString
-  | TInteger
-  | TDecimal
-  | TBool
-  | TTime
-  (* | TKeyset *)
-  (* | TGuard *)
-  | TList : Ty → Ty
-  (* | TObject *)
-  (* | TFunc *)
-  (* | TPact *)
-  (* | TTable *)
-  (* | TSchema *)
-.
+Open Scope Ty_scope.
 
-Derive NoConfusion NoConfusionHom Subterm EqDec for Ty.
-
-Fixpoint denoteTy (t : Ty) : Set :=
-  match t with
-  | TUnit     => unit
-  | TPair x y => denoteTy x * denoteTy y
-  | TString   => string
-  | TInteger  => Z
-  | TDecimal  => nat
-  | TBool     => bool
-  | TTime     => nat
-  | TList t   => list (denoteTy t)
-  end.
-
-Declare Scope Ty_scope.
-Bind Scope Ty_scope with Ty.
-Delimit Scope Ty_scope with ty.
-
-Notation "⟦ t ⟧" := (denoteTy t%ty) (at level 9) : type_scope.
+Notation "⟦ t ⟧" := (SemTy t) (at level 9) : type_scope.
 
 (* This couldn't be derived due to the recursion at [VList]. *)
-Equations Value_EqDec t : EqDec ⟦t⟧ :=
-  Value_EqDec TUnit tt tt := left _;
-  Value_EqDec (TPair t1 t2) (x1, y1) (x2, y2)
-    with @eq_dec _ (Value_EqDec t1) x1 x2 := {
-      | left  _ with @eq_dec _ (Value_EqDec (t2)) y1 y2 := {
+Equations Decidable_EqDec (t : Ty) (H : DecidableP t) : EqDec ⟦t⟧ :=
+  Decidable_EqDec (TyPrim PrimUnit) _ tt tt := left _;
+  Decidable_EqDec (TyPair t1 t2) (PairDecP H1 H2) (x1, y1) (x2, y2)
+    with @eq_dec _ (Decidable_EqDec t1 H1) x1 x2 := {
+      | left  _ with @eq_dec _ (Decidable_EqDec t2 H2) y1 y2 := {
         | left _  => left _
         | right _ => right _
       }
       | right _ => right _
   };
-  Value_EqDec TString s1 s2
+  Decidable_EqDec (TyPrim PrimString) _ s1 s2
     with eq_dec s1 s2 := {
       | left _  => left _
       | right _ => right _
     };
-  Value_EqDec TInteger i1 i2
+  Decidable_EqDec (TyPrim PrimInteger) _ i1 i2
     with eq_dec i1 i2 := {
       | left _  => left _
       | right _ => right _
     };
-  Value_EqDec TDecimal d1 d2
+  Decidable_EqDec (TyPrim PrimDecimal) _ d1 d2
     with eq_dec d1 d2 := {
       | left _  => left _
       | right _ => right _
     };
-  Value_EqDec TBool b1 b2
+  Decidable_EqDec (TyPrim PrimBool) _ b1 b2
     with eq_dec b1 b2 := {
       | left _  => left _
       | right _ => right _
     };
-  Value_EqDec TTime t1 t2
+  Decidable_EqDec (TyPrim PrimTime) _ t1 t2
     with eq_dec t1 t2 := {
       | left _  => left _
       | right _ => right _
     };
-  Value_EqDec (TList _)   ([]) ([]) := left _;
-  Value_EqDec (TList _)   ((_ :: _)) ([]) := right _;
-  Value_EqDec (TList _)   ([]) ((_ :: _)) := right _;
-  Value_EqDec (TList ty)  ((x1 :: xs1)) ((y1 :: ys1))
-    with @eq_dec _ (Value_EqDec ty) x1 y1 := {
-      | left _  with @eq_dec _ (list_eqdec (Value_EqDec ty)) xs1 ys1 := {
+  Decidable_EqDec (TyList _)  _ ([]) ([]) := left _;
+  Decidable_EqDec (TyList _)  _ (_ :: _) ([]) := right _;
+  Decidable_EqDec (TyList _)  _ ([]) (_ :: _) := right _;
+  Decidable_EqDec (TyList ty) (ListDecP H) (x1 :: xs1) (y1 :: ys1)
+    with @eq_dec _ (Decidable_EqDec ty H) x1 y1 := {
+      | left _
+        with @eq_dec _ (list_eqdec (Decidable_EqDec ty H)) xs1 ys1 := {
         | left _  => left _
         | right _ => right _
       }
@@ -115,55 +78,56 @@ Equations Value_EqDec t : EqDec ⟦t⟧ :=
     }.
 
 #[export]
-Instance Value_EqDec' {t} : EqDec ⟦t⟧ := Value_EqDec t.
+Instance Decidable_EqDec' {t} : DecidableP t → EqDec ⟦t⟧ :=
+  Decidable_EqDec t.
+
+Inductive Value {t} (D : DecidableP t) : Set :=
+  | Bundle : ⟦t⟧ → Value D.
+
+Derive NoConfusion NoConfusionHom Subterm for Value.
+
+#[export]
+Program Instance Value_EqDec {t} (D : DecidableP t) : EqDec (Value D).
+Next Obligation.
+  destruct x, y.
+  destruct (@eq_dec _ (Decidable_EqDec _ D) s s0); subst;
+  try (right; intro; inv H; contradiction);
+  now left.
+Defined.
 
 (******************************************************************************
  * The Pact environment
  *)
 
 Record CapSig : Set := {
-  name : string;
-  paramTy : Ty;               (* this could be a product (i.e. pair) *)
-  valueTy : Ty                (* TUnit for unmanaged caps *)
+  name       : string;
+  paramTy    : Ty;              (* this could be a product (i.e. pair) *)
+  paramTyDec : DecidableP paramTy;
+  valueTy    : Ty;              (* TUnit for unmanaged caps *)
+  valueTyDec : DecidableP valueTy;
 }.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for CapSig.
 
 Inductive Cap `(S : CapSig) : Set :=
-  | Token : ⟦paramTy S⟧ → ⟦valueTy S⟧ → Cap S.
+  | Token : Value (paramTyDec S) → Value (valueTyDec S) → Cap S.
 
-Derive NoConfusion NoConfusionHom Subterm for Cap.
+Derive NoConfusion NoConfusionHom Subterm EqDec for Cap.
 
 Arguments Token {S} _.
 
-(* jww (2022-07-15): This couldn't be derived due to an anomaly. *)
-#[export]
-Program Instance Cap_EqDec `(S : CapSig) : EqDec (Cap S).
-Next Obligation.
-  destruct x, y, S; simpl in *.
-  destruct (@eq_dec _ (Value_EqDec (paramTy0)) d d1); subst;
-  destruct (@eq_dec _ (Value_EqDec (valueTy0)) d0 d2); subst;
-  try (right; congruence).
-  now left.
-Defined.
-
 Inductive CapError : Set :=
-  | CapErr_UnknownCapability          : string → CapError
-  | CapErr_InvalidParameter {t}       : ⟦t⟧ → CapError
-  | CapErr_InvalidValue {t}           : ⟦t⟧ → CapError
   | CapErr_CapabilityNotAvailable {s} : Cap s → CapError
-  | CapErr_ManagedError               : string → CapError
-  | CapErr_NoResourceAvailable {s}    : Cap s → CapError
-  | CapErr_TypeError.
+  | CapErr_NoResourceAvailable {s}    : Cap s → CapError.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for CapError.
 
-Inductive Err : Type :=
+Inductive Err : Set :=
   | Err_Capability : CapError → Err.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Err.
 
-Record PactEnv := {
+Record PactEnv : Set := {
   (* We cannot refer to capability tokens by their type here, because
      capability predicates execute in a state monad that reference this
      record type. *)
@@ -172,28 +136,30 @@ Record PactEnv := {
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for PactEnv.
 
-Record PactState := {
+Record PactState : Set := {
   (* We cannot refer to capability tokens by their type here, because
      capability predicates execute in a state monad that reference this
      record type. *)
-  resources : list { s : CapSig & ⟦valueTy s⟧ }
+  resources : list { s : CapSig & Value (valueTyDec s) }
 }.
 
-Derive NoConfusion NoConfusionHom Subterm for PactState.
+Derive NoConfusion NoConfusionHom Subterm EqDec for PactState.
 
-Record PactLog := {}.
+Record PactLog : Set := {}.
 
-Derive NoConfusion NoConfusionHom EqDec for PactLog.
+Derive NoConfusion NoConfusionHom Subterm EqDec for PactLog.
 
-Definition PactM := @RWSE PactEnv PactState PactLog Err.
+Definition PactM : Set → Set := @RWSE PactEnv PactState PactLog Err.
 
 (******************************************************************************
  * Capabilities
  *)
 
-Record DefCap `(s : CapSig) : Type := {
-  predicate : ⟦paramTy s⟧ → ⟦valueTy s⟧ → PactM (list { s : CapSig & Cap s});
-  manager   : ⟦valueTy s⟧ → ⟦valueTy s⟧ → PactM ⟦valueTy s⟧
+Record DefCap `(s : CapSig) : Set := {
+  predicate : Value (paramTyDec s) → Value (valueTyDec s) →
+              PactM (list { s : CapSig & Cap s});
+  manager   : Value (valueTyDec s) → Value (valueTyDec s) →
+              PactM (Value (valueTyDec s))
 }.
 
 Derive NoConfusion NoConfusionHom Subterm for DefCap.
@@ -201,9 +167,7 @@ Derive NoConfusion NoConfusionHom Subterm for DefCap.
 Arguments predicate {s} _.
 Arguments manager {s} _.
 
-Import EqNotations.
-
-Fixpoint is_member `{EqDec a} {B : a → Type} (k : a)
+Fixpoint is_member `{EqDec a} {B : a → Set} (k : a)
          (l : list { k : a & B k }) : bool :=
   match l with
   | [] => false
@@ -214,7 +178,7 @@ Fixpoint is_member `{EqDec a} {B : a → Type} (k : a)
       end
   end.
 
-Program Fixpoint get_value `{EqDec a} {B : a → Type} (k : a)
+Program Fixpoint get_value `{EqDec a} {B : a → Set} (k : a)
         (l : list { k : a & B k }) : option (B k) :=
   match l with
   | [] => None
@@ -225,7 +189,7 @@ Program Fixpoint get_value `{EqDec a} {B : a → Type} (k : a)
       end
   end.
 
-Fixpoint set_value `{EqDec a} {B : a → Type} (k : a) (x : B k)
+Fixpoint set_value `{EqDec a} {B : a → Set} (k : a) (x : B k)
          (l : list { k : a & B k }) : list { k : a & B k } :=
   match l with
   | [] => [existT _ k x]
@@ -236,7 +200,7 @@ Fixpoint set_value `{EqDec a} {B : a → Type} (k : a) (x : B k)
       end
   end.
 
-Program Fixpoint has_value `{EqDec a} {B : a → Type} (k : a)
+Program Fixpoint has_value `{EqDec a} {B : a → Set} (k : a)
         `{EqDec (B k)} (x : B k) (l : list { k : a & B k }) : bool :=
   match l with
   | [] => false
@@ -259,9 +223,9 @@ Definition install_capability `(D : DefCap s) (c : Cap s) : PactM () :=
   let '(Token arg val) := c in
 
   (* jww (2022-07-15): This should only be possible to do in specific
-     contexts, otherwise a user could install as much resource as they needed.
+     contexts, otherwise a user could install as much resource as they needed. *)
 
-     jww (2022-07-15): What if the resource had already been installed? *)
+  (* jww (2022-07-15): What if the resource had already been installed? *)
 
   (* "Installing" a capability means assigning a resource amount associated
      with that capability, that is consumed by future calls to
@@ -276,8 +240,8 @@ Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
      amount. Note: unit is used to represent unmanaged capabilities. *)
   st <- get ;
   match valueTy s, get_value s (resources st) with
-  | TUnit, _    => pure ()
-  | _, None     => throw (Err_Capability (CapErr_NoResourceAvailable c))
+  | TyPrim PrimUnit, _ => pure ()
+  | _, None => throw (Err_Capability (CapErr_NoResourceAvailable c))
   | _, Some mng =>
     mng' <- manager D mng val ;
     put {| resources := set_value s mng' (resources st) |}
@@ -331,9 +295,9 @@ Definition require_capability `(D : DefCap s) (c : Cap s) : PactM () :=
   let '(Token arg val) := c in
 
   (* Note that the request resource amount must match the original
-     with-capability exactly.
+     with-capability exactly. *)
 
-     jww (2022-07-15): Is this intended? *)
+  (* jww (2022-07-15): Is this intended? *)
 
   (* Requiring a capability means checking whether it has been granted at any
      point within the current scope of evaluation. *)

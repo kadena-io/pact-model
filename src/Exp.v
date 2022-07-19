@@ -1,9 +1,19 @@
 Require Import
+  Coq.ZArith.ZArith
   Lib
   Ty.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
+
+Derive NoConfusion NoConfusionHom Subterm EqDec for Ascii.ascii.
+Derive NoConfusion NoConfusionHom Subterm EqDec for string.
+Derive NoConfusion NoConfusionHom Subterm EqDec for Z.
+Next Obligation. now apply Z.eq_dec. Defined.
+Derive NoConfusion NoConfusionHom Subterm EqDec for N.
+Next Obligation. now apply N.eq_dec. Defined.
+Derive NoConfusion NoConfusionHom Subterm EqDec for nat.
+Derive NoConfusion NoConfusionHom Subterm EqDec for bool.
 
 Generalizable All Variables.
 
@@ -11,105 +21,81 @@ Section Exp.
 
 Import ListNotations.
 
-Class HostExprs (A : Type) : Type := {
-  has_host_types :> HostTypes A;
-  HostErr : Type;
-  HostErr_EqDec : EqDec HostErr;
-  HostExp : Ty → Type
-}.
+Inductive Literal : PrimType → Set :=
+  | LString : string → Literal PrimString
+  | LInteger : Z → Literal PrimInteger
+  | LDecimal : N → N → Literal PrimDecimal
+  | LUnit : Literal PrimUnit
+  | LBool : bool → Literal PrimBool
+  | LTime : nat → Literal PrimTime.
 
-Context {A : Type}.
-Context `{HostExprs A}.
+Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Literal.
 
 Open Scope Ty_scope.
 
+Definition ℤ : Ty := TyPrim PrimInteger.
+
+Inductive Builtin : Ty → Set :=
+  | AddInt : Builtin (ℤ ⟶ ℤ ⟶ ℤ).
+
+Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Builtin.
+
 Definition Env := list Ty.
 
-Inductive Var : Env → Ty → Type :=
+Inductive Var : Env → Ty → Set :=
   | ZV {Γ τ}    : Var (τ :: Γ) τ
   | SV {Γ τ τ'} : Var Γ τ → Var (τ' :: Γ) τ.
 
-Derive Signature NoConfusion EqDec for Var.
+Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Var.
 
-Inductive Err : Type :=
-  | Err_Hosted : HostErr → Err
-  | Err_CarNil.
+Inductive Err : Set :=
+  | Err_CarNil
+  | Err_CdrNil.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Err.
-Next Obligation.
-  generalize dependent y.
-  induction x;
-  intros;
-  destruct y;
-  try solve [ now left | now right ].
-  - destruct (HostErr_EqDec h h0); subst.
-    + now left.
-    + right; intro.
-      inversion H0.
-      contradiction.
-  (* - destruct (IHx y); subst. *)
-  (*   + now left. *)
-  (*   + right. *)
-  (*     intro. *)
-  (*     inversion H0. *)
-  (*     contradiction. *)
-  (* - destruct (IHx y); subst. *)
-  (*   + now left. *)
-  (*   + right. *)
-  (*     intro. *)
-  (*     inversion H0. *)
-  (*     contradiction. *)
-Defined.
 
-Inductive Exp Γ : Ty → Type :=
-  (* | HostedExp {τ}       : HostExp τ → Exp Γ τ *)
-  (* | HostedVal {ty}      : HostExp (TyHost ty) → Exp Γ (TyHost ty) *)
-  (* | HostedFun {dom cod} : HostExp (dom ⟶ cod) → Exp Γ (dom ⟶ cod) *)
+Inductive Exp Γ : Ty → Set :=
+  | Error {τ}     : Err → Exp Γ τ
 
-  | Error {τ}           : Err → Exp Γ τ
-  | EUnit               : Exp Γ TyUnit
-  (* | ETrue               : Exp Γ TyBool *)
-  (* | EFalse              : Exp Γ TyBool *)
-  (* | If {τ}              : Exp Γ TyBool → Exp Γ τ → Exp Γ τ → Exp Γ τ *)
+  | Lit {ty}      : Literal ty → Exp Γ (TyPrim ty)
+  | Bltn {τ}      : Builtin τ → Exp Γ τ
 
-  (* | Pair {τ1 τ2}        : Exp Γ τ1 → Exp Γ τ2 → Exp Γ (TyPair τ1 τ2) *)
-  (* | Fst {τ1 τ2}         : Exp Γ (TyPair τ1 τ2) → Exp Γ τ1 *)
-  (* | Snd {τ1 τ2}         : Exp Γ (TyPair τ1 τ2) → Exp Γ τ2 *)
+  | If {τ}        : Exp Γ (TyPrim PrimBool) → Exp Γ τ → Exp Γ τ → Exp Γ τ
 
-  (* | Nil {τ}             : Exp Γ (TyList τ) *)
-  (* | Cons {τ}            : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ) *)
-  (* | Car {τ}             : Exp Γ (TyList τ) → Exp Γ τ *)
-  (* | Cdr {τ}             : Exp Γ (TyList τ) → Exp Γ (TyList τ) *)
-  (* | IsNil {τ}           : Exp Γ (TyList τ) → Exp Γ TyBool *)
+  | Pair {τ1 τ2}  : Exp Γ τ1 → Exp Γ τ2 → Exp Γ (TyPair τ1 τ2)
+  | Fst {τ1 τ2}   : Exp Γ (TyPair τ1 τ2) → Exp Γ τ1
+  | Snd {τ1 τ2}   : Exp Γ (TyPair τ1 τ2) → Exp Γ τ2
 
-  (* | Seq {τ τ'}          : Exp Γ τ' → Exp Γ τ → Exp Γ τ *)
+  | Nil {τ}       : Exp Γ (TyList τ)
+  | Cons {τ}      : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
+  | Car {τ}       : Exp Γ (TyList τ) → Exp Γ τ
+  | Cdr {τ}       : Exp Γ (TyList τ) → Exp Γ (TyList τ)
+  | IsNil {τ}     : Exp Γ (TyList τ) → Exp Γ (TyPrim PrimBool)
+
+  | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
   (* These are the terms of the base lambda calculus *)
-  | VAR {τ}             : Var Γ τ → Exp Γ τ
-  | LAM {dom cod}       : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
-  | APP {dom cod}       : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
+  | VAR {τ}       : Var Γ τ → Exp Γ τ
+  | LAM {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
+  | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
 
-Derive Signature NoConfusionHom EqDec for Exp.
+Derive Signature NoConfusionHom Subterm EqDec for Exp.
 
 Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   match e with
-  (* | HostedExp _ x => 1 *)
-  (* | HostedVal _ x => 1 *)
-  (* | HostedFun _ x => 1 *)
   | Error _ _     => 1
-  | EUnit _       => 1
-  (* | ETrue _       => 1 *)
-  (* | EFalse _      => 1 *)
-  (* | If _ b t e    => 1 + Exp_size b + Exp_size t + Exp_size e *)
-  (* | Pair _ x y    => 1 + Exp_size x + Exp_size y *)
-  (* | Fst _ p       => 1 + Exp_size p *)
-  (* | Snd _ p       => 1 + Exp_size p *)
-  (* | Nil _         => 1 *)
-  (* | Cons _ x xs   => 1 + Exp_size x + Exp_size xs *)
-  (* | Car _ xs      => 1 + Exp_size xs *)
-  (* | Cdr _ xs      => 1 + Exp_size xs *)
-  (* | IsNil _ xs    => 1 + Exp_size xs *)
-  (* | Seq _ x y     => 1 + Exp_size x + Exp_size y *)
+  | Lit _ _       => 1
+  | Bltn _ _      => 1
+  | If _ b t e    => 1 + Exp_size b + Exp_size t + Exp_size e
+  | Pair _ x y    => 1 + Exp_size x + Exp_size y
+  | Fst _ p       => 1 + Exp_size p
+  | Snd _ p       => 1 + Exp_size p
+  | Nil _         => 1
+  | Cons _ x xs   => 1 + Exp_size x + Exp_size xs
+  | Car _ xs      => 1 + Exp_size xs
+  | Cdr _ xs      => 1 + Exp_size xs
+  | IsNil _ xs    => 1 + Exp_size xs
+  | Seq _ x y     => 1 + Exp_size x + Exp_size y
   | VAR _ v       => 1
   | LAM _ e       => 1 + Exp_size e
   | APP _ e1 e2   => 1 + Exp_size e1 + Exp_size e2
@@ -121,29 +107,33 @@ Proof. repeat intro; subst; contradiction. Qed.
 
 End Exp.
 
-(* Arguments ZV {A H _ _}. *)
-(* Arguments SV {A H _ _ _} _. *)
+Arguments ZV {_ _}.
+Arguments SV {_ _ _} _.
 
-(* Arguments HostedExp {A H Γ τ} _. *)
-(* Arguments HostedVal {A H Γ ty} _. *)
-(* Arguments HostedFun {A H Γ dom cod} _. *)
-Arguments Error {A H Γ τ} _.
-Arguments EUnit {A H Γ}.
-(* Arguments ETrue {A H Γ}. *)
-(* Arguments EFalse {A H Γ}. *)
-(* Arguments If {A H Γ τ} _ _ _. *)
-(* Arguments Pair {A H Γ τ1 τ2} _ _. *)
-(* Arguments Fst {A H Γ τ1 τ2} _. *)
-(* Arguments Snd {A H Γ τ1 τ2} _. *)
-(* Arguments Nil {A H Γ τ}. *)
-(* Arguments Cons {A H Γ τ} _ _. *)
-(* Arguments Car {A H Γ τ} _. *)
-(* Arguments Cdr {A H Γ τ} _. *)
-(* Arguments IsNil {A H Γ τ} _. *)
-(* Arguments Seq {A H Γ τ τ'} _ _. *)
-Arguments VAR {A H Γ τ} _.
-Arguments LAM {A H Γ dom cod} _.
-Arguments APP {A H Γ dom cod} _ _.
+Arguments Error {Γ τ} _.
+Arguments Lit {Γ ty} _.
+Arguments Bltn {Γ τ} _.
+Arguments If {Γ τ} _ _ _.
+Arguments Pair {Γ τ1 τ2} _ _.
+Arguments Fst {Γ τ1 τ2} _.
+Arguments Snd {Γ τ1 τ2} _.
+Arguments Nil {Γ τ}.
+Arguments Cons {Γ τ} _ _.
+Arguments Car {Γ τ} _.
+Arguments Cdr {Γ τ} _.
+Arguments IsNil {Γ τ} _.
+Arguments Seq {Γ τ τ'} _ _.
+Arguments VAR {Γ τ} _.
+Arguments LAM {Γ dom cod} _.
+Arguments APP {Γ dom cod} _ _.
 
-Notation "Γ ∋ τ" := (Var Γ τ) (at level 10).
-Notation "Γ ⊢ τ" := (Exp Γ τ) (at level 10).
+Declare Scope Var_scope.
+Bind Scope Var_scope with Var.
+Delimit Scope Var_scope with var.
+
+Declare Scope Exp_scope.
+Bind Scope Exp_scope with Exp.
+Delimit Scope Exp_scope with exp.
+
+Notation "Γ ∋ τ" := (Var Γ τ%ty) (at level 10) : type_scope.
+Notation "Γ ⊢ τ" := (Exp Γ τ%ty) (at level 10) : type_scope.

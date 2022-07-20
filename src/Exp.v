@@ -6,15 +6,6 @@ Require Import
 From Equations Require Import Equations.
 Set Equations With UIP.
 
-Derive NoConfusion NoConfusionHom Subterm EqDec for Ascii.ascii.
-Derive NoConfusion NoConfusionHom Subterm EqDec for string.
-Derive NoConfusion NoConfusionHom Subterm EqDec for Z.
-Next Obligation. now apply Z.eq_dec. Defined.
-Derive NoConfusion NoConfusionHom Subterm EqDec for N.
-Next Obligation. now apply N.eq_dec. Defined.
-Derive NoConfusion NoConfusionHom Subterm EqDec for nat.
-Derive NoConfusion NoConfusionHom Subterm EqDec for bool.
-
 Generalizable All Variables.
 
 Section Exp.
@@ -22,18 +13,16 @@ Section Exp.
 Import ListNotations.
 
 Inductive Literal : PrimType → Set :=
-  | LString : string → Literal PrimString
-  | LInteger : Z → Literal PrimInteger
-  | LDecimal : N → N → Literal PrimDecimal
-  | LUnit : Literal PrimUnit
-  | LBool : bool → Literal PrimBool
-  | LTime : nat → Literal PrimTime.
+  | LitString  : string → Literal PrimString
+  | LitInteger : Z → Literal PrimInteger
+  | LitDecimal : N → N → Literal PrimDecimal
+  | LitUnit    : Literal PrimUnit
+  | LitBool    : bool → Literal PrimBool
+  | LitTime    : nat → Literal PrimTime.
 
 Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Literal.
 
 Open Scope Ty_scope.
-
-Definition ℤ : Ty := TyPrim PrimInteger.
 
 Inductive Builtin : Ty → Set :=
   | AddInt : Builtin (ℤ ⟶ ℤ ⟶ ℤ).
@@ -55,12 +44,19 @@ Inductive Err : Set :=
 Derive NoConfusion NoConfusionHom Subterm EqDec for Err.
 
 Inductive Exp Γ : Ty → Set :=
+  | VAR {τ}       : Var Γ τ → Exp Γ τ
+  | LAM {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
+  | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod
+
+  (* The following terms represent Pact beyond lambda calculus. *)
   | Error {τ}     : Err → Exp Γ τ
 
   | Lit {ty}      : Literal ty → Exp Γ (TyPrim ty)
   | Bltn {τ}      : Builtin τ → Exp Γ τ
 
-  | If {τ}        : Exp Γ (TyPrim PrimBool) → Exp Γ τ → Exp Γ τ → Exp Γ τ
+  | Symbol        : string → Exp Γ TySym
+
+  | If {τ}        : Exp Γ 𝔹 → Exp Γ τ → Exp Γ τ → Exp Γ τ
 
   | Pair {τ1 τ2}  : Exp Γ τ1 → Exp Γ τ2 → Exp Γ (TyPair τ1 τ2)
   | Fst {τ1 τ2}   : Exp Γ (TyPair τ1 τ2) → Exp Γ τ1
@@ -70,35 +66,46 @@ Inductive Exp Γ : Ty → Set :=
   | Cons {τ}      : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
   | Car {τ}       : Exp Γ (TyList τ) → Exp Γ τ
   | Cdr {τ}       : Exp Γ (TyList τ) → Exp Γ (TyList τ)
-  | IsNil {τ}     : Exp Γ (TyList τ) → Exp Γ (TyPrim PrimBool)
+  | IsNil {τ}     : Exp Γ (TyList τ) → Exp Γ 𝔹
 
   | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
-  (* These are the terms of the base lambda calculus *)
-  | VAR {τ}       : Var Γ τ → Exp Γ τ
-  | LAM {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
-  | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod.
+  | Capability        {p v}   : Exp Γ TySym → Exp Γ p → Exp Γ v →
+                                Exp Γ (TyCap p v)
+  | InstallCapability {p v}   : Exp Γ (TyCap p v) → Exp Γ 𝕌
+  | WithCapability    {p v τ} :
+    Exp Γ (TyCap p v ⟶ (𝕌 ⟶ τ) ⟶ τ) →
+    Exp Γ (v ⟶ v ⟶ v) →
+    Exp Γ (TyCap p v) → Exp Γ τ → Exp Γ τ
+  | RequireCapability {p v}   : Exp Γ (TyCap p v) → Exp Γ 𝕌.
 
 Derive Signature NoConfusionHom Subterm EqDec for Exp.
 
 Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   match e with
-  | Error _ _     => 1
-  | Lit _ _       => 1
-  | Bltn _ _      => 1
-  | If _ b t e    => 1 + Exp_size b + Exp_size t + Exp_size e
-  | Pair _ x y    => 1 + Exp_size x + Exp_size y
-  | Fst _ p       => 1 + Exp_size p
-  | Snd _ p       => 1 + Exp_size p
-  | Nil _         => 1
-  | Cons _ x xs   => 1 + Exp_size x + Exp_size xs
-  | Car _ xs      => 1 + Exp_size xs
-  | Cdr _ xs      => 1 + Exp_size xs
-  | IsNil _ xs    => 1 + Exp_size xs
-  | Seq _ x y     => 1 + Exp_size x + Exp_size y
-  | VAR _ v       => 1
-  | LAM _ e       => 1 + Exp_size e
-  | APP _ e1 e2   => 1 + Exp_size e1 + Exp_size e2
+  | VAR _ v     => 1
+  | LAM _ e     => 1 + Exp_size e
+  | APP _ e1 e2 => 1 + Exp_size e1 + Exp_size e2
+
+  | Error _ _   => 1
+  | Lit _ _     => 1
+  | Bltn _ _    => 1
+  | Symbol _ _  => 1
+  | If _ b t e  => 1 + Exp_size b + Exp_size t + Exp_size e
+  | Pair _ x y  => 1 + Exp_size x + Exp_size y
+  | Fst _ p     => 1 + Exp_size p
+  | Snd _ p     => 1 + Exp_size p
+  | Nil _       => 1
+  | Cons _ x xs => 1 + Exp_size x + Exp_size xs
+  | Car _ xs    => 1 + Exp_size xs
+  | Cdr _ xs    => 1 + Exp_size xs
+  | IsNil _ xs  => 1 + Exp_size xs
+  | Seq _ x y   => 1 + Exp_size x + Exp_size y
+
+  | Capability _ s p v    => 1 + Exp_size s + Exp_size p + Exp_size v
+  | InstallCapability _ c => 1 + Exp_size c
+  | WithCapability _ c e  => 1 + Exp_size c + Exp_size e
+  | RequireCapability _ c => 1 + Exp_size c
   end.
 
 Corollary Exp_size_preserved {Γ τ} (e1 e2 : Exp Γ τ) :
@@ -110,9 +117,13 @@ End Exp.
 Arguments ZV {_ _}.
 Arguments SV {_ _ _} _.
 
+Arguments VAR {Γ τ} _.
+Arguments LAM {Γ dom cod} _.
+Arguments APP {Γ dom cod} _ _.
 Arguments Error {Γ τ} _.
 Arguments Lit {Γ ty} _.
 Arguments Bltn {Γ τ} _.
+Arguments Symbol {Γ} _.
 Arguments If {Γ τ} _ _ _.
 Arguments Pair {Γ τ1 τ2} _ _.
 Arguments Fst {Γ τ1 τ2} _.
@@ -123,9 +134,10 @@ Arguments Car {Γ τ} _.
 Arguments Cdr {Γ τ} _.
 Arguments IsNil {Γ τ} _.
 Arguments Seq {Γ τ τ'} _ _.
-Arguments VAR {Γ τ} _.
-Arguments LAM {Γ dom cod} _.
-Arguments APP {Γ dom cod} _ _.
+Arguments Capability {_ p v} _ _ _.
+Arguments InstallCapability {_ p v} _.
+Arguments WithCapability {_ p v τ} _ _.
+Arguments RequireCapability {_ p v} _.
 
 Declare Scope Var_scope.
 Bind Scope Var_scope with Var.

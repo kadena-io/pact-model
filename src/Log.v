@@ -2,7 +2,6 @@ Set Warnings "-cannot-remove-as-expected".
 
 Require Import
   Lib
-  Ltac
   Ty
   Exp
   Sub.

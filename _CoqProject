@@ -11,7 +11,8 @@ src/Log.v
 src/Value.v
 src/Ren.v
 src/Sub.v
-src/Sem.v
+src/SemTy.v
+src/SemExp.v
 src/Cat.v
 src/Data/Semigroup.v
 src/Data/Monoid.v

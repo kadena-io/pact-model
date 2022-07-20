@@ -118,9 +118,14 @@ Qed.
 
 Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
+  | VAR v         => VAR (RenVar r v)
+  | APP e1 e2     => APP (RenExp r e1) (RenExp r e2)
+  | LAM e         => LAM (RenExp (Keep r) e)
+
   | Error e       => Error e
   | Lit l         => Lit l
   | Bltn b        => Bltn b
+  | Symbol s      => Symbol s
   | If b t e      => If (RenExp r b) (RenExp r t) (RenExp r e)
   | Pair x y      => Pair (RenExp r x) (RenExp r y)
   | Fst p         => Fst (RenExp r p)
@@ -132,9 +137,10 @@ Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | IsNil xs      => IsNil (RenExp r xs)
   | Seq exp1 exp2 => Seq (RenExp r exp1) (RenExp r exp2)
 
-  | VAR v         => VAR (RenVar r v)
-  | APP e1 e2     => APP (RenExp r e1) (RenExp r e2)
-  | LAM e         => LAM (RenExp (Keep r) e)
+  | Capability n p v    => Capability (RenExp r n) (RenExp r p) (RenExp r v)
+  | InstallCapability c => InstallCapability (RenExp r c)
+  | WithCapability c e  => WithCapability (RenExp r c) (RenExp r e)
+  | RequireCapability c => RequireCapability (RenExp r c)
   end.
 
 Lemma RenExp_preserves_size {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) :

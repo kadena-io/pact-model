@@ -1,6 +1,5 @@
 Require Import
   Lib
-  Ltac
   Ty
   Exp
   Value
@@ -69,9 +68,14 @@ Equations SubVar {Γ Γ' τ} (s : Sub Γ Γ') (v : Var Γ' τ) : Exp Γ τ :=
 
 Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   match e with
+  | VAR v         => SubVar s v
+  | APP e1 e2     => APP (SubExp s e1) (SubExp s e2)
+  | LAM e         => LAM (SubExp (Keepₛ s) e)
+
   | Error e       => Error e
   | Lit l         => Lit l
   | Bltn b        => Bltn b
+  | Symbol s      => Symbol s
   | If b t e      => If (SubExp s b) (SubExp s t) (SubExp s e)
   | Pair x y      => Pair (SubExp s x) (SubExp s y)
   | Fst p         => Fst (SubExp s p)
@@ -83,9 +87,10 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | IsNil xs      => IsNil (SubExp s xs)
   | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
 
-  | VAR v         => SubVar s v
-  | APP e1 e2     => APP (SubExp s e1) (SubExp s e2)
-  | LAM e         => LAM (SubExp (Keepₛ s) e)
+  | Capability n p v    => Capability (SubExp s n) (SubExp s p) (SubExp s v)
+  | InstallCapability c => InstallCapability (SubExp s c)
+  | WithCapability c e  => WithCapability (SubExp s c) (SubExp s e)
+  | RequireCapability c => RequireCapability (SubExp s c)
   end.
 
 Fixpoint ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (δ : Sub Γ Γ') : Sub Γ Γ'' :=

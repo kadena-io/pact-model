@@ -17,9 +17,9 @@ Unset Transparent Obligations.
 
 Section RWSE.
 
-Context {r s w e : Set}.
+Context {r s w e : Type}.
 
-Definition RWSE (a : Set) := r → s → w → e + (a * (s * w)).
+Definition RWSE (a : Type) := r → s → w → e + (a * (s * w)).
 
 Definition ask : RWSE r := λ r s w, inr (r, (s, w)).
 
@@ -27,7 +27,7 @@ Definition local (f : r → r) `(x : RWSE a) : RWSE a :=
   λ r s w, x (f r) s w.
 
 Definition get : RWSE s := λ r s w, inr (s, (s, w)).
-Definition gets {a : Set} (f : s → a) : RWSE a := λ r s w, inr (f s, (s, w)).
+Definition gets {a : Type} (f : s → a) : RWSE a := λ r s w, inr (f s, (s, w)).
 Definition put (x : s) : RWSE unit := λ _ _ w, inr (tt, (x, w)).
 Definition modify (f : s → s) : RWSE unit := λ _ s w, inr (tt, (f s, w)).
 
@@ -36,14 +36,14 @@ Definition tell `{Monoid w} (v : w) : RWSE unit :=
 
 Definition tellf (f : w → w) : RWSE unit := λ _ s w, inr (tt, (s, f w)).
 
-Definition throw (err : e) : RWSE unit := λ _ _ _, inl err.
+Definition throw {a : Type} (err : e) : RWSE a := λ _ _ _, inl err.
 
 #[export]
 Program Instance RWSE_Functor : Functor RWSE := {
   fmap := λ A B f (x : RWSE A), λ r s w, first f <$> x r s w
 }.
 
-Definition RWSE_ap {a b : Set} (f : RWSE (a → b)) (x : RWSE a) :
+Definition RWSE_ap {a b : Type} (f : RWSE (a → b)) (x : RWSE a) :
   RWSE b := λ r s w,
   match f r s w with
   | inl e => inl e
@@ -85,7 +85,7 @@ Proof.
 Qed.
 
 #[global]
-Program Instance RWSE_FunctorLaws {r s w e : Set} :
+Program Instance RWSE_FunctorLaws {r s w e : Type} :
   FunctorLaws (@RWSE r s w e).
 Next Obligation.
   extensionality x.
@@ -108,7 +108,7 @@ Next Obligation.
 Qed.
 
 #[global]
-Program Instance RWSE_Applicative {r s w e : Set} :
+Program Instance RWSE_Applicative {r s w e : Type} :
   ApplicativeLaws (@RWSE r s w e).
 Next Obligation.
   extensionality x.
@@ -149,7 +149,7 @@ Next Obligation.
 Qed.
 
 #[global]
-Program Instance RWSE_Monad {r s w e : Set} :
+Program Instance RWSE_Monad {r s w e : Type} :
   MonadLaws (@RWSE r s w e).
 Next Obligation.
   unfold comp.

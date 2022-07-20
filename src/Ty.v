@@ -19,27 +19,46 @@ Inductive PrimType : Set :=
 Derive NoConfusion NoConfusionHom Subterm EqDec for PrimType.
 
 Inductive Ty : Set :=
-  | TyPrim : PrimType → Ty
+  | TyArrow : Ty → Ty → Ty
 
-  | TyList : Ty → Ty
-  | TyPair : Ty → Ty → Ty
+  (* The following types represent Pact beyond lambda calculus. *)
+  | TyPrim  : PrimType → Ty
+  | TySym   : Ty
 
-  (* | TyCap : Ty → Ty → Ty *)
+  | TyList  : Ty → Ty
+  | TyPair  : Ty → Ty → Ty
 
-  (* The arrow type is the only type in the base lambda calculus *)
-  | TyArrow : Ty → Ty → Ty.
+  | TyCap   : Ty → Ty → Ty.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Ty.
 
-Inductive DecidableP : Ty → Set :=
-  | PrimDecP {ty} : DecidableP (TyPrim ty)
-  | ListDecP {τ} : DecidableP τ → DecidableP (TyList τ)
-  | PairDecP {τ1 τ2} : DecidableP τ1 → DecidableP τ2 →
-                       DecidableP (TyPair τ1 τ2).
+Inductive ConcreteP : Ty → Set :=
+  | PrimDecP {ty}    : ConcreteP (TyPrim ty)
+  | SymDecP          : ConcreteP TySym
+  | ListDecP {τ}     : ConcreteP τ → ConcreteP (TyList τ)
+  | PairDecP {τ1 τ2} : ConcreteP τ1 → ConcreteP τ2 →
+                       ConcreteP (TyPair τ1 τ2).
 
-Derive Signature NoConfusion NoConfusionHom EqDec for DecidableP.
+Derive Signature NoConfusion NoConfusionHom EqDec for ConcreteP.
 
-Lemma DecidableP_irrelevance {τ} (H1 H2 : DecidableP τ) :
+Fixpoint Concreteness (t : Ty) : option (ConcreteP t) :=
+  match t with
+  | TyPrim ty    => Some (PrimDecP (ty:=ty))
+  | TySym        => Some SymDecP
+  | TyList τ     =>
+      match Concreteness τ with
+      | Some decP => Some (ListDecP decP)
+      | None => None
+      end
+  | TyPair τ1 τ2 =>
+      match Concreteness τ1, Concreteness τ2 with
+      | Some dec1P, Some dec2P => Some (PairDecP dec1P dec2P)
+      | _, _ => None
+      end
+  | _ => None
+  end.
+
+Lemma ConcreteP_irrelevance {τ} (H1 H2 : ConcreteP τ) :
   H1 = H2.
 Proof.
   dependent induction H1;
@@ -47,23 +66,20 @@ Proof.
   f_equal; congruence.
 Qed.
 
-Lemma DecidableP_dec {τ} :
-  DecidableP τ + (DecidableP τ → False).
+Lemma ConcreteP_dec {τ} :
+  ConcreteP τ + (ConcreteP τ → False).
 Proof.
   induction τ; try solve [now left; constructor|now right].
-  - destruct IHτ.
-    + now left; constructor.
-    + right; intro; inversion H; contradiction.
-  - destruct IHτ1, IHτ2.
-    + now left; constructor.
-    + right; intro; inversion H; contradiction.
-    + right; intro; inversion H; contradiction.
-    + right; intro; inversion H; contradiction.
+  - destruct IHτ;
+    try (now left; constructor);
+    right; intro; inversion H; contradiction.
+  - destruct IHτ1, IHτ2;
+    try (now left; constructor);
+    right; intro; inversion H; contradiction.
 Qed.
 
 End Ty.
 
-Arguments PrimDecP.
 Arguments ListDecP {τ} _.
 Arguments PairDecP {τ1 τ2} _ _.
 
@@ -73,3 +89,10 @@ Delimit Scope Ty_scope with ty.
 
 Infix "⟶" := TyArrow (at level 51, right associativity) : Ty_scope.
 Infix "×"  := TyPair  (at level 40, left associativity) : Ty_scope.
+
+Notation "'ℤ'" := (TyPrim PrimInteger).
+Notation "'𝔻'" := (TyPrim PrimDecimal).
+Notation "'𝕋'" := (TyPrim PrimTime).
+Notation "'𝔹'" := (TyPrim PrimBool).
+Notation "'𝕊'" := (TyPrim PrimString).
+Notation "'𝕌'" := (TyPrim PrimUnit).

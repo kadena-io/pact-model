@@ -1,6 +1,5 @@
 Require Import
   Lib
-  Ltac
   Ty
   Exp
   Log

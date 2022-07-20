@@ -19,14 +19,14 @@ Inductive PrimType : Set :=
 Derive NoConfusion NoConfusionHom Subterm EqDec for PrimType.
 
 Inductive Ty : Set :=
-  | TyArrow : Ty → Ty → Ty
+  | TyArrow    : Ty → Ty → Ty
 
   (* The following types represent Pact beyond lambda calculus. *)
-  | TyPrim  : PrimType → Ty
-  | TySym   : Ty
+  | TyPrim     : PrimType → Ty
+  | TySym      : Ty
 
-  | TyList  : Ty → Ty
-  | TyPair  : Ty → Ty → Ty
+  | TyList     : Ty → Ty
+  | TyPair     : Ty → Ty → Ty
 
   | TyACapList : Ty
   | TyCap      : Ty → Ty → Ty.

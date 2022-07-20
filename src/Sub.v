@@ -91,8 +91,10 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
       Capability Hp Hv (SubExp s n) (SubExp s p) (SubExp s v)
   | WithCapability Hp Hv p m c e =>
       WithCapability Hp Hv (SubExp s p) (SubExp s m) (SubExp s c) (SubExp s e)
-  | InstallCapability c    => InstallCapability (SubExp s c)
-  | RequireCapability c    => RequireCapability (SubExp s c)
+  | ComposeCapability Hp Hv p m c =>
+      ComposeCapability Hp Hv (SubExp s p) (SubExp s m) (SubExp s c)
+  | InstallCapability c => InstallCapability (SubExp s c)
+  | RequireCapability c => RequireCapability (SubExp s c)
   end.
 
 Fixpoint ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (δ : Sub Γ Γ') : Sub Γ Γ'' :=

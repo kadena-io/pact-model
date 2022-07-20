@@ -143,26 +143,37 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
   SemExp (Seq exp1 exp2) se := SemExp exp1 se >> SemExp exp2 se;
 
   SemExp (Capability (p:=tp) (v:=tv) Hp Hv nm arg val) se :=
-      nm'  <- SemExp nm se ;
-      arg' <- SemExp arg se ;
-      val' <- SemExp val se ;
-      pure (f:=PactM)
-           (Token (s:={| paramTy := concreteTy tp
-                       ; valueTy := concreteTy tv |})
-                  nm' (concrete arg' Hp)
-                      (concrete val' Hv));
+    nm'  <- SemExp nm se ;
+    arg' <- SemExp arg se ;
+    val' <- SemExp val se ;
+    pure (f:=PactM)
+         (Token (s:={| paramTy := concreteTy tp
+                     ; valueTy := concreteTy tv |})
+                nm' (concrete arg' Hp)
+                    (concrete val' Hv));
 
   SemExp (WithCapability (p:=tp) (v:=tv) Hp Hv prd mng c e) se :=
-      c'   <- SemExp c se ;
-      prd' <- SemExp prd se ;
-      mng' <- SemExp mng se ;
-      with_capability
-        (s:={| paramTy := concreteTy tp
-             ; valueTy := concreteTy tv |})
-        c'
-        prd'
-        (concreteH1 (dom:=TyPair tv tv) mng' Hv)
-        (SemExp e se);
+    c'   <- SemExp c se ;
+    prd' <- SemExp prd se ;
+    mng' <- SemExp mng se ;
+    with_capability
+      (s:={| paramTy := concreteTy tp
+           ; valueTy := concreteTy tv |})
+      c'
+      prd'
+      (concreteH1 (dom:=TyPair tv tv) mng' Hv)
+      (SemExp e se);
+
+  SemExp (ComposeCapability (p:=tp) (v:=tv) Hp Hv prd mng c) se :=
+    c'   <- SemExp c se ;
+    prd' <- SemExp prd se ;
+    mng' <- SemExp mng se ;
+    compose_capability
+      (s:={| paramTy := concreteTy tp
+           ; valueTy := concreteTy tv |})
+      c'
+      prd'
+      (concreteH1 (dom:=TyPair tv tv) mng' Hv);
 
   SemExp (InstallCapability c) se :=
     install_capability =<< SemExp c se;
@@ -192,6 +203,7 @@ Proof.
   - now rewrite IHe1, IHe2.
   - now rewrite IHe1, IHe2, IHe3.
   - now rewrite IHe1, IHe2, IHe3, IHe4.
+  - now rewrite IHe1, IHe2, IHe3.
   - now rewrite IHe.
   - now rewrite IHe.
 Qed.

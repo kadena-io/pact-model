@@ -153,6 +153,9 @@ Definition with_capability `(c : Cap s)
     (* jww (2022-07-19): This can only be executed within the module that
        declares the capability. *)
 
+    (* jww (2022-07-20): TODO: [with-capability] cannot be called from within
+       defcap execution *)
+
     (* If the predicate passes, we are good to grant the capability. Note that
        the predicate may return a list of other capabilities to be "composed"
        with this one. *)
@@ -173,6 +176,38 @@ Definition with_capability `(c : Cap s)
        visible in the reader environment to the provided expression. *)
     local (λ r, {| granted := AToken _ c :: compCaps ++ granted r
                  ; context := context r |}) f.
+
+(* jww (2022-07-20): TODO *)
+(* jww (2022-07-20): This cannot be called except in defcap execution *)
+Definition compose_capability `(c : Cap s)
+           `(predicate : Cap s → PactM (list ACap))
+           (manager : Value (TPair (valueTy s) (valueTy s)) →
+                      PactM (Value (valueTy s))) : PactM () :=
+  (* Check whether the capability has already been granted. If so, this
+     operation is a no-op. *)
+  env <- ask ;
+  if get_value c (granted env)
+  then
+    pure ()
+  else
+    (* jww (2022-07-19): This can only be executed within the module that
+       declares the capability. *)
+
+    (* If the predicate passes, we are good to grant the capability. Note that
+       the predicate may return a list of other capabilities to be "composed"
+       with this one. *)
+    compCaps <-
+      local (λ r, {| granted := granted r
+                   ; context := InWithCapability :: context r |})
+        (predicate c) ;
+
+    (* Note that if the resource type is unit, the only thing this function
+       could do is throw an exception. But since this is semantically
+       equivalent to throwing the same exception at the end of the predicate,
+       there is no reason to avoid this invocation in that case. *)
+    local (λ r, {| granted := granted r
+                 ; context := InWithCapability :: context r |})
+      (__claim_resource c manager).
 
 Definition require_capability `(c : Cap s) : PactM () :=
   (* Note that the request resource amount must match the original

@@ -1,9 +1,12 @@
 Require Export
+  Hask.Control.Monad
   Lib
   Exp
   SemTy
   Value
   RWSE.
+
+(* Set Universe Polymorphism. *)
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -55,5 +58,9 @@ Record PactLog : Set := {}.
 Derive NoConfusion NoConfusionHom Subterm EqDec for PactLog.
 
 Definition PactM : Type → Type := @RWSE PactEnv PactState PactLog Err.
+
+#[export] Instance PactM_Functor     : Functor PactM     := RWSE_Functor.
+#[export] Instance PactM_Applicative : Applicative PactM := RWSE_Applicative.
+#[export] Instance PactM_Monad       : Monad PactM       := RWSE_Monad.
 
 End Pact.

@@ -87,11 +87,11 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | IsNil xs      => IsNil (SubExp s xs)
   | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
 
-  | Capability n Hp p Hv v => Capability (SubExp s n) Hp (SubExp s p)
-                                         Hv (SubExp s v)
+  | Capability Hp Hv n p v =>
+      Capability Hp Hv (SubExp s n) (SubExp s p) (SubExp s v)
+  | WithCapability Hp Hv p m c e =>
+      WithCapability Hp Hv (SubExp s p) (SubExp s m) (SubExp s c) (SubExp s e)
   | InstallCapability c    => InstallCapability (SubExp s c)
-  | WithCapability p m c e => WithCapability (SubExp s p) (SubExp s m)
-                                             (SubExp s c) (SubExp s e)
   | RequireCapability c    => RequireCapability (SubExp s c)
   end.
 

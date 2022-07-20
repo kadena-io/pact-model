@@ -5,7 +5,8 @@ Require Import
   Ty
   Exp
   Ren
-  Sem.
+  SemTy
+  SemExp.
 
 Require Import Category.Lib.
 Require Import Category.Theory.Category.
@@ -16,8 +17,8 @@ Set Equations With UIP.
 
 Generalizable All Variables.
 Set Primitive Projections.
-Set Universe Polymorphism.
-Unset Transparent Obligations.
+(* Set Universe Polymorphism. *)
+(* Unset Transparent Obligations. *)
 
 (*
 Section Cat.

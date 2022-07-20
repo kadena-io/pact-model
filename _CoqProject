@@ -1,7 +1,5 @@
 -R src Kadena
 src/ilist.v
-src/EnsemblesExt.v
-src/Group.v
 src/Data/Semigroup.v
 src/Data/Monoid.v
 src/RWSE.v

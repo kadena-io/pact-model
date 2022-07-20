@@ -8,8 +8,8 @@ Require Import FunctionalExtensionality.
 
 Generalizable All Variables.
 Set Primitive Projections.
-Set Universe Polymorphism.
-Unset Transparent Obligations.
+(* Set Universe Polymorphism. *)
+(* Unset Transparent Obligations. *)
 
 (******************************************************************************
  * The RWSET Monad transformer

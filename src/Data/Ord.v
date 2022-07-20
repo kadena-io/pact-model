@@ -2,8 +2,8 @@ Require Import Data.Eq.
 
 Generalizable All Variables.
 Set Primitive Projections.
-Set Universe Polymorphism.
-Unset Transparent Obligations.
+(* Set Universe Polymorphism. *)
+(* Unset Transparent Obligations. *)
 
 Inductive Ordering := LT | EQ | GT.
 

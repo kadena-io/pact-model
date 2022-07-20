@@ -3,8 +3,8 @@ Require Export Data.Semigroup.
 
 Generalizable All Variables.
 Set Primitive Projections.
-Set Universe Polymorphism.
-Unset Transparent Obligations.
+(* Set Universe Polymorphism. *)
+(* Unset Transparent Obligations. *)
 
 Class Monoid (m : Type) := {
   is_semigroup :> Semigroup m;

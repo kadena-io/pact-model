@@ -137,11 +137,11 @@ Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | IsNil xs      => IsNil (RenExp r xs)
   | Seq exp1 exp2 => Seq (RenExp r exp1) (RenExp r exp2)
 
-  | Capability n Hp p Hv v => Capability (RenExp r n) Hp (RenExp r p)
-                                         Hv (RenExp r v)
+  | Capability Hp Hv n p v =>
+      Capability Hp Hv (RenExp r n) (RenExp r p) (RenExp r v)
+  | WithCapability Hp Hv p m c e =>
+      WithCapability Hp Hv (RenExp r p) (RenExp r m) (RenExp r c) (RenExp r e)
   | InstallCapability c    => InstallCapability (RenExp r c)
-  | WithCapability p m c e => WithCapability (RenExp r p) (RenExp r m)
-                                             (RenExp r c) (RenExp r e)
   | RequireCapability c    => RequireCapability (RenExp r c)
   end.
 

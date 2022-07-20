@@ -30,10 +30,10 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
   | ConsP {τ} (x : Exp Γ τ) xs :
     ValueP Γ x → ValueP Γ xs → ValueP Γ (Cons x xs)
   | CapabilityP {tp tv} (s : Exp Γ TySym)
-                (Hp : ConcreteP tp) {p : Exp Γ tp}
-                (Hv : ConcreteP tv) {v : Exp Γ tv} :
+                (Hp : ConcreteP tp) (Hv : ConcreteP tv)
+                {p : Exp Γ tp} {v : Exp Γ tv} :
     ValueP Γ s → ValueP Γ p → ValueP Γ v →
-    ValueP Γ (Capability s Hp p Hv v).
+    ValueP Γ (Capability Hp Hv s p v).
 
 Derive Signature for ValueP.
 
@@ -112,18 +112,6 @@ Inductive Value : ValueTy → Set :=
   | VPair {t1 t2} : Value t1 → Value t2 → Value (TPair t1 t2).
 
 Derive Signature NoConfusion NoConfusionHom Subterm for Value.
-
-Equations concreteTy (τ : Ty) : ValueTy :=
-  concreteTy ℤ              := TInteger;
-  concreteTy 𝔻              := TDecimal;
-  concreteTy 𝕋              := TTime;
-  concreteTy 𝔹              := TBool;
-  concreteTy 𝕊              := TString;
-  concreteTy 𝕌              := TUnit;
-  concreteTy TySym          := TSymbol;
-  concreteTy (TyList t)     := TList (concreteTy t);
-  concreteTy (TyPair t1 t2) := TPair (concreteTy t1) (concreteTy t2);
-  concreteTy _              := TVoid.
 
 Section Value_rect.
 
@@ -216,6 +204,6 @@ Arguments SymbolP {Γ}.
 Arguments PairP {Γ τ1 τ2 x y} _ _.
 Arguments NilP {Γ τ}.
 Arguments ConsP {Γ τ _ _} _ _.
-Arguments CapabilityP {Γ tp tv s} Hp {p} Hv {v} _ _ _.
+Arguments CapabilityP {Γ tp tv s} Hp Hv {p v} _ _ _.
 
 Arguments ErrorP {Γ τ} _.

@@ -2,6 +2,7 @@ Require Import
   Coq.ZArith.ZArith
   Hask.Control.Monad
   Hask.Data.Either
+  Hask.Data.Maybe
   ilist
   Lib
   Ty
@@ -19,7 +20,7 @@ Section SemTy.
 
 Import ListNotations.
 
-Definition SemPrimType (ty : PrimType) : Set :=
+Definition SemPrimType (ty : PrimType) : Type :=
   match ty with
   | PrimInteger => Z
   | PrimDecimal => N
@@ -52,13 +53,41 @@ Definition paramOf `(c : Cap s) : Value (paramTy s) :=
 Definition valueOf `(c : Cap s) : Value (valueTy s) :=
   match c with Token _ _ v => v end.
 
+Inductive ACap : Set :=
+  | AToken (s : CapSig) : Cap s → ACap.
+
+Derive NoConfusion NoConfusionHom Subterm EqDec for ACap.
+
+Definition ACap_ext (ac : ACap) : { s : CapSig & Cap s } :=
+  match ac with AToken s c => existT _ s c end.
+
+Arguments Token {s} name arg val.
+
 Context `{Monad m}.
+
+Fixpoint concreteTy (τ : Ty) : ValueTy :=
+  match τ with
+  | ℤ            => TInteger
+  | 𝔻            => TDecimal
+  | 𝕋            => TTime
+  | 𝔹            => TBool
+  | 𝕊            => TString
+  | 𝕌            => TUnit
+  | TySym        => TSymbol
+  | TyList t     => TList (concreteTy t)
+  | TyPair t1 t2 => TPair (concreteTy t1) (concreteTy t2)
+  | _            => TVoid
+  end.
+
+Arguments concreteTy τ /.
 
 Fixpoint SemTy (τ : Ty) : Type :=
   match τ with
   | TyArrow dom cod => SemTy dom → m (SemTy cod)
-  | TyCap p v       => Cap {| paramTy := concreteTy p
-                            ; valueTy := concreteTy v |}
+
+  | TyCap p v =>
+      Cap {| paramTy := concreteTy p; valueTy := concreteTy v |}
+
   (* Disallow functions and capabilities from appearing inside data
      structures. They may only be passed as arguments to functions, or
      returned from functions. *)
@@ -67,90 +96,40 @@ Fixpoint SemTy (τ : Ty) : Type :=
 
 Notation "⟦ t ⟧" := (SemTy t) (at level 9) : type_scope.
 
-Equations concrete {τ} (H : ConcreteP τ) (e : ⟦τ⟧) : Value (concreteTy τ) :=
-  concrete (τ:=ℤ)        PrimDecP     lit := VInteger lit;
-  concrete (τ:=𝔻)        PrimDecP     lit := VDecimal lit;
-  concrete (τ:=𝕋)        PrimDecP     lit := VTime lit;
-  concrete (τ:=𝔹)        PrimDecP     lit := VBool lit;
-  concrete (τ:=𝕊)        PrimDecP     lit := VString lit;
-  concrete (τ:=𝕌)        PrimDecP     tt  := VUnit;
-  concrete (τ:=TySym)    SymDecP      sym := VSymbol sym;
-  concrete (τ:=TyList t) (ListDecP H) xs  := VList (map (concrete H) xs);
-  concrete (τ:=TyPair t1 t2) (PairDecP Hx Hy) (x, y) :=
-    VPair (concrete Hx x) (concrete Hy y).
-
-(*
-Equations Concrete_EqDec {t} (H : ConcreteP t) : EqDec ⟦t⟧ :=
-  Concrete_EqDec (t:=TyPrim PrimUnit) _ tt tt := left _;
-  Concrete_EqDec (t:=TyPrim PrimString) _ s1 s2
-    with eq_dec s1 s2 := {
-      | left _  => left _
-      | right _ => right _
-    };
-  Concrete_EqDec (t:=TyPrim PrimInteger) _ i1 i2
-    with eq_dec i1 i2 := {
-      | left _  => left _
-      | right _ => right _
-    };
-  Concrete_EqDec (t:=TyPrim PrimDecimal) _ d1 d2
-    with eq_dec d1 d2 := {
-      | left _  => left _
-      | right _ => right _
-    };
-  Concrete_EqDec (t:=TyPrim PrimBool) _ b1 b2
-    with eq_dec b1 b2 := {
-      | left _  => left _
-      | right _ => right _
-    };
-  Concrete_EqDec (t:=TyPrim PrimTime) _ t1 t2
-    with eq_dec t1 t2 := {
-      | left _  => left _
-      | right _ => right _
-    };
-
-  Concrete_EqDec (t:=TySym) _ n1 n2 := eq_dec n1 n2;
-
-  Concrete_EqDec (t:=TyList _)  _ ([]) ([]) := left _;
-  Concrete_EqDec (t:=TyList _)  _ (_ :: _) ([]) := right _;
-  Concrete_EqDec (t:=TyList _)  _ ([]) (_ :: _) := right _;
-  Concrete_EqDec (t:=TyList ty) (ListDecP H) (x1 :: xs1) (x2 :: xs2)
-    with @eq_dec _ (Concrete_EqDec (t:=ty) H) x1 x2 := {
-      | left _
-        with @eq_dec _ (list_eqdec (Concrete_EqDec (t:=ty) H)) xs1 xs2 := {
-        | left _  => left _
-        | right _ => right _
-      }
-      | right _ => right _
-    };
-
-  Concrete_EqDec (t:=TyPair t1 t2) (PairDecP H1 H2) (x1, y1) (x2, y2)
-    with @eq_dec _ (Concrete_EqDec (t:=t1) H1) x1 x2 := {
-      | left  _ with @eq_dec _ (Concrete_EqDec (t:=t2) H2) y1 y2 := {
-        | left _  => left _
-        | right _ => right _
-      }
-      | right _ => right _
-    }.
-
 #[export]
-Instance Concrete_EqDec' {t} : ConcreteP t → EqDec ⟦t⟧ :=
-  Concrete_EqDec (t:=t).
-
-Inductive Value t : Type :=
-  | Bundle : ConcreteP t → ⟦t⟧ → Value t.
-
-Derive NoConfusion NoConfusionHom Subterm EqDec for Value.
+Program Instance Concrete_EqDec {t} (H : ConcreteP t) : EqDec ⟦t⟧.
 Next Obligation.
-  destruct x, y.
-  destruct (eq_dec c c0); subst.
-  - destruct (@eq_dec _ (Concrete_EqDec c0) s s0); subst.
-    + now left.
-    + right; intro.
-      now inv H0.
-  - pose proof (ConcreteP_irrelevance c c0).
-    contradiction.
+  induction t;
+  first [ now inv H0 | now apply Value_EqDec ].
 Defined.
-*)
+
+Equations concrete `(v : ⟦ t ⟧) : option (Value (concreteTy t)) :=
+  concrete (t:=TyArrow _ _) v := None;
+  concrete (t:=TyACap)      v := None;
+  concrete (t:=TyCap _ _)   v := None;
+  concrete                  v := Some v.
+
+Equations concreteH `(v : ⟦ t ⟧) (C : ConcreteP t) : Value (concreteTy t) :=
+  concreteH v PrimDecP       := v;
+  concreteH v SymDecP        := v;
+  concreteH v (ListDecP _)   := v;
+  concreteH v (PairDecP _ _) := v.
+
+Equations reflect `(v : Value (concreteTy t)) : ⟦ t ⟧ :=
+  reflect (t:=TyPrim PrimInteger) v := v;
+  reflect (t:=TyPrim PrimDecimal) v := v;
+  reflect (t:=TyPrim PrimTime)    v := v;
+  reflect (t:=TyPrim PrimBool)    v := v;
+  reflect (t:=TyPrim PrimString)  v := v;
+  reflect (t:=TyPrim PrimUnit)    v := v;
+  reflect (t:=TySym)              v := v;
+  reflect (t:=TyList _)           v := v;
+  reflect (t:=TyPair _ _)         v := v.
+
+Definition concreteH1 `{M :Monad m} `(f : ⟦ dom ⟶ cod ⟧) (CC : ConcreteP cod) :
+  Value (concreteTy dom) → m (Value (concreteTy cod)) :=
+  λ x, r <- f (reflect x) ;
+       pure (concreteH r CC).
 
 End SemTy.
 

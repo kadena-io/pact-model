@@ -13,7 +13,10 @@ Require Import
   Pact
   Pact.Capability.
 
+(* Set Universe Polymorphism. *)
+
 From Equations Require Import Equations.
+Set Equations With UIP.
 
 Generalizable All Variables.
 
@@ -131,25 +134,38 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
 
   SemExp (Seq exp1 exp2) se := SemExp exp1 se >> SemExp exp2 se;
 
-  SemExp (Capability (p:=tp) (v:=tv) nm Harg arg Hval val) se :=
+  SemExp (Capability (p:=tp) (v:=tv) Hp Hv nm arg val) se :=
       nm'  <- SemExp nm se ;
       arg' <- SemExp arg se ;
       val' <- SemExp val se ;
-      let s : CapSig := {| paramTy := concreteTy tp
-                         ; valueTy := concreteTy tv
-                         |} in
       match nm' : Value TSymbol with
       | VSymbol name =>
-        pure (f:=PactM) (Token (s:=s) name (_ arg') (_ val'))
+        pure (f:=PactM)
+             (Token (s:={| paramTy := concreteTy tp
+                         ; valueTy := concreteTy tv |})
+                    name (concreteH arg' Hp)
+                         (concreteH val' Hv))
       end;
 
-  (* SemExp (InstallCapability c) se := install_capability _ =<< SemExp c se; *)
-  (* SemExp (@WithCapability _ tp tv τ prd mng c e) se := *)
-  (*     c'   <- SemExp c se ; *)
-  (*     prd' <- SemExp prd se ; *)
-  (*     mng' <- SemExp mng se ; *)
-  (*     with_capability c' pred' mng' (SemExp e se); *)
-  (* SemExp (RequireCapability c) se := require_capability _ =<< SemExp c se; *)
+  SemExp (@WithCapability _ tp tv τ Hp Hv prd mng c e) se :=
+      c'   <- SemExp c se ;
+      prd' <- SemExp prd se ;
+      mng' <- SemExp mng se ;
+      with_capability
+        (s:={| paramTy := concreteTy tp
+             ; valueTy := concreteTy tv |})
+        c'
+        (_ prd')
+        (concreteH1 (m:=PactM) (M:=PactM_Monad)
+                    (dom:=TyPair tv tv) mng' Hv)
+        (SemExp e se);
+
+  SemExp (InstallCapability c) se :=
+    install_capability =<< SemExp c se ;;
+    pure VUnit;
+  SemExp (RequireCapability c) se :=
+    require_capability =<< SemExp c se ;;
+    pure VUnit;
   SemExp _ _ := _.
 Next Obligation. Admitted.
 Next Obligation. Admitted.

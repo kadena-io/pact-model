@@ -28,6 +28,7 @@ Inductive Ty : Set :=
   | TyList  : Ty → Ty
   | TyPair  : Ty → Ty → Ty
 
+  | TyACap  : Ty
   | TyCap   : Ty → Ty → Ty.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Ty.

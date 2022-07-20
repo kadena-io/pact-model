@@ -70,16 +70,21 @@ Inductive Exp Γ : Ty → Set :=
 
   | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
-  | Capability        {p v}   : Exp Γ TySym →
-                                ConcreteP p → Exp Γ p →
-                                ConcreteP v → Exp Γ v →
-                                Exp Γ (TyCap p v)
-  | InstallCapability {p v}   : Exp Γ (TyCap p v) → Exp Γ 𝕌
-  | WithCapability    {p v τ} :
-    Exp Γ (TyCap p v × (𝕌 ⟶ τ) ⟶ τ) →
+  | Capability {p v} :
+    ConcreteP p →
+    ConcreteP v →
+    Exp Γ TySym →
+    Exp Γ p →
+    Exp Γ v →
+    Exp Γ (TyCap p v)
+  | WithCapability {p v τ} :
+    ConcreteP p →
+    ConcreteP v →
+    Exp Γ (TyCap p v ⟶ TyList TyACap) →
     Exp Γ (v × v ⟶ v) →
     Exp Γ (TyCap p v) → Exp Γ τ → Exp Γ τ
-  | RequireCapability {p v}   : Exp Γ (TyCap p v) → Exp Γ 𝕌.
+  | InstallCapability {p v} : Exp Γ (TyCap p v) → Exp Γ 𝕌
+  | RequireCapability {p v} : Exp Γ (TyCap p v) → Exp Γ 𝕌.
 
 Derive Signature NoConfusionHom Subterm EqDec for Exp.
 
@@ -104,10 +109,10 @@ Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   | IsNil _ xs  => 1 + Exp_size xs
   | Seq _ x y   => 1 + Exp_size x + Exp_size y
 
-  | Capability _ s Hp p Hv v => 1 + Exp_size s + Exp_size p + Exp_size v
+  | Capability _ _ _ n p v => 1 + Exp_size n + Exp_size p + Exp_size v
+  | WithCapability _ _ _ p m c e =>
+      1 + Exp_size p + Exp_size m + Exp_size c + Exp_size e
   | InstallCapability _ c    => 1 + Exp_size c
-  | WithCapability _ p m c e => 1 + Exp_size p + Exp_size m
-                                  + Exp_size c + Exp_size e
   | RequireCapability _ c    => 1 + Exp_size c
   end.
 
@@ -138,8 +143,8 @@ Arguments Cdr {Γ τ} _.
 Arguments IsNil {Γ τ} _.
 Arguments Seq {Γ τ τ'} _ _.
 Arguments Capability {_ p v} _ _ _.
+Arguments WithCapability {_ p v τ} _ _ _ _.
 Arguments InstallCapability {_ p v} _.
-Arguments WithCapability {_ p v τ} _ _.
 Arguments RequireCapability {_ p v} _.
 
 Declare Scope Var_scope.

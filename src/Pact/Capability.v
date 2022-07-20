@@ -12,7 +12,7 @@ Require Import
   SemTy
   Pact.
 
-Set Universe Polymorphism.
+(* Set Universe Polymorphism. *)
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -99,7 +99,7 @@ Definition install_capability `(c : Cap s) : PactM () :=
     modify (λ st, {| resources := set_value c (resources st) |}).
 
 Definition __claim_resource `(c : Cap s)
-           (manager : Value (valueTy s) * Value (valueTy s) →
+           (manager : Value (TPair (valueTy s) (valueTy s)) →
                       PactM (Value (valueTy s))) : PactM () :=
   (* Check the current amount of resource associated with this capability, and
      whether the requested amount is available. If so, update the available
@@ -113,7 +113,7 @@ Definition __claim_resource `(c : Cap s)
     | None => throw (Err_Capability c CapErr_NoResourceAvailable)
     | Some amt =>
       let '(Token n p req) := c in
-      amt' <- manager (amt, req) ;
+      amt' <- manager (VPair amt req) ;
       put {| resources := set_value (Token n p amt') (resources st) |}
     end.
 
@@ -141,10 +141,10 @@ Definition __claim_resource `(c : Cap s)
     exception. [install_capability] sets the initial amount of the
     resource. *)
 Definition with_capability `(c : Cap s)
-           `(predicate : Cap s * (unit → PactM a) → PactM a)
-           (manager : Value (valueTy s) * Value (valueTy s) →
+           `(predicate : Cap s → PactM (list ACap))
+           (manager : Value (TPair (valueTy s) (valueTy s)) →
                       PactM (Value (valueTy s)))
-           (f : PactM a) : PactM a :=
+           `(f : PactM a) : PactM a :=
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
   env <- ask ;
@@ -158,22 +158,23 @@ Definition with_capability `(c : Cap s)
     (* If the predicate passes, we are good to grant the capability. Note that
        the predicate may return a list of other capabilities to be "composed"
        with this one. *)
+    compCaps <-
+      local (λ r, {| granted := granted r
+                   ; context := InWithCapability :: context r |})
+        (predicate c) ;
+
+    (* Note that if the resource type is unit, the only thing this function
+       could do is throw an exception. But since this is semantically
+       equivalent to throwing the same exception at the end of the predicate,
+       there is no reason to avoid this invocation in that case. *)
     local (λ r, {| granted := granted r
                  ; context := InWithCapability :: context r |})
-      (predicate (c, λ _,
-        (* Note that if the resource type is unit, the only thing this function
-           could do is throw an exception. But since this is semantically
-           equivalent to throwing the same exception at the end of the predicate,
-           there is no reason to avoid this invocation in that case. *)
-        local (λ r, {| granted := granted r
-                     ; context := InWithCapability :: context r |})
-          (__claim_resource c manager) ;;
+      (__claim_resource c manager) ;;
 
-        (* The process of "granting" consists merely of making the capability
-           visible in the reader environment to the provided expression. *)
-        local (λ r, {| granted := existT _ _ c :: granted r
-                     ; context := context r |}) f
-      )).
+    (* The process of "granting" consists merely of making the capability
+       visible in the reader environment to the provided expression. *)
+    local (λ r, {| granted := existT _ _ c :: map ACap_ext compCaps ++ granted r
+                 ; context := context r |}) f.
 
 Definition require_capability `(c : Cap s) : PactM () :=
   (* Note that the request resource amount must match the original

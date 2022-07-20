@@ -38,7 +38,7 @@ Record PactEnv : Set := {
   (* We cannot refer to capability tokens by their type here, because
      capability predicates execute in a state monad that reference this
      record type. *)
-  granted : list { s : CapSig & Cap s };
+  granted : list ACap;
   context : list EvalContext;
 }.
 
@@ -48,7 +48,7 @@ Record PactState : Set := {
   (* We cannot refer to capability tokens by their type here, because
      capability predicates execute in a state monad that reference this
      record type. *)
-  resources : list { s : CapSig & Cap s };
+  resources : list ACap;
 }.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for PactState.

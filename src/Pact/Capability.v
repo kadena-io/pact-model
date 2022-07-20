@@ -31,14 +31,13 @@ Open Scope Ty_scope.
 
 Import EqNotations.
 
-Definition get_value `(c : Cap s) (l : list { s : CapSig & Cap s }) :
+Definition get_value `(c : Cap s) (l : list ACap) :
   option (Value (valueTy s)) :=
   let '(Token n arg _) := c in
-  let fix go (l : list { s : CapSig & Cap s }) :
-    option (Value (valueTy s)) :=
+  let fix go (l : list ACap) : option (Value (valueTy s)) :=
     match l with
     | [] => None
-    | existT _ s' (Token n' arg' val') :: xs =>
+    | AToken s' (Token n' arg' val') :: xs =>
         match eq_dec s s' with
         | left Hs =>
             match eq_dec n n' with
@@ -56,21 +55,20 @@ Definition get_value `(c : Cap s) (l : list { s : CapSig & Cap s }) :
     end
   in go l.
 
-Definition set_value `(c : Cap s) (l : list { s : CapSig & Cap s }) :
-  list { s : CapSig & Cap s } :=
+Definition set_value `(c : Cap s) (l : list ACap) :
+  list ACap :=
   let '(Token n arg _) := c in
-  let fix go (l : list { s : CapSig & Cap s }) :
-    list { s : CapSig & Cap s } :=
+  let fix go (l : list ACap) : list ACap :=
     match l with
     | [] => []
-    | existT _ s' (Token n' arg' _) :: xs =>
+    | AToken s' (Token n' arg' _) :: xs =>
         match eq_dec s s' with
         | left Hs =>
             match eq_dec n n' with
             | left _ =>
                 match eq_dec arg
                         (rew <- [λ x, Value (paramTy x)] Hs in arg') with
-                | left _ => existT _ s c :: go xs
+                | left _ => AToken s c :: go xs
                 | _ => go xs
                 end
             | _ => go xs
@@ -173,7 +171,7 @@ Definition with_capability `(c : Cap s)
 
     (* The process of "granting" consists merely of making the capability
        visible in the reader environment to the provided expression. *)
-    local (λ r, {| granted := existT _ _ c :: map ACap_ext compCaps ++ granted r
+    local (λ r, {| granted := AToken _ c :: compCaps ++ granted r
                  ; context := context r |}) f.
 
 Definition require_capability `(c : Cap s) : PactM () :=

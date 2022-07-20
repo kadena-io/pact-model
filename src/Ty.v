@@ -9,12 +9,12 @@ Set Equations With UIP.
 Section Ty.
 
 Inductive PrimType : Set :=
+  | PrimUnit
   | PrimInteger
   | PrimDecimal
   | PrimTime
   | PrimBool
-  | PrimString
-  | PrimUnit.
+  | PrimString.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for PrimType.
 
@@ -28,8 +28,8 @@ Inductive Ty : Set :=
   | TyList  : Ty → Ty
   | TyPair  : Ty → Ty → Ty
 
-  | TyACap  : Ty
-  | TyCap   : Ty → Ty → Ty.
+  | TyACapList : Ty
+  | TyCap      : Ty → Ty → Ty.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Ty.
 

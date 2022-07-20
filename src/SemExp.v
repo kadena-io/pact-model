@@ -83,6 +83,11 @@ Qed.
 
 Notation "f =<< x" := (x >>= f) (at level 42, right associativity).
 
+Definition concreteH1 `(f : ⟦ dom ⟶ cod ⟧) (CC : ConcreteP cod) :
+  Value (concreteTy dom) → PactM (Value (concreteTy cod)) :=
+  λ x, r <- f (reflect x) ;
+       pure (concrete r CC).
+
 Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ) :=
   SemExp (VAR v)     se := pure (SemVar v se);
   SemExp (LAM e)     se := pure (λ x, SemExp e (x, se));
@@ -94,42 +99,45 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
   SemExp (Error e)  _ := throw (Err_Exp e);
   SemExp (Lit l)    _ := throw (Err_Exp Err_CarNil); (* jww (2022-07-18): TODO *)
   SemExp (Bltn b)   _ := throw (Err_Exp Err_CarNil); (* jww (2022-07-18): TODO *)
-  SemExp (Symbol n) _ := pure (VSymbol n);
+  SemExp (Symbol n) _ := pure n;
 
   SemExp (If b t e) se :=
-    vb <- SemExp b se ;
-    match vb : Value TBool with
-    | VBool b' =>
-      if b' : bool
-      then SemExp t se
-      else SemExp e se
+    b' <- SemExp b se ;
+    if b' : bool
+    then SemExp t se
+    else SemExp e se;
+
+  SemExp (Pair x y) se :=
+    x' <- SemExp x se ;
+    y' <- SemExp y se ;
+    pure (x', y');
+  SemExp (Fst p) se := fst <$> SemExp p se;
+  SemExp (Snd p) se := snd <$> SemExp p se;
+
+  SemExp Nil se := pure [];
+  SemExp (Cons x xs) se :=
+    x'  <- SemExp x se ;
+    xs' <- SemExp xs se ;
+    pure (x' :: xs');
+
+  SemExp (Car xs) se :=
+    xs' <- SemExp xs se ;
+    match xs' with
+    | []     => throw (Err_Exp Err_CarNil)
+    | x :: _ => pure x
     end;
-
-  (* SemExp (Pair x y)      se := liftA2 VPair (SemExp x se) (SemExp y se); *)
-  (* SemExp (Fst p)         se := fst <$> SemExp p se; *)
-  (* SemExp (Snd p)         se := snd <$> SemExp p se; *)
-
-  SemExp Nil           se := pure (VList []);
-  (* SemExp (Cons x xs)     se := x'  <- SemExp x se ; *)
-  (*                          xs' <- SemExp xs se ; *)
-  (*                          pure (x' :: xs'); *)
-
-  (* SemExp (Car xs)        se := xs' <- SemExp xs se ; *)
-  (*                          match xs' with *)
-  (*                          | []     => throw (Err_Exp Err_CarNil) *)
-  (*                          | x :: _ => pure x *)
-  (*                          end; *)
-  (* SemExp (Cdr xs)        se := xs' <- SemExp xs se ; *)
-  (*                          match xs' with *)
-  (*                          | []      => throw (Err_Exp Err_CdrNil) *)
-  (*                          | _ :: xs => pure xs *)
-  (*                          end; *)
+  SemExp (Cdr xs) se :=
+    xs' <- SemExp xs se ;
+    match xs' with
+    | []      => throw (Err_Exp Err_CdrNil)
+    | _ :: xs => pure xs
+    end;
 
   SemExp (IsNil (τ:=ty) xs) se :=
     xs' <- SemExp xs se ;
-    match xs' : Value (TList (concreteTy ty)) with
-    | VList []        => pure (VBool true)
-    | VList (_ :: xs) => pure (VBool false)
+    match xs' with
+    | []        => pure true
+    | (_ :: xs) => pure false
     end;
 
   SemExp (Seq exp1 exp2) se := SemExp exp1 se >> SemExp exp2 se;
@@ -138,16 +146,13 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
       nm'  <- SemExp nm se ;
       arg' <- SemExp arg se ;
       val' <- SemExp val se ;
-      match nm' : Value TSymbol with
-      | VSymbol name =>
-        pure (f:=PactM)
-             (Token (s:={| paramTy := concreteTy tp
-                         ; valueTy := concreteTy tv |})
-                    name (concreteH arg' Hp)
-                         (concreteH val' Hv))
-      end;
+      pure (f:=PactM)
+           (Token (s:={| paramTy := concreteTy tp
+                       ; valueTy := concreteTy tv |})
+                  nm' (concrete arg' Hp)
+                      (concrete val' Hv));
 
-  SemExp (@WithCapability _ tp tv τ Hp Hv prd mng c e) se :=
+  SemExp (WithCapability (p:=tp) (v:=tv) Hp Hv prd mng c e) se :=
       c'   <- SemExp c se ;
       prd' <- SemExp prd se ;
       mng' <- SemExp mng se ;
@@ -155,68 +160,40 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
         (s:={| paramTy := concreteTy tp
              ; valueTy := concreteTy tv |})
         c'
-        (_ prd')
-        (concreteH1 (m:=PactM) (M:=PactM_Monad)
-                    (dom:=TyPair tv tv) mng' Hv)
+        prd'
+        (concreteH1 (dom:=TyPair tv tv) mng' Hv)
         (SemExp e se);
 
   SemExp (InstallCapability c) se :=
-    install_capability =<< SemExp c se ;;
-    pure VUnit;
+    install_capability =<< SemExp c se;
   SemExp (RequireCapability c) se :=
-    require_capability =<< SemExp c se ;;
-    pure VUnit;
-  SemExp _ _ := _.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation.
-  inv Harg;
-  now simpl in arg'.
-Defined.
-Next Obligation.
-  inv Hval;
-  now simpl in val'.
-Defined.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation.
-
-Definition sem `(e : Exp [] τ) : Err + SemTy τ := SemExp e tt.
-Arguments sem {_} _ /.
+    require_capability =<< SemExp c se.
 
 Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ') :
   SemExp e (RenSem r se) = SemExp (RenExp r e) se.
 Proof.
   generalize dependent Γ'.
-  induction e; simpl; intros; auto.
-  - rewrite IHe1; repeat f_equal.
-    extensionality b.
-    now destruct b; simpl.
-  - rewrite IHe2; repeat f_equal.
-    now apply IHe1.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite IHe1, IHe2.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite IHe1, IHe2.
+  induction e; simpl; intros; auto; simp SemExp.
   - now rewrite SemVar_RenSem.
   - f_equal.
     extensionality z.
-    fold SemTy in z.
     rewrite <- IHe; clear IHe.
     simpl.
     now repeat f_equal.
   - now rewrite IHe1, IHe2.
+  - now rewrite IHe1, IHe2, IHe3.
+  - now rewrite IHe1, IHe2.
+  - now rewrite IHe.
+  - now rewrite IHe.
+  - now rewrite IHe1, IHe2.
+  - now rewrite IHe.
+  - now rewrite IHe.
+  - now rewrite IHe.
+  - now rewrite IHe1, IHe2.
+  - now rewrite IHe1, IHe2, IHe3.
+  - now rewrite IHe1, IHe2, IHe3, IHe4.
+  - now rewrite IHe.
+  - now rewrite IHe.
 Qed.
 
 Lemma SemExp_wk `(E : SemEnv Γ) {τ τ'} (y : SemTy τ') (e : Exp Γ τ) :
@@ -232,13 +209,36 @@ Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
   ValueP e → ∃ x, SemExp e se = pure x.
 Proof.
   induction 1; simpl; intros;
-  try (now eexists; eauto); reduce.
-  - admit.                      (* jww (2022-07-18): TODO *)
-  - admit.                      (* jww (2022-07-18): TODO *)
+  try (now eexists; eauto); reduce; simp SemExp.
+  - simpl.
+    eexists.
+    reflexivity.
+  - eexists.
+    extensionality env.
+    extensionality s.
+    extensionality w.
+    admit.                      (* jww (2022-07-20): TODO *)
+  - eexists.
+    extensionality env.
+    extensionality s.
+    extensionality w.
+    admit.                      (* jww (2022-07-20): TODO *)
+  - simpl.
+    eexists.
+    reflexivity.
   - exists (x1, x0).
     now rewrite H1, H2; simpl.
+  - exists [].
+    reflexivity.
   - exists (x1 :: x0).
     now rewrite H1, H2; simpl.
+  - eexists.
+    extensionality nm'.
+    extensionality nm'0.
+    extensionality nm'1.
+    rewrite H2, H3, H4; simpl.
+    unfold RWSE_join.
+    reflexivity.
 Abort.
 
 End SemExp.

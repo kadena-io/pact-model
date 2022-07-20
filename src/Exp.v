@@ -81,14 +81,14 @@ Inductive Exp Γ : Ty → Set :=
   | WithCapability {p v τ} :
     ConcreteP p →
     ConcreteP v →
-    Exp Γ (TyCap p v ⟶ TyACapList) →
+    Exp Γ (TyCap p v ⟶ TyList TyACap) →
     Exp Γ (v × v ⟶ v) →
     Exp Γ (TyCap p v) → Exp Γ τ → Exp Γ τ
 
   | ComposeCapability {p v} :
     ConcreteP p →
     ConcreteP v →
-    Exp Γ (TyCap p v ⟶ TyACapList) →
+    Exp Γ (TyCap p v ⟶ TyList TyACap) →
     Exp Γ (v × v ⟶ v) →
     Exp Γ (TyCap p v) → Exp Γ 𝕌
 

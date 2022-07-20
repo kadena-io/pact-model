@@ -78,70 +78,100 @@ Proof.
       now rewrite <- IHΓ; simp RcR; simp RenSem.
 Qed.
 
-Definition liftJoin2 `{Monad m} `(f : a -> b -> m c)
-           (ma : m a) (mb : m b) : m c :=
-   join (liftA2 f ma mb).
-
 Notation "f =<< x" := (x >>= f) (at level 42, right associativity).
 
-Program Fixpoint SemExp `(e : Exp Γ τ) : SemEnv Γ → PactM (SemTy τ) :=
-  match e with
-  | VAR v         => λ se, pure (SemVar v se)
-  | LAM e         => λ se, pure (λ x, SemExp e (x, se))
-  | APP e1 e2     => λ se, liftJoin2 (m:=PactM) id (SemExp e1 se) (SemExp e2 se)
+Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ) :=
+  SemExp (VAR v)     se := pure (SemVar v se);
+  SemExp (LAM e)     se := pure (λ x, SemExp e (x, se));
+  SemExp (APP e1 e2) se :=
+    f <- SemExp e1 se ;
+    x <- SemExp e2 se ;
+    f x;
 
-  | Error e       => λ _,  throw (Err_Exp e)
-  | Lit l         => λ _,  throw (Err_Exp Err_CarNil) (* jww (2022-07-18): TODO *)
-  | Bltn b        => λ _,  throw (Err_Exp Err_CarNil) (* jww (2022-07-18): TODO *)
-  | Symbol n      => λ _,  pure n
-  | If b t e      => λ se, b' <- SemExp b se ;
-                           if b' : bool
-                           then SemExp t se
-                           else SemExp e se
-  | Pair x y      => λ se, liftA2 pair (SemExp x se) (SemExp y se)
-  | Fst p         => λ se, fst <$> SemExp p se
-  | Snd p         => λ se, snd <$> SemExp p se
-  | Nil           => λ se, pure nil
-  | Cons x xs     => λ se, x'  <- SemExp x se ;
-                           xs' <- SemExp xs se ;
-                           pure (x' :: xs')
-  | Car xs        => λ se, xs' <- SemExp xs se ;
-                           match xs' with
-                           | []     => throw (Err_Exp Err_CarNil)
-                           | x :: _ => pure x
-                           end
-  | Cdr xs        => λ se, xs' <- SemExp xs se ;
-                           match xs' with
-                           | []      => throw (Err_Exp Err_CdrNil)
-                           | _ :: xs => pure xs
-                           end
-  | IsNil xs      => λ se, xs' <- SemExp xs se ;
-                           match xs' with
-                           | []      => pure true
-                           | _ :: xs => pure false
-                           end
-  | Seq exp1 exp2 => λ se, SemExp exp1 se >> SemExp exp2 se
+  SemExp (Error e)  _ := throw (Err_Exp e);
+  SemExp (Lit l)    _ := throw (Err_Exp Err_CarNil); (* jww (2022-07-18): TODO *)
+  SemExp (Bltn b)   _ := throw (Err_Exp Err_CarNil); (* jww (2022-07-18): TODO *)
+  SemExp (Symbol n) _ := pure (VSymbol n);
 
-  | @Capability _ tp tv n p v => λ se,
-      match Concreteness tp with
-      | Some Hp =>
-          match Concreteness tv with
-          | Some Hv =>
-              n' <- SemExp n se ;
-              p' <- SemExp p se ;
-              v' <- SemExp v se ;
-              pure (Token n' (concrete Hp p') (concrete Hv v'))
-          | None => throw (Err_Exp Err_CarNil) (* jww (2022-07-19): TODO *)
-          end
-      | None => throw (Err_Exp Err_CarNil) (* jww (2022-07-19): TODO *)
-      end
+  SemExp (If b t e) se :=
+    vb <- SemExp b se ;
+    match vb : Value TBool with
+    | VBool b' =>
+      if b' : bool
+      then SemExp t se
+      else SemExp e se
+    end;
 
-  | InstallCapability c => λ se, install_capability _ =<< SemExp c se
-  | WithCapability c e  => λ se,
-      c' <- SemExp c se ;
-      with_capability _ c' (SemExp e se)
-  | RequireCapability c => λ se, require_capability _ =<< SemExp c se
-  end.
+  (* SemExp (Pair x y)      se := liftA2 VPair (SemExp x se) (SemExp y se); *)
+  (* SemExp (Fst p)         se := fst <$> SemExp p se; *)
+  (* SemExp (Snd p)         se := snd <$> SemExp p se; *)
+
+  SemExp Nil           se := pure (VList []);
+  (* SemExp (Cons x xs)     se := x'  <- SemExp x se ; *)
+  (*                          xs' <- SemExp xs se ; *)
+  (*                          pure (x' :: xs'); *)
+
+  (* SemExp (Car xs)        se := xs' <- SemExp xs se ; *)
+  (*                          match xs' with *)
+  (*                          | []     => throw (Err_Exp Err_CarNil) *)
+  (*                          | x :: _ => pure x *)
+  (*                          end; *)
+  (* SemExp (Cdr xs)        se := xs' <- SemExp xs se ; *)
+  (*                          match xs' with *)
+  (*                          | []      => throw (Err_Exp Err_CdrNil) *)
+  (*                          | _ :: xs => pure xs *)
+  (*                          end; *)
+
+  SemExp (IsNil (τ:=ty) xs) se :=
+    xs' <- SemExp xs se ;
+    match xs' : Value (TList (concreteTy ty)) with
+    | VList []        => pure (VBool true)
+    | VList (_ :: xs) => pure (VBool false)
+    end;
+
+  SemExp (Seq exp1 exp2) se := SemExp exp1 se >> SemExp exp2 se;
+
+  SemExp (Capability (p:=tp) (v:=tv) nm Harg arg Hval val) se :=
+      nm'  <- SemExp nm se ;
+      arg' <- SemExp arg se ;
+      val' <- SemExp val se ;
+      let s : CapSig := {| paramTy := concreteTy tp
+                         ; valueTy := concreteTy tv
+                         |} in
+      match nm' : Value TSymbol with
+      | VSymbol name =>
+        pure (f:=PactM) (Token (s:=s) name (_ arg') (_ val'))
+      end;
+
+  (* SemExp (InstallCapability c) se := install_capability _ =<< SemExp c se; *)
+  (* SemExp (@WithCapability _ tp tv τ prd mng c e) se := *)
+  (*     c'   <- SemExp c se ; *)
+  (*     prd' <- SemExp prd se ; *)
+  (*     mng' <- SemExp mng se ; *)
+  (*     with_capability c' pred' mng' (SemExp e se); *)
+  (* SemExp (RequireCapability c) se := require_capability _ =<< SemExp c se; *)
+  SemExp _ _ := _.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation.
+  inv Harg;
+  now simpl in arg'.
+Defined.
+Next Obligation.
+  inv Hval;
+  now simpl in val'.
+Defined.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation.
 
 Definition sem `(e : Exp [] τ) : Err + SemTy τ := SemExp e tt.
 Arguments sem {_} _ /.

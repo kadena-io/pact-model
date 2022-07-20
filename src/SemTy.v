@@ -57,14 +57,12 @@ Context `{Monad m}.
 Fixpoint SemTy (τ : Ty) : Type :=
   match τ with
   | TyArrow dom cod => SemTy dom → m (SemTy cod)
-
-  | TyPrim ty       => SemPrimType ty
-  | TySym           => string
-  | TyList τ        => list (SemTy τ)
-  | TyPair t1 t2    => SemTy t1 * SemTy t2
-
   | TyCap p v       => Cap {| paramTy := concreteTy p
                             ; valueTy := concreteTy v |}
+  (* Disallow functions and capabilities from appearing inside data
+     structures. They may only be passed as arguments to functions, or
+     returned from functions. *)
+  | ty              => Value (concreteTy ty)
   end.
 
 Notation "⟦ t ⟧" := (SemTy t) (at level 9) : type_scope.
@@ -81,6 +79,7 @@ Equations concrete {τ} (H : ConcreteP τ) (e : ⟦τ⟧) : Value (concreteTy τ
   concrete (τ:=TyPair t1 t2) (PairDecP Hx Hy) (x, y) :=
     VPair (concrete Hx x) (concrete Hy y).
 
+(*
 Equations Concrete_EqDec {t} (H : ConcreteP t) : EqDec ⟦t⟧ :=
   Concrete_EqDec (t:=TyPrim PrimUnit) _ tt tt := left _;
   Concrete_EqDec (t:=TyPrim PrimString) _ s1 s2
@@ -151,6 +150,7 @@ Next Obligation.
   - pose proof (ConcreteP_irrelevance c c0).
     contradiction.
 Defined.
+*)
 
 End SemTy.
 

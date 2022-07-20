@@ -70,12 +70,14 @@ Inductive Exp Γ : Ty → Set :=
 
   | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
-  | Capability        {p v}   : Exp Γ TySym → Exp Γ p → Exp Γ v →
+  | Capability        {p v}   : Exp Γ TySym →
+                                ConcreteP p → Exp Γ p →
+                                ConcreteP v → Exp Γ v →
                                 Exp Γ (TyCap p v)
   | InstallCapability {p v}   : Exp Γ (TyCap p v) → Exp Γ 𝕌
   | WithCapability    {p v τ} :
-    Exp Γ (TyCap p v ⟶ (𝕌 ⟶ τ) ⟶ τ) →
-    Exp Γ (v ⟶ v ⟶ v) →
+    Exp Γ (TyCap p v × (𝕌 ⟶ τ) ⟶ τ) →
+    Exp Γ (v × v ⟶ v) →
     Exp Γ (TyCap p v) → Exp Γ τ → Exp Γ τ
   | RequireCapability {p v}   : Exp Γ (TyCap p v) → Exp Γ 𝕌.
 
@@ -102,10 +104,11 @@ Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   | IsNil _ xs  => 1 + Exp_size xs
   | Seq _ x y   => 1 + Exp_size x + Exp_size y
 
-  | Capability _ s p v    => 1 + Exp_size s + Exp_size p + Exp_size v
-  | InstallCapability _ c => 1 + Exp_size c
-  | WithCapability _ c e  => 1 + Exp_size c + Exp_size e
-  | RequireCapability _ c => 1 + Exp_size c
+  | Capability _ s Hp p Hv v => 1 + Exp_size s + Exp_size p + Exp_size v
+  | InstallCapability _ c    => 1 + Exp_size c
+  | WithCapability _ p m c e => 1 + Exp_size p + Exp_size m
+                                  + Exp_size c + Exp_size e
+  | RequireCapability _ c    => 1 + Exp_size c
   end.
 
 Corollary Exp_size_preserved {Γ τ} (e1 e2 : Exp Γ τ) :

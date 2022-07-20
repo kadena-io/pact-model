@@ -2,6 +2,9 @@
 src/ilist.v
 src/EnsemblesExt.v
 src/Group.v
+src/Data/Semigroup.v
+src/Data/Monoid.v
+src/RWSE.v
 src/Lib.v
 src/Ltac.v
 src/Ty.v
@@ -12,9 +15,7 @@ src/Value.v
 src/Ren.v
 src/Sub.v
 src/SemTy.v
+src/Pact.v
+src/Pact/Capability.v
 src/SemExp.v
 src/Cat.v
-src/Data/Semigroup.v
-src/Data/Monoid.v
-src/RWSE.v
-src/Pact.v

@@ -29,8 +29,11 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
   | NilP {τ} : ValueP Γ (Nil (τ:=τ))
   | ConsP {τ} (x : Exp Γ τ) xs :
     ValueP Γ x → ValueP Γ xs → ValueP Γ (Cons x xs)
-  | CapabilityP {tp tv} (s : Exp Γ TySym) {p : Exp Γ tp} {v : Exp Γ tv} :
-    ValueP Γ s → ValueP Γ p → ValueP Γ v → ValueP Γ (Capability s p v).
+  | CapabilityP {tp tv} (s : Exp Γ TySym)
+                (Hp : ConcreteP tp) {p : Exp Γ tp}
+                (Hv : ConcreteP tv) {v : Exp Γ tv} :
+    ValueP Γ s → ValueP Γ p → ValueP Γ v →
+    ValueP Γ (Capability s Hp p Hv v).
 
 Derive Signature for ValueP.
 
@@ -213,6 +216,6 @@ Arguments SymbolP {Γ}.
 Arguments PairP {Γ τ1 τ2 x y} _ _.
 Arguments NilP {Γ τ}.
 Arguments ConsP {Γ τ _ _} _ _.
-Arguments CapabilityP {Γ tp tv s p v} _ _ _.
+Arguments CapabilityP {Γ tp tv s} Hp {p} Hv {v} _ _ _.
 
 Arguments ErrorP {Γ τ} _.

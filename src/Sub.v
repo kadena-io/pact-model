@@ -87,10 +87,12 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | IsNil xs      => IsNil (SubExp s xs)
   | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
 
-  | Capability n p v    => Capability (SubExp s n) (SubExp s p) (SubExp s v)
-  | InstallCapability c => InstallCapability (SubExp s c)
-  | WithCapability c e  => WithCapability (SubExp s c) (SubExp s e)
-  | RequireCapability c => RequireCapability (SubExp s c)
+  | Capability n Hp p Hv v => Capability (SubExp s n) Hp (SubExp s p)
+                                         Hv (SubExp s v)
+  | InstallCapability c    => InstallCapability (SubExp s c)
+  | WithCapability p m c e => WithCapability (SubExp s p) (SubExp s m)
+                                             (SubExp s c) (SubExp s e)
+  | RequireCapability c    => RequireCapability (SubExp s c)
   end.
 
 Fixpoint ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (δ : Sub Γ Γ') : Sub Γ Γ'' :=
@@ -179,7 +181,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto; f_equal.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4; auto; f_equal.
   - now rewrite SubVar_RcS.
   - specialize (IHe _ _ (Keep σ) (Keepₛ δ)).
     rewrite <- IHe.
@@ -204,7 +206,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto; f_equal.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4; auto; f_equal.
   - now rewrite SubVar_ScR.
   - rewrite <- IHe.
     unfold Keepₛ.
@@ -266,7 +268,7 @@ Lemma SubExp_idSub {Γ τ} (e : Exp Γ τ) :
   SubExp idSub e = e.
 Proof.
   induction e; simpl; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4; auto.
   - now rewrite SubVar_idSub.
   - f_equal.
     rewrite <- IHe at 2.
@@ -279,7 +281,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3; auto; f_equal.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4; auto; f_equal.
   - now rewrite SubVar_ScS.
   - rewrite <- IHe; clear.
     f_equal.

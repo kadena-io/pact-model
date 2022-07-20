@@ -29,16 +29,6 @@ Open Scope Ty_scope.
  * Capabilities
  *)
 
-Record DefCap (s : CapSig) : Type := {
-  predicate : Cap s → PactM (list { s : CapSig & Cap s });
-  manager   : Value (valueTy s) → Value (valueTy s) → PactM (Value (valueTy s))
-}.
-
-Derive NoConfusion NoConfusionHom Subterm for DefCap.
-
-Arguments predicate {_} _ _.
-Arguments manager {_} _ _.
-
 Import EqNotations.
 
 Definition get_value `(c : Cap s) (l : list { s : CapSig & Cap s }) :
@@ -100,7 +90,7 @@ Definition set_value `(c : Cap s) (l : list { s : CapSig & Cap s }) :
    Note that a capability can be installed either by the user calling
    [install-capability] directly, or by the chain calling this function if it
    sees a signed capability as part of a transaction. *)
-Definition install_capability (c : Cap s) : PactM () :=
+Definition install_capability `(c : Cap s) : PactM () :=
   env <- ask ;
   if in_dec EvalContext_EqDec InWithCapability (context env)
   then
@@ -108,7 +98,9 @@ Definition install_capability (c : Cap s) : PactM () :=
   else
     modify (λ st, {| resources := set_value c (resources st) |}).
 
-Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
+Definition __claim_resource `(c : Cap s)
+           (manager : Value (valueTy s) * Value (valueTy s) →
+                      PactM (Value (valueTy s))) : PactM () :=
   (* Check the current amount of resource associated with this capability, and
      whether the requested amount is available. If so, update the available
      amount. Note: unit is used to represent unmanaged capabilities. *)
@@ -121,7 +113,7 @@ Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
     | None => throw (Err_Capability c CapErr_NoResourceAvailable)
     | Some amt =>
       let '(Token n p req) := c in
-      amt' <- manager D amt req ;
+      amt' <- manager (amt, req) ;
       put {| resources := set_value (Token n p amt') (resources st) |}
     end.
 
@@ -148,8 +140,11 @@ Definition __claim_resource `(D : DefCap s) (c : Cap s) : PactM () :=
     dynamic boolean. If there is not enough resource available, it raises an
     exception. [install_capability] sets the initial amount of the
     resource. *)
-Definition with_capability `(D : DefCap s) (c : Cap s)
-           `(f : PactM a) : PactM a :=
+Definition with_capability `(c : Cap s)
+           `(predicate : Cap s * (unit → PactM a) → PactM a)
+           (manager : Value (valueTy s) * Value (valueTy s) →
+                      PactM (Value (valueTy s)))
+           (f : PactM a) : PactM a :=
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
   env <- ask ;
@@ -163,25 +158,24 @@ Definition with_capability `(D : DefCap s) (c : Cap s)
     (* If the predicate passes, we are good to grant the capability. Note that
        the predicate may return a list of other capabilities to be "composed"
        with this one. *)
-    compCaps <-
-      local (λ r, {| granted := granted r
-                   ; context := InWithCapability :: context r |})
-        (predicate D c) ;
-
-    (* Note that if the resource type is unit, the only thing this function
-       could do is throw an exception. But since this is semantically
-       equivalent to throwing the same exception at the end of the predicate,
-       there is no reason to avoid this invocation in that case. *)
     local (λ r, {| granted := granted r
                  ; context := InWithCapability :: context r |})
-      (__claim_resource D c) ;;
+      (predicate (c, λ _,
+        (* Note that if the resource type is unit, the only thing this function
+           could do is throw an exception. But since this is semantically
+           equivalent to throwing the same exception at the end of the predicate,
+           there is no reason to avoid this invocation in that case. *)
+        local (λ r, {| granted := granted r
+                     ; context := InWithCapability :: context r |})
+          (__claim_resource c manager) ;;
 
-    (* The process of "granting" consists merely of making the capability
-       visible in the reader environment to the provided expression. *)
-    local (λ r, {| granted := existT _ _ c :: compCaps ++ granted r
-                 ; context := context r |}) f.
+        (* The process of "granting" consists merely of making the capability
+           visible in the reader environment to the provided expression. *)
+        local (λ r, {| granted := existT _ _ c :: granted r
+                     ; context := context r |}) f
+      )).
 
-Definition require_capability (c : Cap s) : PactM () :=
+Definition require_capability `(c : Cap s) : PactM () :=
   (* Note that the request resource amount must match the original
      [with-capability] exactly.
 

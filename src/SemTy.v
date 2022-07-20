@@ -43,7 +43,6 @@ Fixpoint SemTy (τ : Ty) : Type :=
   | TyPair t1 t2    => SemTy t1 * SemTy t2
 
   (* These types are used by capabilities. *)
-  | TyACap          => ACap
   | TyCap p v       => Cap {| paramTy := concreteTy p; valueTy := concreteTy v |}
   end.
 

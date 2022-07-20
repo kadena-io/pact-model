@@ -152,11 +152,13 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
                 nm' (concrete arg' Hp)
                     (concrete val' Hv));
 
-  SemExp (WithCapability (p:=tp) (v:=tv) Hp Hv prd mng c e) se :=
+  SemExp (WithCapability (p:=tp) (v:=tv) Hp Hv modname prd mng c e) se :=
+    mn'  <- SemExp modname se ;
     c'   <- SemExp c se ;
     prd' <- SemExp prd se ;
     mng' <- SemExp mng se ;
     with_capability
+      mn'
       (s:={| paramTy := concreteTy tp
            ; valueTy := concreteTy tv |})
       c'
@@ -202,7 +204,7 @@ Proof.
   - now rewrite IHe.
   - now rewrite IHe1, IHe2.
   - now rewrite IHe1, IHe2, IHe3.
-  - now rewrite IHe1, IHe2, IHe3, IHe4.
+  - now rewrite IHe1, IHe2, IHe3, IHe4, IHe5.
   - now rewrite IHe1, IHe2, IHe3.
   - now rewrite IHe.
   - now rewrite IHe.

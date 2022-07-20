@@ -43,7 +43,7 @@ Definition get_value `(c : Cap s) (l : list ACap) :
             match eq_dec n n' with
             | left _ =>
                 match eq_dec arg
-                        (rew <- [λ x, Value (paramTy x)] Hs in arg') with
+                  (rew <- [λ x, Value (paramTy x)] Hs in arg') with
                 | left _ =>
                     Some (rew <- [λ x, Value (valueTy x)] Hs in val')
                 | _ => go xs
@@ -67,7 +67,7 @@ Definition set_value `(c : Cap s) (l : list ACap) :
             match eq_dec n n' with
             | left _ =>
                 match eq_dec arg
-                        (rew <- [λ x, Value (paramTy x)] Hs in arg') with
+                  (rew <- [λ x, Value (paramTy x)] Hs in arg') with
                 | left _ => AToken s c :: go xs
                 | _ => go xs
                 end
@@ -78,9 +78,19 @@ Definition set_value `(c : Cap s) (l : list ACap) :
     end
   in go l.
 
-(* The functions below all take a [DefCap] because name resolution must happen
-   in the parser, since capability predicates can themselves refer to the
-   current module. *)
+Definition __in_defcap (env : PactEnv) : bool :=
+  if in_dec EvalContext_EqDec InWithCapability (env ^_ context)
+  then true
+  else false.
+
+Definition __in_module (name : string) (env : PactEnv) : bool :=
+  if in_dec EvalContext_EqDec (InModule name) (env ^_ context)
+  then true
+  else false.
+
+(* The functions below all take [predicate] and [manager] functions because
+   name resolution must happen in the parser, since capability predicates can
+   themselves refer to the current module. *)
 
 (* "Installing" a capability assigns a resource amount associated with that
    capability, to be consumed by future calls to [with-capability].
@@ -90,11 +100,11 @@ Definition set_value `(c : Cap s) (l : list ACap) :
    sees a signed capability as part of a transaction. *)
 Definition install_capability `(c : Cap s) : PactM () :=
   env <- ask ;
-  if in_dec EvalContext_EqDec InWithCapability (context env)
+  if __in_defcap env
   then
-    throw (Err_Capability c CapErr_CannotInstallDuringWith)
+    throw (Err_Capability c CapErr_CannotInstallInDefcap)
   else
-    modify (λ st, {| resources := set_value c (resources st) |}).
+    modify (over resources (set_value c)).
 
 Definition __claim_resource `(c : Cap s)
            (manager : Value (TPair (valueTy s) (valueTy s)) →
@@ -104,15 +114,15 @@ Definition __claim_resource `(c : Cap s)
      amount. Note: unit is used to represent unmanaged capabilities. *)
   if eq_dec (valueTy s) TUnit
   then
-    pure ()  (* unit is always available *)
+    pure ()                     (* unit is always available *)
   else
     st <- get ;
-    match get_value c (resources st) with
+    match get_value c (st ^_ resources) with
     | None => throw (Err_Capability c CapErr_NoResourceAvailable)
     | Some amt =>
       let '(Token n p req) := c in
       amt' <- manager (VPair amt req) ;
-      put {| resources := set_value (Token n p amt') (resources st) |}
+      put (st &+ resources %~ set_value (Token n p amt'))
     end.
 
 (** [with_capability] grants a capability [C] to the evaluation of [f].
@@ -138,76 +148,68 @@ Definition __claim_resource `(c : Cap s)
     dynamic boolean. If there is not enough resource available, it raises an
     exception. [install_capability] sets the initial amount of the
     resource. *)
-Definition with_capability `(c : Cap s)
-           `(predicate : Cap s → PactM (list ACap))
+Definition with_capability (module : string) `(c : Cap s)
+           `(predicate : Cap s → PactM ())
            (manager : Value (TPair (valueTy s) (valueTy s)) →
                       PactM (Value (valueTy s)))
            `(f : PactM a) : PactM a :=
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
   env <- ask ;
-  if get_value c (granted env)
+  if get_value c (env ^_ granted)
   then
     f
   else
-    (* jww (2022-07-19): This can only be executed within the module that
-       declares the capability. *)
+    if __in_defcap env
+    then
+      throw (Err_Capability c CapErr_CannotWithInDefcap)
+    else
+      if __in_module module env
+      then
+        (* If the predicate passes, we are good to grant the capability. Note that
+           the predicate may return a list of other capabilities to be "composed"
+           with this one.
 
-    (* jww (2022-07-20): TODO: [with-capability] cannot be called from within
-       defcap execution *)
+           Note that if the resource type is unit, the only thing this function
+           could do is throw an exception. But since this is semantically
+           equivalent to throwing the same exception at the end of the predicate,
+           there is no reason to avoid this invocation in that case. *)
+        local (over context (cons InWithCapability))
+          ( predicate c ;;
+            __claim_resource c manager
+          ) ;;
 
-    (* If the predicate passes, we are good to grant the capability. Note that
-       the predicate may return a list of other capabilities to be "composed"
-       with this one. *)
-    compCaps <-
-      local (λ r, {| granted := granted r
-                   ; context := InWithCapability :: context r |})
-        (predicate c) ;
+        st <- get ;
+        put (st &+ to_compose .~ []) ;;
 
-    (* Note that if the resource type is unit, the only thing this function
-       could do is throw an exception. But since this is semantically
-       equivalent to throwing the same exception at the end of the predicate,
-       there is no reason to avoid this invocation in that case. *)
-    local (λ r, {| granted := granted r
-                 ; context := InWithCapability :: context r |})
-      (__claim_resource c manager) ;;
+        (* The process of "granting" consists merely of making the capability
+           visible in the reader environment to the provided expression. *)
+        local (over granted (app (AToken _ c :: st ^_ to_compose)))
+          f
+      else
+        throw (Err_Capability c CapErr_CannotWithOutsideDefcapModule).
 
-    (* The process of "granting" consists merely of making the capability
-       visible in the reader environment to the provided expression. *)
-    local (λ r, {| granted := AToken _ c :: compCaps ++ granted r
-                 ; context := context r |}) f.
-
-(* jww (2022-07-20): TODO *)
-(* jww (2022-07-20): This cannot be called except in defcap execution *)
 Definition compose_capability `(c : Cap s)
-           `(predicate : Cap s → PactM (list ACap))
+           `(predicate : Cap s → PactM ())
            (manager : Value (TPair (valueTy s) (valueTy s)) →
                       PactM (Value (valueTy s))) : PactM () :=
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
   env <- ask ;
-  if get_value c (granted env)
+  if get_value c (env ^_ granted)
   then
     pure ()
   else
-    (* jww (2022-07-19): This can only be executed within the module that
-       declares the capability. *)
+    if __in_defcap env
+    then
+      local (over context (cons InWithCapability))
+        ( predicate c ;;
+          __claim_resource c manager
+        ) ;;
 
-    (* If the predicate passes, we are good to grant the capability. Note that
-       the predicate may return a list of other capabilities to be "composed"
-       with this one. *)
-    compCaps <-
-      local (λ r, {| granted := granted r
-                   ; context := InWithCapability :: context r |})
-        (predicate c) ;
-
-    (* Note that if the resource type is unit, the only thing this function
-       could do is throw an exception. But since this is semantically
-       equivalent to throwing the same exception at the end of the predicate,
-       there is no reason to avoid this invocation in that case. *)
-    local (λ r, {| granted := granted r
-                 ; context := InWithCapability :: context r |})
-      (__claim_resource c manager).
+      modify (over to_compose (cons (AToken _ c)))
+    else
+      throw (Err_Capability c CapErr_CannotComposeOutsideDefcap).
 
 Definition require_capability `(c : Cap s) : PactM () :=
   (* Note that the request resource amount must match the original
@@ -216,7 +218,7 @@ Definition require_capability `(c : Cap s) : PactM () :=
      Requiring a capability means checking whether it has been granted at any
      point within the current scope of evaluation. *)
   env <- ask ;
-  if get_value c (granted env)
+  if get_value c (env ^_ granted)
   then
     pure ()
   else

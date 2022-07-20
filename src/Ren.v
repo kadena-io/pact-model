@@ -139,8 +139,9 @@ Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
 
   | Capability Hp Hv n p v =>
       Capability Hp Hv (RenExp r n) (RenExp r p) (RenExp r v)
-  | WithCapability Hp Hv p m c e =>
-      WithCapability Hp Hv (RenExp r p) (RenExp r m) (RenExp r c) (RenExp r e)
+  | WithCapability Hp Hv mn p m c e =>
+      WithCapability Hp Hv (RenExp r mn) (RenExp r p) (RenExp r m)
+                     (RenExp r c) (RenExp r e)
   | ComposeCapability Hp Hv p m c =>
       ComposeCapability Hp Hv (RenExp r p) (RenExp r m) (RenExp r c)
   | InstallCapability c    => InstallCapability (RenExp r c)
@@ -152,14 +153,15 @@ Lemma RenExp_preserves_size {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) :
 Proof.
   generalize dependent r.
   generalize dependent Γ.
-  now induction e; simpl; simp RcR; simpl; intros; auto.
+  induction e; simpl; simp RcR; simpl; intros; auto.
+  congruence.
 Qed.
 
 Lemma RenExp_idRen {τ Γ} (e : Exp Γ τ) :
   RenExp idRen e = e.
 Proof.
   induction e; simpl; simp RenVar; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4; auto.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto.
   - now rewrite RenVar_idRen.
   - now rewrite Keep_idRen, IHe.
 Qed.
@@ -177,7 +179,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4; auto.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto.
   - now rewrite RenVar_RcR.
   - now rewrite <- IHe; simp RcR.
 Qed.

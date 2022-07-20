@@ -89,8 +89,9 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
 
   | Capability Hp Hv n p v =>
       Capability Hp Hv (SubExp s n) (SubExp s p) (SubExp s v)
-  | WithCapability Hp Hv p m c e =>
-      WithCapability Hp Hv (SubExp s p) (SubExp s m) (SubExp s c) (SubExp s e)
+  | WithCapability Hp Hv mn p m c e =>
+      WithCapability Hp Hv (SubExp s mn) (SubExp s p) (SubExp s m)
+                     (SubExp s c) (SubExp s e)
   | ComposeCapability Hp Hv p m c =>
       ComposeCapability Hp Hv (SubExp s p) (SubExp s m) (SubExp s c)
   | InstallCapability c => InstallCapability (SubExp s c)
@@ -183,7 +184,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4; auto; f_equal.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto; f_equal.
   - now rewrite SubVar_RcS.
   - specialize (IHe _ _ (Keep σ) (Keepₛ δ)).
     rewrite <- IHe.
@@ -208,7 +209,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4; auto; f_equal.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto; f_equal.
   - now rewrite SubVar_ScR.
   - rewrite <- IHe.
     unfold Keepₛ.
@@ -270,7 +271,7 @@ Lemma SubExp_idSub {Γ τ} (e : Exp Γ τ) :
   SubExp idSub e = e.
 Proof.
   induction e; simpl; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4; auto.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto.
   - now rewrite SubVar_idSub.
   - f_equal.
     rewrite <- IHe at 2.
@@ -283,7 +284,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4; auto; f_equal.
+  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto; f_equal.
   - now rewrite SubVar_ScS.
   - rewrite <- IHe; clear.
     f_equal.

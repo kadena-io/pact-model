@@ -21,7 +21,7 @@ Inductive Sub (Γ : Env) : Env → Set :=
 #[global] Arguments NoSub {Γ}.
 #[global] Arguments Push {Γ Γ' τ} _ _.
 
-Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Sub.
+Derive Signature NoConfusion NoConfusionHom Subterm for Sub.
 
 Equations get `(s : Sub Γ' Γ) `(v : Var Γ τ) : Exp Γ' τ :=
   get (Push x _)   ZV    := x;
@@ -89,11 +89,11 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
 
   | Capability Hp Hv n p v =>
       Capability Hp Hv (SubExp s n) (SubExp s p) (SubExp s v)
-  | WithCapability Hp Hv mn p m c e =>
-      WithCapability Hp Hv (SubExp s mn) (SubExp s p) (SubExp s m)
+  | WithCapability Hv mn p m c e =>
+      WithCapability Hv (SubExp s mn) (SubExp s p) (SubExp s m)
                      (SubExp s c) (SubExp s e)
-  | ComposeCapability Hp Hv mn p m c =>
-      ComposeCapability Hp Hv (SubExp s mn) (SubExp s p) (SubExp s m)
+  | ComposeCapability Hv mn p m c =>
+      ComposeCapability Hv (SubExp s mn) (SubExp s p) (SubExp s m)
                         (SubExp s c)
   | InstallCapability c => InstallCapability (SubExp s c)
   | RequireCapability c => RequireCapability (SubExp s c)

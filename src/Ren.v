@@ -139,11 +139,11 @@ Fixpoint RenExp {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
 
   | Capability Hp Hv n p v =>
       Capability Hp Hv (RenExp r n) (RenExp r p) (RenExp r v)
-  | WithCapability Hp Hv mn p m c e =>
-      WithCapability Hp Hv (RenExp r mn) (RenExp r p) (RenExp r m)
+  | WithCapability Hv mn p m c e =>
+      WithCapability Hv (RenExp r mn) (RenExp r p) (RenExp r m)
                      (RenExp r c) (RenExp r e)
-  | ComposeCapability Hp Hv mn p m c =>
-      ComposeCapability Hp Hv (RenExp r mn) (RenExp r p) (RenExp r m)
+  | ComposeCapability Hv mn p m c =>
+      ComposeCapability Hv (RenExp r mn) (RenExp r p) (RenExp r m)
                         (RenExp r c)
   | InstallCapability c    => InstallCapability (RenExp r c)
   | RequireCapability c    => RequireCapability (RenExp r c)

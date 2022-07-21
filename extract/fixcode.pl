@@ -17,6 +17,10 @@ while (<>) {
     s/unsafeCoerce :: a -> b/--unsafeCoerce :: a -> b/;
     s/'\\000'/0/g;
 
+    s/Exp.Capability p v _ _ e0 e1 e2/Exp.Capability p v e0 e1 e2/;
+    s/Exp.WithCapability p v (_UU[0-9a-f]+_) _ e0 e1 e2 e3 e4/Exp.WithCapability p v $1 e0 e1 e2 e3 e4/;
+    s/Exp.ComposeCapability p v _ e0 e1 e2 e3/Exp.ComposeCapability p v e0 e1 e2 e3/;
+
     # next if /^emptyDSL ::/ .. /^$/;
 
     print;

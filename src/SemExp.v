@@ -162,7 +162,7 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
                 (rew <- [λ x, x] (reflectTy_reifyTy (m:=PactM) Hp) in arg')
                 (rew <- [λ x, x] (reflectTy_reifyTy (m:=PactM) Hv) in val'));
 
-  SemExp (WithCapability (p:=tp) (v:=tv) Hp Hv modname prd mng c e) se :=
+  SemExp (WithCapability (p:=tp) (v:=tv) Hv modname prd mng c e) se :=
     mn'  <- SemExp modname se ;
     c'   <- SemExp c se ;
     prd' <- SemExp prd se ;
@@ -177,7 +177,7 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
        rew <- [λ x, _ → PactM x] (reflectTy_reifyTy (m:=PactM) Hv) in mng')
       (SemExp e se);
 
-  SemExp (ComposeCapability (p:=tp) (v:=tv) Hp Hv modname prd mng c) se :=
+  SemExp (ComposeCapability (p:=tp) (v:=tv) Hv modname prd mng c) se :=
     mn'  <- SemExp modname se ;
     c'   <- SemExp c se ;
     prd' <- SemExp prd se ;

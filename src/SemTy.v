@@ -66,19 +66,22 @@ Proof.
 Qed.
 
 Equations reify `(v : ⟦ t ⟧) (C : ConcreteP t) : Value t :=
-  reify (t:=𝕌)     v PrimDecP := VUnit;
-  reify (t:=ℤ)     v PrimDecP := VInteger v;
-  reify (t:=𝔻)     v PrimDecP := VDecimal v;
-  reify (t:=𝕋)     v PrimDecP := VTime v;
-  reify (t:=𝔹)     v PrimDecP := VBool v;
-  reify (t:=𝕊)     v PrimDecP := VString v;
-  reify (t:=TySym) v SymDecP  := VSymbol v;
+  reify (t:=𝕌)     v _ := VUnit;
+  reify (t:=ℤ)     v _ := VInteger v;
+  reify (t:=𝔻)     v _ := VDecimal v;
+  reify (t:=𝕋)     v _ := VTime v;
+  reify (t:=𝔹)     v _ := VBool v;
+  reify (t:=𝕊)     v _ := VString v;
+  reify (t:=TySym) v _  := VSymbol v;
 
-  reify (t:=TyList _) [] (ListDecP H) := VList [];
-  reify (t:=TyList _) xs (ListDecP H) := VList (map (λ x, reify x H) xs);
+  reify (t:=TyList _) [] _ := VList [];
+  reify (t:=TyList _) xs _ := VList (map (λ x, reify x _) xs);
 
-  reify (t:=TyPair _ _) (x, y) (PairDecP Hx Hy) :=
-    VPair (reify x Hx) (reify y Hy).
+  reify (t:=TyPair _ _) (x, y) _ :=
+    VPair (reify x _) (reify y _).
+Next Obligation. now inv C. Qed.
+Next Obligation. now inv C. Qed.
+Next Obligation. now inv C. Qed.
 
 Equations reflect `(v : Value t) : ⟦ t ⟧ :=
   reflect (t:=TyPrim PrimUnit)    VUnit        := tt;
@@ -102,26 +105,6 @@ Next Obligation.
   - apply nat_EqDec.
   - apply bool_EqDec.
   - apply string_EqDec.
-Defined.
-
-#[export]
-Program Instance Concrete_EqDec {t} (H : ConcreteP t) : EqDec ⟦t⟧.
-Next Obligation.
-  induction H0;
-  try first [ now inv H0 | now apply Value_EqDec ];
-  simpl in x, y.
-  - apply SemPrimTy_EqDec.
-  - apply string_EqDec.
-  - apply list_eqdec.
-    fold SemTy.
-    unfold EqDec.
-    apply IHConcreteP.
-  - destruct x, y.
-    destruct (IHConcreteP1 s s1); subst.
-    + destruct (IHConcreteP2 s0 s2); subst.
-      * now left.
-      * right; intro; now inv H0.
-    + right; intro; now inv H0.
 Defined.
 
 End SemTy.

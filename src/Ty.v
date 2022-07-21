@@ -32,14 +32,20 @@ Inductive Ty : Set :=
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Ty.
 
-Inductive ConcreteP : Ty → Set :=
+Unset Elimination Schemes.
+
+Inductive ConcreteP : Ty → Prop :=
   | PrimDecP {ty}    : ConcreteP (TyPrim ty)
   | SymDecP          : ConcreteP TySym
   | ListDecP {τ}     : ConcreteP τ → ConcreteP (TyList τ)
   | PairDecP {τ1 τ2} : ConcreteP τ1 → ConcreteP τ2 →
                        ConcreteP (TyPair τ1 τ2).
 
-Derive Signature NoConfusion NoConfusionHom EqDec for ConcreteP.
+Derive Signature for ConcreteP.
+
+Set Elimination Schemes.
+
+Scheme ConcreteP_ind := Induction for ConcreteP Sort Prop.
 
 Fixpoint Reifiable (t : Ty) : option (ConcreteP t) :=
   match t with
@@ -67,15 +73,15 @@ Proof.
 Qed.
 
 Lemma ConcreteP_dec {τ} :
-  ConcreteP τ + (ConcreteP τ → False).
+  ConcreteP τ ∨ ¬ (ConcreteP τ).
 Proof.
   induction τ; try solve [now left; constructor|now right].
   - destruct IHτ;
     try (now left; constructor);
-    right; intro; inversion H; contradiction.
+    right; intro; inversion H0; contradiction.
   - destruct IHτ1, IHτ2;
     try (now left; constructor);
-    right; intro; inversion H; contradiction.
+    right; intro; inversion H1; contradiction.
 Qed.
 
 End Ty.

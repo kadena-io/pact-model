@@ -79,7 +79,6 @@ Inductive Exp Γ : Ty → Set :=
     Exp Γ (TyCap p v)
 
   | WithCapability {p v τ} :
-    ConcreteP p →
     ConcreteP v →
     Exp Γ TySym →                (* name of the defining module *)
     Exp Γ (TyCap p v ⟶ 𝕌) →     (* throws exception on failure *)
@@ -87,7 +86,6 @@ Inductive Exp Γ : Ty → Set :=
     Exp Γ (TyCap p v) → Exp Γ τ → Exp Γ τ
 
   | ComposeCapability {p v} :
-    ConcreteP p →
     ConcreteP v →
     Exp Γ TySym →                (* name of the defining module *)
     Exp Γ (TyCap p v ⟶ 𝕌) →     (* throws exception on failure *)
@@ -97,7 +95,7 @@ Inductive Exp Γ : Ty → Set :=
   | InstallCapability {p v} : Exp Γ (TyCap p v) → Exp Γ 𝕌
   | RequireCapability {p v} : Exp Γ (TyCap p v) → Exp Γ 𝕌.
 
-Derive Signature NoConfusionHom Subterm EqDec for Exp.
+Derive Signature NoConfusionHom Subterm for Exp.
 
 Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   match e with
@@ -121,9 +119,9 @@ Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   | Seq _ x y   => 1 + Exp_size x + Exp_size y
 
   | Capability _ _ _ n p v => 1 + Exp_size n + Exp_size p + Exp_size v
-  | WithCapability _ _ _ nm p m c e =>
+  | WithCapability _ _ nm p m c e =>
       1 + Exp_size nm + Exp_size p + Exp_size m + Exp_size c + Exp_size e
-  | ComposeCapability _ _ _ nm p m c =>
+  | ComposeCapability _ _ nm p m c =>
       1 + Exp_size nm + Exp_size p + Exp_size m + Exp_size c
   | InstallCapability _ c => 1 + Exp_size c
   | RequireCapability _ c => 1 + Exp_size c
@@ -156,8 +154,8 @@ Arguments Cdr {Γ τ} _.
 Arguments IsNil {Γ τ} _.
 Arguments Seq {Γ τ τ'} _ _.
 Arguments Capability {_ p v} _ _ _.
-Arguments WithCapability {_ p v τ} _ _ _ _ _ _ _.
-Arguments ComposeCapability {_ p v} _ _ _ _ _ _.
+Arguments WithCapability {_ p v τ} _ _ _ _ _ _.
+Arguments ComposeCapability {_ p v} _ _ _ _ _.
 Arguments InstallCapability {_ p v} _.
 Arguments RequireCapability {_ p v} _.
 

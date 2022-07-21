@@ -3,6 +3,7 @@ Require Export
   Hask.Control.Lens
   Pact.RWSE
   Pact.Lib
+  Pact.Ty
   Pact.Exp
   Pact.SemTy
   Pact.Value
@@ -19,7 +20,8 @@ Import ListNotations.
 
 Inductive Err : Type :=
   | Err_Exp : Exp.Err → Err
-  | Err_Capability {s} : Cap s → CapError → Err.
+  | Err_Capability {s} : Cap s → CapError → Err
+  | Err_CannotReify : Ty → Err.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Err.
 

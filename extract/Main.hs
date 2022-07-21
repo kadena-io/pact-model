@@ -5,26 +5,26 @@ module Main where
 
 import Pact
 import Test.Hspec
-import Test.QuickCheck
-
-instance Show Err where
-  show _ = "Err"
-
-instance Show PactState where
-  show _ = "PactState"
-
-instance Show PactLog where
-  show _ = "PactLog"
+-- import Test.QuickCheck
 
 main :: IO ()
 main = hspec $ do
     describe "Basic tests" $ do
-        it "Smoke test" $ do
-            print $
-              run @() $
-                coq_SemExp [] (TyPrim PrimUnit)
-                  (Lit PrimUnit LitUnit) (unsafeCoerce () :: Pact.Any)
+        it "Unit smoke test" $ do
+            print $ eval (TyPrim PrimUnit) (Lit PrimUnit LitUnit)
+
+        it "Lambda AddInt smoke test" $ do
+            print $ eval
+              (TyPrim PrimInteger)
+              (APP t t
+                   (APP t t
+                        (Bltn TySym AddInt)
+                        (Lit p (LitInteger 123)))
+                   (Lit p (LitInteger 456)))
 
   where
-    run :: PactM (SemTy a) -> Either Err (a, (PactState, PactLog))
-    run action = unsafeCoerce $ action (error "reader") (error "state") (error "writer")
+    t :: Ty
+    t = error "Ty argument ignored"
+
+    p :: PrimType
+    p = error "PrimType argument ignored"

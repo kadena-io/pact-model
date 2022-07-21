@@ -65,6 +65,32 @@ Proof.
   - inv H0.
 Qed.
 
+Equations reify `(v : ⟦ t ⟧) (C : ConcreteP t) : Value t :=
+  reify (t:=𝕌)     v PrimDecP := VUnit;
+  reify (t:=ℤ)     v PrimDecP := VInteger v;
+  reify (t:=𝔻)     v PrimDecP := VDecimal v;
+  reify (t:=𝕋)     v PrimDecP := VTime v;
+  reify (t:=𝔹)     v PrimDecP := VBool v;
+  reify (t:=𝕊)     v PrimDecP := VString v;
+  reify (t:=TySym) v SymDecP  := VSymbol v;
+
+  reify (t:=TyList _) [] (ListDecP H) := VList [];
+  reify (t:=TyList _) xs (ListDecP H) := VList (map (λ x, reify x H) xs);
+
+  reify (t:=TyPair _ _) (x, y) (PairDecP Hx Hy) :=
+    VPair (reify x Hx) (reify y Hy).
+
+Equations reflect `(v : Value t) : ⟦ t ⟧ :=
+  reflect (t:=TyPrim PrimUnit)    VUnit        := tt;
+  reflect (t:=TyPrim PrimInteger) (VInteger v) := v;
+  reflect (t:=TyPrim PrimDecimal) (VDecimal v) := v;
+  reflect (t:=TyPrim PrimTime)    (VTime v)    := v;
+  reflect (t:=TyPrim PrimBool)    (VBool v)    := v;
+  reflect (t:=TyPrim PrimString)  (VString v)  := v;
+  reflect (t:=TySym)              (VSymbol v)  := v;
+  reflect (t:=TyList _)           (VList vs)   := map reflect vs;
+  reflect (t:=TyPair _ _)         (VPair x y)  := (reflect x, reflect y).
+
 #[export]
 Program Instance SemPrimTy_EqDec {ty} : EqDec (SemPrimTy ty).
 Next Obligation.

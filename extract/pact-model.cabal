@@ -56,7 +56,6 @@ library
       RWSE
       SemExp
       SemTy
-      Signature
       Specif
       String
       Tuple

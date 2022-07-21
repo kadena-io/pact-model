@@ -9,6 +9,9 @@ Require Import
   Exp
   Eval.
 
+From Equations Require Import Equations.
+Set Equations With UIP.
+
 (** Eq *)
 
 Extraction Implicit eq_rect   [ x y ].
@@ -107,7 +110,7 @@ Extract Constant Qdiv =>
 
 Extract Inductive bool    => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
 Extract Inductive sumbool => "Prelude.Bool"
-  ["Prelude.True" "Prelude.False"]
+  ["(\_ -> Prelude.True)" "(\_ -> Prelude.False)"]
   "(\fT fF b -> if b then fT () else fF ())".
 
 (* Extract Inlined Constant Equality.bool_beq => *)
@@ -134,8 +137,8 @@ Extract Inductive sum => "Prelude.Either" ["Prelude.Left" "Prelude.Right"].
 
 Extract Inductive list => "[]" ["[]" "(:)"].
 
-Extract Inlined Constant app             => "(Prelude.++)".
-Extract Inlined Constant List.map        => "Prelude.map".
+Extract Inlined Constant app             => "(\_ -> (Prelude.++))".
+Extract Inlined Constant List.map        => "(\_ _ -> Prelude.map)".
 Extract         Constant List.fold_left  => "\f l z -> Data.List.foldl f z l".
 Extract Inlined Constant List.fold_right => "Data.List.foldr".
 Extract Inlined Constant List.find       => "Data.List.find".
@@ -177,6 +180,10 @@ Extract Inlined Constant ascii_of_nat => "Data.Char.chr".
 Extract Inlined Constant nat_of_ascii => "Data.Char.ord".
 Extract Inlined Constant ascii_of_N   => "Data.Char.chr".
 Extract Inlined Constant ascii_of_pos => "Data.Char.chr".
+
+(** Equations *)
+
+Extract Constant Signature "'a" "'b" "'c" => "".
 
 (** Final extraction *)
 

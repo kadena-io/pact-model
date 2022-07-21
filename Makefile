@@ -19,12 +19,13 @@ pact-model: Makefile.coq $(wildcard *.v)
 	make -f Makefile.coq JOBS=$(JOBS)
 	mv *.hs extract/src
 	perl -i extract/fixcode.pl extract/src/*.hs
-	(cd extract;							\
-	 hpack &&							\
-	 nix-shell --command						\
-	    "cabal configure --enable-tests --enable-benchmarks" &&	\
-	 nix-shell --command "cabal build" &&				\
-	 nix-shell --command "cabal test")
+
+# (cd extract;							\
+#  hpack &&							\
+#  nix-shell --command						\
+#     "cabal configure --enable-tests --enable-benchmarks" &&	\
+#  nix-shell --command "cabal build" &&				\
+#  nix-shell --command "cabal test")
 
 Makefile.coq: _CoqProject
 	coq_makefile -f $< -o $@

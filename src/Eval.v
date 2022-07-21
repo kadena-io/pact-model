@@ -7,12 +7,8 @@ Require Import
   Pact.Ty
   Pact.Exp
   Pact.Value
-  Pact.Ren
-  Pact.Sub
-  Pact.SemTy
   Pact.Lang
-  Pact.SemExp
-  Pact.Lang.Capability.
+  Pact.SemExp.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -21,8 +17,12 @@ Generalizable All Variables.
 
 Import ListNotations.
 
-Definition eval `(e : Exp [] τ) : Err + (SemTy (m:=PactM) τ * PactLog) :=
+Definition eval `(e : Exp [] τ) : Err + (Value τ * PactLog) :=
   match SemExp e tt newPactEnv newPactState newPactLog with
   | inl err => inl err
-  | inr (result, (_finalState, log)) => inr (result, log)
+  | inr (result, (_finalState, log)) =>
+      match Reifiable τ with
+      | None   => inl (Err_CannotReify τ)
+      | Some H => inr (reify result H, log)
+      end
   end.

@@ -24,6 +24,21 @@ Import ListNotations.
 
 Definition SemEnv Γ : Type := ilist (SemTy (m:=PactM)) Γ.
 
+Definition SemLit {ty : PrimType} (l : Literal ty) : SemPrimTy ty :=
+  match l with
+  | LitString s    => s
+  | LitInteger i   => i
+  | LitDecimal d _ => d (* jww (2022-07-21): TODO *)
+  | LitUnit        => tt
+  | LitBool b      => b
+  | LitTime t      => t
+  end.
+
+Definition SemBltn {τ} (bltn : Builtin τ) : SemTy τ :=
+  match bltn with
+  | AddInt => λ n, pure (λ m, pure (n + m)%Z)
+  end.
+
 Fixpoint SemVar `(v : Var Γ τ) : SemEnv Γ → SemTy τ :=
   match v with
   | ZV   => λ se, fst se
@@ -92,9 +107,9 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
     f x;
 
   SemExp (Error e)  _ := throw (Err_Exp e);
-  SemExp (Lit l)    _ := throw (Err_Exp Err_CarNil); (* jww (2022-07-18): TODO *)
-  SemExp (Bltn b)   _ := throw (Err_Exp Err_CarNil); (* jww (2022-07-18): TODO *)
   SemExp (Symbol n) _ := pure n;
+  SemExp (Lit l)  _   := pure (SemLit l);
+  SemExp (Bltn b)   _ := pure (SemBltn b);
 
   SemExp (If b t e) se :=
     b' <- SemExp b se ;
@@ -185,28 +200,14 @@ Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ
   SemExp e (RenSem r se) = SemExp (RenExp r e) se.
 Proof.
   generalize dependent Γ'.
-  induction e; simpl; intros; auto; simp SemExp.
+  induction e; simpl; intros; auto; simp SemExp;
+  try now rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5.
   - now rewrite SemVar_RenSem.
   - f_equal.
     extensionality z.
     rewrite <- IHe; clear IHe.
     simpl.
     now repeat f_equal.
-  - now rewrite IHe1, IHe2.
-  - now rewrite IHe1, IHe2, IHe3.
-  - now rewrite IHe1, IHe2.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite IHe1, IHe2.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite IHe.
-  - now rewrite IHe1, IHe2.
-  - now rewrite IHe1, IHe2, IHe3.
-  - now rewrite IHe1, IHe2, IHe3, IHe4, IHe5.
-  - now rewrite IHe1, IHe2, IHe3, IHe4.
-  - now rewrite IHe.
-  - now rewrite IHe.
 Qed.
 
 Lemma SemExp_wk `(E : SemEnv Γ) {τ τ'} (y : SemTy τ') (e : Exp Γ τ) :

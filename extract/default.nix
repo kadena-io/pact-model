@@ -35,9 +35,8 @@ in haskellPackages.developPackage {
     buildTools = (attrs.buildTools or []) ++ [
       haskellPackages.cabal-install
       haskellPackages.ormolu
-      (import ../. {}).pact-model_8_15.env
       pkgs.perl
-    ];
+    ] ++ (import ../. {}).pact-model_8_15.buildInputs;
 
     enableLibraryProfiling = false;
   });

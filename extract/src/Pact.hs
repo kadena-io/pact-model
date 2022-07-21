@@ -1,21 +1,27 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
 
 {-# OPTIONS_GHC "-Wno-orphans" #-}
 
 module Pact (
   module Ty,
   module Value,
-  module Exp,
+  -- module Exp,
   module Lang,
+  module Types,
+  evalExp,
   eval
 
 ) where
 
 import qualified Eval
+import Util.Types as Types
 import Exp hiding (Err)
 import qualified Exp
 import Lang
-import Value hiding (Any, __)
+import Value hiding (Any, __, reifyTy)
 import Ty hiding (__)
 import qualified CapabilityType
 
@@ -46,8 +52,14 @@ instance Eq CapabilityType.Cap where
   CapabilityType.Token name1 _ _ == CapabilityType.Token name2 _ _ =
     name1 == name2
 
-eval
+evalExp
   :: Ty.Ty
   -> Exp.Exp
   -> Either Lang.Err (Value.Value, Lang.PactLog)
-eval = Eval.eval
+evalExp = Eval.eval
+
+eval
+  :: forall t. ReifyTy t
+  => Types.Exp '[] t
+  -> Either Lang.Err (Value.Value, Lang.PactLog)
+eval e = evalExp (reifyTy @t) (forgetExp e)

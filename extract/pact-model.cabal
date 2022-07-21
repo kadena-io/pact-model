@@ -61,6 +61,7 @@ library
       Tuple
       Ty
       Util.HString
+      Util.Types
       Value
       Paths_pact_model
   hs-source-dirs:

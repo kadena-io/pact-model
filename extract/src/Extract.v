@@ -185,6 +185,17 @@ Extract Inlined Constant ascii_of_pos => "Data.Char.chr".
 
 Extract Constant Signature "'a" "'b" "'c" => "".
 
+(** Pact *)
+
+(*
+Extract Inductive Var => "Types.Var"
+  ["Types.ZV" "Types.SV"]
+  "(\fZV fSV v ->
+     case v of
+       Types.ZV _ _   -> fZV
+       Types.SV _ _ v -> fSV v)".
+*)
+
 (** Final extraction *)
 
 Extraction Language Haskell.

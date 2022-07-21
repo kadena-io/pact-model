@@ -24,8 +24,8 @@ Definition ask : RWSE r := λ r s w, inr (r, (s, w)).
 Definition local (f : r → r) `(x : RWSE a) : RWSE a :=
   λ r s w, x (f r) s w.
 
-Definition get : RWSE s := λ r s w, inr (s, (s, w)).
-Definition gets {a : Type} (f : s → a) : RWSE a := λ r s w, inr (f s, (s, w)).
+Definition get : RWSE s := λ _ s w, inr (s, (s, w)).
+Definition gets {a : Type} (f : s → a) : RWSE a := λ _ s w, inr (f s, (s, w)).
 Definition put (x : s) : RWSE unit := λ _ _ w, inr (tt, (x, w)).
 Definition modify (f : s → s) : RWSE unit := λ _ s w, inr (tt, (f s, w)).
 
@@ -65,6 +65,16 @@ Definition RWSE_join `(x : RWSE (RWSE a)) :
 Program Instance RWSE_Monad : Monad RWSE := {
   join := @RWSE_join
 }.
+
+Lemma put_get `(x : s) : (put x >> get) = (put x >> pure x).
+Proof.
+  simpl.
+  unfold RWSE_join, get.
+  extensionality r0.
+  extensionality s0.
+  extensionality w0.
+  reflexivity.
+Qed.
 
 End RWSE.
 

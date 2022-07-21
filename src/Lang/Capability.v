@@ -48,13 +48,13 @@ Definition get_cap `(c : Cap s) (l : list ACap) :
     end
   in go l.
 
-Definition set_cap `(c : Cap s) (l : list ACap) :
-  list ACap :=
+Definition set_cap `(c : Cap s) (l : list ACap) : list ACap :=
   let '(Token n arg _) := c in
   let fix go (l : list ACap) : list ACap :=
     match l with
-    | [] => []
-    | AToken s' (Token n' arg' _) :: xs =>
+    | [] => [AToken s c]
+    | x :: xs =>
+        let '(AToken s' (Token n' arg' _)) := x in
         match eq_dec s s' with
         | left Hs =>
             match eq_dec n n' with
@@ -62,14 +62,38 @@ Definition set_cap `(c : Cap s) (l : list ACap) :
                 match eq_dec arg
                   (rew <- [λ x, reflectTy (paramTy x)] Hs in arg') with
                 | left _ => AToken s c :: go xs
-                | _ => go xs
+                | _ => x :: go xs
                 end
-            | _ => go xs
+            | _ => x :: go xs
             end
-        | _ => go xs
+        | _ => x :: go xs
         end
     end
   in go l.
+
+Lemma get_set_cap `(c : Cap s) (l : list ACap) :
+  get_cap c (set_cap c l) = Some (valueOf c).
+Proof.
+  unfold get_cap, set_cap.
+  induction l, c; simpl.
+  - now rewrite !eq_dec_refl.
+  - destruct a, c; simpl.
+    destruct (eq_dec _ _); subst.
+    + destruct (eq_dec _ _); subst.
+      * destruct (eq_dec _ _); subst.
+        ** now rewrite !eq_dec_refl.
+        ** rewrite !eq_dec_refl.
+           rewrite IHl; simpl.
+           destruct (eq_dec _ _); subst; congruence.
+      * rewrite !eq_dec_refl.
+        rewrite IHl; simpl.
+        destruct (eq_dec _ _); subst; congruence.
+    + destruct (eq_dec _ _); subst.
+      * destruct (eq_dec _ _); subst.
+        ** destruct (eq_dec _ _); subst; congruence.
+        ** now rewrite IHl.
+      * now rewrite IHl.
+Qed.
 
 Definition __in_defcap (env : PactEnv) : bool :=
   if in_dec EvalContext_EqDec InWithCapability (env ^_ context)

@@ -6,6 +6,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Util.Types where
@@ -75,6 +76,9 @@ data Builtin :: Ty -> Type where
    AddInt :: Builtin ('TyArrow ('TyPrim 'PrimInteger)
                               ('TyArrow ('TyPrim 'PrimInteger)
                                         ('TyPrim 'PrimInteger)))
+   SubInt :: Builtin ('TyArrow ('TyPrim 'PrimInteger)
+                              ('TyArrow ('TyPrim 'PrimInteger)
+                                        ('TyPrim 'PrimInteger)))
 
 data Var :: Env -> Ty -> Type where
   ZV :: Var (t : ts) t
@@ -82,38 +86,67 @@ data Var :: Env -> Ty -> Type where
 
 data Exp :: Env -> Ty -> Type where
   VAR :: Var ts t -> Exp ts t
-  LAM :: Exp (dom : ts) cod -> Exp ts ('TyArrow dom cod)
-  APP :: Exp ts ('TyArrow dom cod) -> Exp ts dom -> Exp ts cod
-  Error :: Err -> Exp ts t
-  Lit :: Literal ty -> Exp ts ('TyPrim ty)
-  Bltn :: Builtin t -> Exp ts t
+  LAM :: (ReifyTy dom, ReifyTy cod)
+    => Exp (dom : ts) cod -> Exp ts ('TyArrow dom cod)
+  APP :: (ReifyTy dom, ReifyTy cod)
+    => Exp ts ('TyArrow dom cod) -> Exp ts dom -> Exp ts cod
+  Error :: ReifyTy t
+    => Err -> Exp ts t
+  Lit :: ReifyPrim ty
+    => Literal ty -> Exp ts ('TyPrim ty)
+  Bltn :: ReifyTy t
+    => Builtin t -> Exp ts t
   Symbol :: Prelude.String -> Exp ts 'TySym
-  If :: Exp ts ('TyPrim 'PrimBool) -> Exp ts t -> Exp ts t -> Exp ts t
-  Pair :: Exp ts t1 -> Exp ts t2 -> Exp ts ('TyPair t1 t2)
-  Fst :: Exp ts ('TyPair t1 t2) -> Exp ts t1
-  Snd :: Exp ts ('TyPair t1 t2) -> Exp ts t2
-  Nil :: Exp ts ('TyList t)
-  Cons :: Exp ts t -> Exp ts ('TyList t) -> Exp ts ('TyList t)
-  Car :: Exp ts ('TyList t) -> Exp ts t
-  Cdr :: Exp ts ('TyList t) -> Exp ts ('TyList t)
-  IsNil :: Exp ts ('TyList t) -> Exp ts ('TyPrim 'PrimBool)
-  Seq :: Exp ts t' -> Exp ts t -> Exp ts t
-  Capability :: Exp ts 'TySym -> Exp ts p -> Exp ts v -> Exp ts ('TyCap p v)
+  If :: ReifyTy t
+    => Exp ts ('TyPrim 'PrimBool) -> Exp ts t -> Exp ts t -> Exp ts t
+  Pair :: (ReifyTy t1, ReifyTy t2)
+    => Exp ts t1 -> Exp ts t2 -> Exp ts ('TyPair t1 t2)
+  Fst :: (ReifyTy t1, ReifyTy t2)
+    => Exp ts ('TyPair t1 t2) -> Exp ts t1
+  Snd :: (ReifyTy t1, ReifyTy t2)
+    => Exp ts ('TyPair t1 t2) -> Exp ts t2
+  Nil :: ReifyTy t
+    => Exp ts ('TyList t)
+  Cons :: ReifyTy t
+    => Exp ts t -> Exp ts ('TyList t) -> Exp ts ('TyList t)
+  Car :: ReifyTy t
+    => Exp ts ('TyList t) -> Exp ts t
+  Cdr :: ReifyTy t
+    => Exp ts ('TyList t) -> Exp ts ('TyList t)
+  IsNil :: ReifyTy t
+    => Exp ts ('TyList t) -> Exp ts ('TyPrim 'PrimBool)
+  Seq :: (ReifyTy t', ReifyTy t)
+    => Exp ts t' -> Exp ts t -> Exp ts t
+  Capability :: (ReifyTy p, ReifyTy v)
+    => Exp ts 'TySym -> Exp ts p -> Exp ts v -> Exp ts ('TyCap p v)
   WithCapability
-    :: Exp ts 'TySym
+    :: (ReifyTy p, ReifyTy v)
+    => Exp ts 'TySym
     -> Exp ts ('TyArrow ('TyCap p v) ('TyPrim 'PrimUnit))
     -> Exp ts ('TyArrow ('TyPair v v) v)
     -> Exp ts ('TyCap p v)
     -> Exp ts t
     -> Exp ts t
   ComposeCapability
-    :: Exp ts 'TySym
+    :: (ReifyTy p, ReifyTy v)
+    => Exp ts 'TySym
     -> Exp ts ('TyArrow ('TyCap p v) ('TyPrim 'PrimUnit))
     -> Exp ts ('TyArrow ('TyPair v v) v)
     -> Exp ts ('TyCap p v)
     -> Exp ts t
-  InstallCapability :: Exp ts ('TyCap p v) -> Exp ts ('TyPrim 'PrimUnit)
-  RequireCapability :: Exp ts ('TyCap p v) -> Exp ts ('TyPrim 'PrimUnit)
+  InstallCapability :: (ReifyTy p, ReifyTy v)
+    => Exp ts ('TyCap p v) -> Exp ts ('TyPrim 'PrimUnit)
+  RequireCapability :: (ReifyTy p, ReifyTy v)
+    => Exp ts ('TyCap p v) -> Exp ts ('TyPrim 'PrimUnit)
+
+reifyExpTy :: forall t ts. ReifyTy t => Exp ts t -> Ty
+reifyExpTy _ = reifyTy @t
+
+reifyCapPTy :: forall p v ts. ReifyTy p => Exp ts ('TyCap p v) -> Ty
+reifyCapPTy _ = reifyTy @p
+
+reifyCapVTy :: forall p v ts. ReifyTy v => Exp ts ('TyCap p v) -> Ty
+reifyCapVTy _ = reifyTy @v
 
 forgetLiteral :: Literal ty -> E.Literal
 forgetLiteral (LitString s) = E.LitString s
@@ -125,6 +158,7 @@ forgetLiteral (LitTime t) = E.LitTime t
 
 forgetBultin :: Builtin t -> E.Builtin
 forgetBultin AddInt = E.AddInt
+forgetBultin SubInt = E.SubInt
 
 forgetVar :: Var ts t -> E.Var
 forgetVar ZV = E.ZV undefined undefined
@@ -149,15 +183,15 @@ forgetExp (Cdr xs) = E.Cdr undefined (forgetExp xs)
 forgetExp (IsNil xs) = E.IsNil undefined (forgetExp xs)
 forgetExp (Seq e1 e2) = E.Seq undefined undefined (forgetExp e1) (forgetExp e2)
 forgetExp (Capability n p v) =
-  E.Capability undefined undefined
+  E.Capability (reifyExpTy p) (reifyExpTy v)
     (forgetExp n) (forgetExp p) (forgetExp v)
 forgetExp (WithCapability n prd mng c e) =
-  E.WithCapability undefined undefined undefined
+  E.WithCapability (reifyCapPTy c) (reifyCapVTy c) undefined
     (forgetExp n) (forgetExp prd) (forgetExp mng) (forgetExp c) (forgetExp e)
 forgetExp (ComposeCapability n prd mng c) =
-  E.ComposeCapability undefined undefined
+  E.ComposeCapability (reifyCapVTy c) undefined
     (forgetExp n) (forgetExp prd) (forgetExp mng) (forgetExp c)
 forgetExp (InstallCapability c) =
-  E.InstallCapability undefined undefined (forgetExp c)
+  E.InstallCapability (reifyCapPTy c) (reifyCapVTy c) (forgetExp c)
 forgetExp (RequireCapability c) =
-  E.RequireCapability undefined undefined (forgetExp c)
+  E.RequireCapability (reifyCapPTy c) (reifyCapVTy c) (forgetExp c)

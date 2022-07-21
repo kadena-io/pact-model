@@ -25,7 +25,8 @@ Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Literal.
 Open Scope Ty_scope.
 
 Inductive Builtin : Ty → Set :=
-  | AddInt : Builtin (ℤ ⟶ ℤ ⟶ ℤ).
+  | AddInt : Builtin (ℤ ⟶ ℤ ⟶ ℤ)
+  | SubInt : Builtin (ℤ ⟶ ℤ ⟶ ℤ).
 
 Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Builtin.
 

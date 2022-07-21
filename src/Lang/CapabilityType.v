@@ -21,6 +21,7 @@ Record CapSig : Set := {
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for CapSig.
 
+(* jww (2022-07-21): Capabilities need to match also on the module name *)
 Inductive Cap (s : CapSig) : Type :=
   | Token (name : string) :
     reflectTy (paramTy s) → reflectTy (valueTy s) → Cap s.

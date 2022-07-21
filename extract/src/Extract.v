@@ -19,10 +19,12 @@ Extraction Implicit eq_rect_r [ x y ].
 Extraction Implicit eq_rec    [ x y ].
 Extraction Implicit eq_rec_r  [ x y ].
 
-Extract Inlined Constant eq_rect   => "".
-Extract Inlined Constant eq_rect_r => "".
-Extract Inlined Constant eq_rec    => "".
-Extract Inlined Constant eq_rec_r  => "".
+Extract Inlined Constant eq_rect   => "(\_ _ x _ -> x)".
+Extract Inlined Constant eq_rect_r => "(\_ _ x _ -> x)".
+(* eq_rec   : ∀ (A : Type) (x : A) (P : A → Set), P x → ∀ y : A, x = y → P y *)
+Extract Inlined Constant eq_rec    => "(\_ _ x _ -> x)".
+(* eq_rec_r : ∀ (A : Type) (x : A) (P : A → Set), P x → ∀ y : A, y = x → P y *)
+Extract Inlined Constant eq_rec_r  => "(\_ _ x _ -> x)".
 
 (** Ord *)
 
@@ -33,7 +35,7 @@ Extract Inductive comparison =>
 
 Extract Inductive Datatypes.nat => "Prelude.Int"
   ["(0 :: Prelude.Int)" "HString.nsucc"]
-  "(\fO fS n -> if n Prelude.<= 0 then fO () else fS (Prelude.pred n))".
+  "(\fO fS n -> if n Prelude.<= 0 then fO __ else fS (Prelude.pred n))".
 
 Extract Inlined Constant EqNat.beq_nat         =>
   "((Prelude.==) :: Prelude.Int -> Prelude.Int -> Prelude.Bool)".
@@ -64,12 +66,12 @@ Extract Inductive positive => "Prelude.Int" [
   "(\x -> 2 Prelude.* x Prelude.+ 1)"
   "(\x -> 2 Prelude.* x)"
   "1" ]
-  "(\fI fO fH n -> if n Prelude.== 1 then fH () else
+  "(\fI fO fH n -> if n Prelude.== 1 then fH __ else
                    if Prelude.odd n then fI (n `Prelude.div` 2)
                                     else fO (n `Prelude.div` 2))".
 
 Extract Inductive Z => "Prelude.Int" [ "0" "(\x -> x)" "Prelude.negate" ]
-  "(\fO fP fN n -> if n Prelude.== 0 then fO () else
+  "(\fO fP fN n -> if n Prelude.== 0 then fO __ else
                    if n Prelude.> 0 then fP n else fN (Prelude.negate n))".
 
 Extract Inlined Constant Z.add       => "(Prelude.+)".
@@ -86,7 +88,7 @@ Extract Constant Z.modulo =>
   "(\n m -> if m Prelude.== 0 then 0 else Prelude.mod n m)".
 
 Extract Inductive N => "Prelude.Int" [ "0" "(\x -> x)" ]
-  "(\fO fP n -> if n Prelude.== 0 then fO () else fP n)".
+  "(\fO fP n -> if n Prelude.== 0 then fO __ else fP n)".
 
 Extract Inlined Constant N.add       => "(Prelude.+)".
 Extract Inlined Constant N.sub       => "(Prelude.-)".
@@ -111,7 +113,7 @@ Extract Constant Qdiv =>
 Extract Inductive bool    => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
 Extract Inductive sumbool => "Prelude.Bool"
   ["(\_ -> Prelude.True)" "(\_ -> Prelude.False)"]
-  "(\fT fF b -> if b then fT () else fF ())".
+  "(\fT fF b -> if b then fT __ else fF __)".
 
 (* Extract Inlined Constant Equality.bool_beq => *)
 (*   "((Prelude.==) :: Prelude.Bool -> Prelude.Bool -> Prelude.Bool)". *)
@@ -180,6 +182,8 @@ Extract Inlined Constant ascii_of_nat => "Data.Char.chr".
 Extract Inlined Constant nat_of_ascii => "Data.Char.ord".
 Extract Inlined Constant ascii_of_N   => "Data.Char.chr".
 Extract Inlined Constant ascii_of_pos => "Data.Char.chr".
+Extract Inlined Constant ascii_eqdec  => "(Prelude.==)".
+Extract Inlined Constant string_eqdec => "(Prelude.==)".
 
 (** Equations *)
 
@@ -210,4 +214,5 @@ Separate Extraction
   Pact.Ty.Ty
   Pact.Exp.Var
   Pact.Exp.Exp
-  Pact.Eval.eval.
+  Pact.Eval.eval
+  Pact.Eval.evalInModule.

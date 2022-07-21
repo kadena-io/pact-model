@@ -4,11 +4,6 @@ module Util.HString where
 
 import Data.Char
 import Data.Bits
-import Data.Word (Word8)
-import Foreign.Ptr (Ptr)
-import Foreign.Storable (pokeElemOff)
-import GHC.Prim
-import GHC.Exts
 
 default (Int)
 

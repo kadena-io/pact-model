@@ -37,6 +37,7 @@ Definition SemLit {ty : PrimType} (l : Literal ty) : SemPrimTy ty :=
 Definition SemBltn {τ} (bltn : Builtin τ) : SemTy τ :=
   match bltn with
   | AddInt => λ n, pure (λ m, pure (n + m)%Z)
+  | SubInt => λ n, pure (λ m, pure (n - m)%Z)
   end.
 
 Fixpoint SemVar `(v : Var Γ τ) : SemEnv Γ → SemTy τ :=

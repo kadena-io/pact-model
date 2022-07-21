@@ -1,6 +1,20 @@
-* TODO Row-types
-* TODO Modules
-* TODO Schemas
-* TODO Tables
-* TODO Guards
-* TODO Capabilities
+* Pact Language Features
+
+** TODO Capabilities
+*** TODO Capabilities need to match also on the module name
+*** TODO Writing defining theorems about capabilities
+** TODO Guards
+** TODO Row-types
+** TODO Modules
+** TODO Schemas
+** TODO Tables
+
+* Extraction
+
+** TODO How can we avoid runtime type erasure?
+** TODO Prove that erased terms are isomorphic to typed terms
+
+* Formal verification of contracts
+
+** TODO Build symbolic evaluator
+** TODO Prove correctness of symbolic evaluator

@@ -24,7 +24,7 @@ Open Scope Ty_scope.
 
 Import EqNotations.
 
-Definition get_value `(c : Cap s) (l : list ACap) :
+Definition get_cap `(c : Cap s) (l : list ACap) :
   option (reflectTy (valueTy s)) :=
   let '(Token n arg _) := c in
   let fix go (l : list ACap) : option (reflectTy (valueTy s)) :=
@@ -48,7 +48,7 @@ Definition get_value `(c : Cap s) (l : list ACap) :
     end
   in go l.
 
-Definition set_value `(c : Cap s) (l : list ACap) :
+Definition set_cap `(c : Cap s) (l : list ACap) :
   list ACap :=
   let '(Token n arg _) := c in
   let fix go (l : list ACap) : list ACap :=
@@ -97,7 +97,7 @@ Definition install_capability `(c : Cap s) : PactM () :=
   then
     throw (Err_Capability c CapErr_CannotInstallInDefcap)
   else
-    modify (over resources (set_value c)).
+    modify (over resources (set_cap c)).
 
 Definition __claim_resource `(c : Cap s)
            (manager : reflectTy (valueTy s) * reflectTy (valueTy s) →
@@ -110,12 +110,12 @@ Definition __claim_resource `(c : Cap s)
     pure ()                     (* unit is always available *)
   else
     st <- get ;
-    match get_value c (st ^_ resources) with
+    match get_cap c (st ^_ resources) with
     | None => throw (Err_Capability c CapErr_NoResourceAvailable)
     | Some amt =>
       let '(Token n p req) := c in
       amt' <- manager (amt, req) ;
-      put (st &+ resources %~ set_value (Token n p amt'))
+      put (st &+ resources %~ set_cap (Token n p amt'))
     end.
 
 (** [with_capability] grants a capability [C] to the evaluation of [f].
@@ -149,7 +149,7 @@ Definition with_capability (module : string) `(c : Cap s)
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
   env <- ask ;
-  if get_value c (env ^_ granted)
+  if get_cap c (env ^_ granted)
   then
     f
   else
@@ -189,7 +189,7 @@ Definition compose_capability (module : string) `(c : Cap s)
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
   env <- ask ;
-  if get_value c (env ^_ granted)
+  if get_cap c (env ^_ granted)
   then
     pure ()
   else
@@ -215,7 +215,7 @@ Definition require_capability `(c : Cap s) : PactM () :=
      Requiring a capability means checking whether it has been granted at any
      point within the current scope of evaluation. *)
   env <- ask ;
-  if get_value c (env ^_ granted)
+  if get_cap c (env ^_ granted)
   then
     pure ()
   else

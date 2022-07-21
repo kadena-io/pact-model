@@ -1,3 +1,5 @@
+Set Warnings "-extraction-reserved-identifier".
+
 From Coq Require Extraction.
 
 Require Import
@@ -182,4 +184,4 @@ Set Extraction Optimize.
 Set Extraction AccessOpaque.
 
 Separate Extraction
-  SemExp.
+  Pact.SemExp.

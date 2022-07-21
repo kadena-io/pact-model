@@ -1,7 +1,7 @@
 Require Export
-  Lib
-  Value
-  RWSE.
+  Pact.Lib
+  Pact.Value
+  Pact.RWSE.
 
 (* Set Universe Polymorphism. *)
 

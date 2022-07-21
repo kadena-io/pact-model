@@ -1,5 +1,5 @@
 Require Import Hask.Prelude.
-Require Export Data.Semigroup.
+Require Export Pact.Data.Semigroup.
 
 Generalizable All Variables.
 Set Primitive Projections.

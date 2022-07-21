@@ -1,8 +1,8 @@
 Require Import
   Coq.ZArith.ZArith
-  Lib
-  Ty
-  Exp.
+  Pact.Lib
+  Pact.Ty
+  Pact.Exp.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

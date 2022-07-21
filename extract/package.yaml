@@ -21,6 +21,7 @@ ghc-options:
   - -fspec-constr-count=6
 
 library:
+  source-dirs: src
   exposed-modules:
     Pact
 

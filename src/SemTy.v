@@ -3,14 +3,14 @@ Require Import
   Hask.Control.Monad
   Hask.Data.Either
   Hask.Data.Maybe
-  ilist
-  Lib
-  Ty
-  Exp
-  Value
-  Ren
-  Sub
-  Lang.CapabilityType.
+  Pact.ilist
+  Pact.Lib
+  Pact.Ty
+  Pact.Exp
+  Pact.Value
+  Pact.Ren
+  Pact.Sub
+  Pact.Lang.CapabilityType.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

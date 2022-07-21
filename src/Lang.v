@@ -1,12 +1,12 @@
 Require Export
   Hask.Control.Monad
   Hask.Control.Lens
-  RWSE
-  Lib
-  Exp
-  SemTy
-  Value
-  Lang.CapabilityType.
+  Pact.RWSE
+  Pact.Lib
+  Pact.Exp
+  Pact.SemTy
+  Pact.Value
+  Pact.Lang.CapabilityType.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

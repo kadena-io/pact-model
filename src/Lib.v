@@ -13,7 +13,7 @@ Require Export
   Coq.Sets.Powerset_facts
   Coq.Strings.String
   Coq.Unicode.Utf8
-  Ltac.
+  Pact.Ltac.
 
 Require Import
   Coq.ZArith.ZArith.

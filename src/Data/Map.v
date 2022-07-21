@@ -1,8 +1,8 @@
 Require Export
   Coq.Lists.List
   Coq.Unicode.Utf8
-  Data.Eq
-  Data.Ord.
+  Pact.Data.Eq
+  Pact.Data.Ord.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

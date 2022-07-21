@@ -1,8 +1,8 @@
 Require Import
-  Lib
-  Ty
-  Exp
-  Value.
+  Pact.Lib
+  Pact.Ty
+  Pact.Exp
+  Pact.Value.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

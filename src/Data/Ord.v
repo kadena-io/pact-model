@@ -1,4 +1,4 @@
-Require Import Data.Eq.
+Require Import Pact.Data.Eq.
 
 Generalizable All Variables.
 Set Primitive Projections.

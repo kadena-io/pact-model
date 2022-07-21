@@ -1,6 +1,6 @@
 Require Import
-  Ty
-  Exp.
+  Pact.Ty
+  Pact.Exp.
 
 Open Scope Ty_scope.
 

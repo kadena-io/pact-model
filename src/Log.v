@@ -1,10 +1,10 @@
 Set Warnings "-cannot-remove-as-expected".
 
 Require Import
-  Lib
-  Ty
-  Exp
-  Sub.
+  Pact.Lib
+  Pact.Ty
+  Pact.Exp
+  Pact.Sub.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

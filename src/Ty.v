@@ -1,7 +1,7 @@
 Set Warnings "-cannot-remove-as-expected".
 
 Require Import
-  Lib.
+  Pact.Lib.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

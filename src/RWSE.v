@@ -1,10 +1,10 @@
 Require Import Hask.Prelude.
 Require Import Hask.Ltac.
 Require Import Hask.Control.Monad.
-Require Import Data.Semigroup.
-Require Import Data.Monoid.
 Require Import Coq.Unicode.Utf8.
 Require Import FunctionalExtensionality.
+Require Import Pact.Data.Semigroup.
+Require Import Pact.Data.Monoid.
 
 Generalizable All Variables.
 Set Primitive Projections.

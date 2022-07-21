@@ -1,11 +1,11 @@
 Require Import
   Hask.Control.Monad
   Data.Monoid
-  Lib
-  Ty
-  Exp
-  SemTy
-  Lang.
+  Pact.Lib
+  Pact.Ty
+  Pact.Exp
+  Pact.SemTy
+  Pact.Lang.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

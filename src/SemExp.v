@@ -2,16 +2,16 @@ Require Import
   Coq.ZArith.ZArith
   Hask.Control.Monad
   Hask.Data.Either
-  ilist
-  Lib
-  Ty
-  Exp
-  Value
-  Ren
-  Sub
-  SemTy
-  Lang
-  Lang.Capability.
+  Pact.ilist
+  Pact.Lib
+  Pact.Ty
+  Pact.Exp
+  Pact.Value
+  Pact.Ren
+  Pact.Sub
+  Pact.SemTy
+  Pact.Lang
+  Pact.Lang.Capability.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

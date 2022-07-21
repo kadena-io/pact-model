@@ -1,12 +1,12 @@
 Set Warnings "-notation-overridden".
 
 Require Import
-  Lib
-  Ty
-  Exp
-  Ren
-  SemTy
-  SemExp.
+  Pact.Lib
+  Pact.Ty
+  Pact.Exp
+  Pact.Ren
+  Pact.SemTy
+  Pact.SemExp.
 
 Require Import Category.Lib.
 Require Import Category.Theory.Category.

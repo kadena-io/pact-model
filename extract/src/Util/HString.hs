@@ -1,6 +1,6 @@
 {-# LANGUAGE MagicHash #-}
 
-module Data.ByteString.Fiat.HString where
+module Util.HString where
 
 import Data.Char
 import Data.Bits

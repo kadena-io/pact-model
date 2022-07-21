@@ -89,6 +89,7 @@ Inductive Exp Γ : Ty → Set :=
   | ComposeCapability {p v} :
     ConcreteP p →
     ConcreteP v →
+    Exp Γ TySym →                (* name of the defining module *)
     Exp Γ (TyCap p v ⟶ 𝕌) →     (* throws exception on failure *)
     Exp Γ (v × v ⟶ v) →         (* throws exception on failure *)
     Exp Γ (TyCap p v) → Exp Γ 𝕌
@@ -122,8 +123,8 @@ Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
   | Capability _ _ _ n p v => 1 + Exp_size n + Exp_size p + Exp_size v
   | WithCapability _ _ _ nm p m c e =>
       1 + Exp_size nm + Exp_size p + Exp_size m + Exp_size c + Exp_size e
-  | ComposeCapability _ _ _ p m c =>
-      1 + Exp_size p + Exp_size m + Exp_size c
+  | ComposeCapability _ _ _ nm p m c =>
+      1 + Exp_size nm + Exp_size p + Exp_size m + Exp_size c
   | InstallCapability _ c => 1 + Exp_size c
   | RequireCapability _ c => 1 + Exp_size c
   end.
@@ -156,7 +157,7 @@ Arguments IsNil {Γ τ} _.
 Arguments Seq {Γ τ τ'} _ _.
 Arguments Capability {_ p v} _ _ _.
 Arguments WithCapability {_ p v τ} _ _ _ _ _ _ _.
-Arguments ComposeCapability {_ p v} _ _ _ _ _.
+Arguments ComposeCapability {_ p v} _ _ _ _ _ _.
 Arguments InstallCapability {_ p v} _.
 Arguments RequireCapability {_ p v} _.
 

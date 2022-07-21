@@ -1,15 +1,8 @@
 Require Export
-  (* Coq.Classes.Morphisms *)
-  (* Coq.Classes.RelationClasses *)
   Coq.Lists.List
-  (* Coq.Program.Equality *)
-  (* Coq.Program.Program *)
-  (* Coq.Relations.Relation_Definitions *)
   Coq.Unicode.Utf8
   Data.Eq
   Data.Ord.
-
-(* Set Universe Polymorphism. *)
 
 From Equations Require Import Equations.
 Set Equations With UIP.

@@ -2,8 +2,6 @@ Require Import Hask.Prelude.
 
 Generalizable All Variables.
 Set Primitive Projections.
-(* Set Universe Polymorphism. *)
-(* Unset Transparent Obligations. *)
 
 Class Semigroup (m : Type) := {
   mappend : m -> m -> m;

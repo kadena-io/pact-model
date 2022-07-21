@@ -17,8 +17,6 @@ Set Equations With UIP.
 
 Generalizable All Variables.
 Set Primitive Projections.
-(* Set Universe Polymorphism. *)
-(* Unset Transparent Obligations. *)
 
 (*
 Section Cat.

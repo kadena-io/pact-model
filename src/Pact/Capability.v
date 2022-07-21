@@ -1,8 +1,4 @@
 Require Import
-  Coq.Arith.Arith
-  Coq.ZArith.ZArith
-  Coq.micromega.Lia
-  Coq.Strings.String
   Hask.Control.Monad
   Data.Monoid
   Lib
@@ -10,8 +6,6 @@ Require Import
   Exp
   SemTy
   Pact.
-
-(* Set Universe Polymorphism. *)
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -188,7 +182,7 @@ Definition with_capability (module : string) `(c : Cap s)
       else
         throw (Err_Capability c CapErr_CannotWithOutsideDefcapModule).
 
-Definition compose_capability `(c : Cap s)
+Definition compose_capability (module : string) `(c : Cap s)
            `(predicate : Cap s → PactM ())
            (manager : reflectTy (TPair (valueTy s) (valueTy s)) →
                       PactM (reflectTy (valueTy s))) : PactM () :=
@@ -201,12 +195,16 @@ Definition compose_capability `(c : Cap s)
   else
     if __in_defcap env
     then
-      local (over context (cons InWithCapability))
-        ( predicate c ;;
-          __claim_resource c manager
-        ) ;;
+      if __in_module module env
+      then
+        local (over context (cons InWithCapability))
+          ( predicate c ;;
+            __claim_resource c manager
+          ) ;;
 
-      modify (over to_compose (cons (AToken _ c)))
+        modify (over to_compose (cons (AToken _ c)))
+      else
+        throw (Err_Capability c CapErr_CannotComposeOutsideDefcapModule)
     else
       throw (Err_Capability c CapErr_CannotComposeOutsideDefcap).
 

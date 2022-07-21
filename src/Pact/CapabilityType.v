@@ -67,15 +67,13 @@ Next Obligation.
     now inv H.
 Defined.
 
-Definition ACap_ext (ac : ACap) : { s : CapSig & Cap s } :=
-  match ac with AToken s c => existT _ s c end.
-
 Inductive CapError : Set :=
   | CapErr_CapabilityNotAvailable
   | CapErr_NoResourceAvailable
   | CapErr_CannotInstallInDefcap
   | CapErr_CannotWithInDefcap
+  | CapErr_CannotWithOutsideDefcapModule
   | CapErr_CannotComposeOutsideDefcap
-  | CapErr_CannotWithOutsideDefcapModule.
+  | CapErr_CannotComposeOutsideDefcapModule.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for CapError.

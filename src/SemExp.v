@@ -13,8 +13,6 @@ Require Import
   Pact
   Pact.Capability.
 
-(* Set Universe Polymorphism. *)
-
 From Equations Require Import Equations.
 Set Equations With UIP.
 
@@ -164,11 +162,13 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
        rew <- [λ x, _ → PactM x] (reflectTy_reifyTy (m:=PactM) Hv) in mng')
       (SemExp e se);
 
-  SemExp (ComposeCapability (p:=tp) (v:=tv) Hp Hv prd mng c) se :=
+  SemExp (ComposeCapability (p:=tp) (v:=tv) Hp Hv modname prd mng c) se :=
+    mn'  <- SemExp modname se ;
     c'   <- SemExp c se ;
     prd' <- SemExp prd se ;
     mng' <- SemExp mng se ;
     compose_capability
+      mn'
       (s:={| paramTy := reifyTy tp
            ; valueTy := reifyTy tv |})
       c'
@@ -204,7 +204,7 @@ Proof.
   - now rewrite IHe1, IHe2.
   - now rewrite IHe1, IHe2, IHe3.
   - now rewrite IHe1, IHe2, IHe3, IHe4, IHe5.
-  - now rewrite IHe1, IHe2, IHe3.
+  - now rewrite IHe1, IHe2, IHe3, IHe4.
   - now rewrite IHe.
   - now rewrite IHe.
 Qed.

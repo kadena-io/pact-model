@@ -8,8 +8,6 @@ Require Export
   Value
   Pact.CapabilityType.
 
-(* Set Universe Polymorphism. *)
-
 From Equations Require Import Equations.
 Set Equations With UIP.
 

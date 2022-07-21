@@ -10,8 +10,8 @@ Require Import
   Ren
   Sub
   SemTy
-  Pact
-  Pact.Capability.
+  Lang
+  Lang.Capability.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

@@ -6,7 +6,7 @@ Require Export
   Exp
   SemTy
   Value
-  Pact.CapabilityType.
+  Lang.CapabilityType.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

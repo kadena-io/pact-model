@@ -5,7 +5,7 @@ Require Import
   Ty
   Exp
   SemTy
-  Pact.
+  Lang.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

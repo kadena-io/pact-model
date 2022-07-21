@@ -1,4 +1,4 @@
--R src Kadena
+-R src Pact
 src/ilist.v
 src/Data/Semigroup.v
 src/Data/Monoid.v
@@ -12,9 +12,9 @@ src/Log.v
 src/Value.v
 src/Ren.v
 src/Sub.v
-src/Pact/CapabilityType.v
+src/Lang/CapabilityType.v
 src/SemTy.v
-src/Pact.v
-src/Pact/Capability.v
+src/Lang.v
+src/Lang/Capability.v
 src/SemExp.v
 src/Cat.v

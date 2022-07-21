@@ -10,7 +10,7 @@ Require Import
   Value
   Ren
   Sub
-  Pact.CapabilityType.
+  Lang.CapabilityType.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

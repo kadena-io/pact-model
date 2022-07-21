@@ -41,17 +41,17 @@ Inductive ConcreteP : Ty → Set :=
 
 Derive Signature NoConfusion NoConfusionHom EqDec for ConcreteP.
 
-Fixpoint Concreteness (t : Ty) : option (ConcreteP t) :=
+Fixpoint Reifiable (t : Ty) : option (ConcreteP t) :=
   match t with
   | TyPrim ty    => Some (PrimDecP (ty:=ty))
   | TySym        => Some SymDecP
   | TyList τ     =>
-      match Concreteness τ with
+      match Reifiable τ with
       | Some decP => Some (ListDecP decP)
       | None => None
       end
   | TyPair τ1 τ2 =>
-      match Concreteness τ1, Concreteness τ2 with
+      match Reifiable τ1, Reifiable τ2 with
       | Some dec1P, Some dec2P => Some (PairDecP dec1P dec2P)
       | _, _ => None
       end

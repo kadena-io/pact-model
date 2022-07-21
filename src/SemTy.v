@@ -9,7 +9,8 @@ Require Import
   Exp
   Value
   Ren
-  Sub.
+  Sub
+  Pact.CapabilityType.
 
 From Equations Require Import Equations.
 Set Equations With UIP.
@@ -43,27 +44,44 @@ Fixpoint SemTy (τ : Ty) : Type :=
   | TyPair t1 t2    => SemTy t1 * SemTy t2
 
   (* These types are used by capabilities. *)
-  | TyCap p v       => Cap {| paramTy := concreteTy p; valueTy := concreteTy v |}
+  | TyCap p v       => Cap {| paramTy := reifyTy p; valueTy := reifyTy v |}
   end.
 
 Notation "⟦ t ⟧" := (SemTy t) (at level 9) : type_scope.
 
-Equations concrete `(v : ⟦ t ⟧) (C : ConcreteP t) : Value (concreteTy t) :=
-  concrete (t:=𝕌)     v PrimDecP := VUnit;
-  concrete (t:=ℤ)     v PrimDecP := VInteger v;
-  concrete (t:=𝔻)     v PrimDecP := VDecimal v;
-  concrete (t:=𝕋)     v PrimDecP := VTime v;
-  concrete (t:=𝔹)     v PrimDecP := VBool v;
-  concrete (t:=𝕊)     v PrimDecP := VString v;
-  concrete (t:=TySym) v SymDecP  := VSymbol v;
+Lemma reflectTy_reifyTy {τ} :
+  ConcreteP τ → reflectTy (reifyTy τ) = ⟦τ⟧.
+Proof.
+  induction τ; simpl in *; intros; auto.
+  - inv H0.
+  - now destruct p.
+  - inv H0.
+    f_equal.
+    now apply IHτ.
+  - inv H0.
+    f_equal.
+    + now apply IHτ1.
+    + now apply IHτ2.
+  - inv H0.
+Qed.
 
-  concrete (t:=TyList _) [] (ListDecP H) := VList [];
-  concrete (t:=TyList _) xs (ListDecP H) := VList (map (λ x, concrete x H) xs);
+(*
+Equations reify `(v : ⟦ t ⟧) (C : ConcreteP t) : Value (reifyTy t) :=
+  reify (t:=𝕌)     v PrimDecP := VUnit;
+  reify (t:=ℤ)     v PrimDecP := VInteger v;
+  reify (t:=𝔻)     v PrimDecP := VDecimal v;
+  reify (t:=𝕋)     v PrimDecP := VTime v;
+  reify (t:=𝔹)     v PrimDecP := VBool v;
+  reify (t:=𝕊)     v PrimDecP := VString v;
+  reify (t:=TySym) v SymDecP  := VSymbol v;
 
-  concrete (t:=TyPair _ _) (x, y) (PairDecP Hx Hy) :=
-    VPair (concrete x Hx) (concrete y Hy).
+  reify (t:=TyList _) [] (ListDecP H) := VList [];
+  reify (t:=TyList _) xs (ListDecP H) := VList (map (λ x, reify x H) xs);
 
-Equations reflect `(v : Value (concreteTy t)) : ⟦ t ⟧ :=
+  reify (t:=TyPair _ _) (x, y) (PairDecP Hx Hy) :=
+    VPair (reify x Hx) (reify y Hy).
+
+Equations reflect `(v : Value (reifyTy t)) : ⟦ t ⟧ :=
   reflect (t:=TyPrim PrimUnit)    VUnit        := tt;
   reflect (t:=TyPrim PrimInteger) (VInteger v) := v;
   reflect (t:=TyPrim PrimDecimal) (VDecimal v) := v;
@@ -73,6 +91,7 @@ Equations reflect `(v : Value (concreteTy t)) : ⟦ t ⟧ :=
   reflect (t:=TySym)              (VSymbol v)  := v;
   reflect (t:=TyList _)           (VList vs)   := map reflect vs;
   reflect (t:=TyPair _ _)         (VPair x y)  := (reflect x, reflect y).
+*)
 
 #[export]
 Program Instance SemPrimTy_EqDec {ty} : EqDec (SemPrimTy ty).

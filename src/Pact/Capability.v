@@ -8,7 +8,6 @@ Require Import
   Lib
   Ty
   Exp
-  Value
   SemTy
   Pact.
 
@@ -32,9 +31,9 @@ Open Scope Ty_scope.
 Import EqNotations.
 
 Definition get_value `(c : Cap s) (l : list ACap) :
-  option (Value (valueTy s)) :=
+  option (reflectTy (valueTy s)) :=
   let '(Token n arg _) := c in
-  let fix go (l : list ACap) : option (Value (valueTy s)) :=
+  let fix go (l : list ACap) : option (reflectTy (valueTy s)) :=
     match l with
     | [] => None
     | AToken s' (Token n' arg' val') :: xs =>
@@ -43,9 +42,9 @@ Definition get_value `(c : Cap s) (l : list ACap) :
             match eq_dec n n' with
             | left _ =>
                 match eq_dec arg
-                  (rew <- [λ x, Value (paramTy x)] Hs in arg') with
+                  (rew <- [λ x, reflectTy (paramTy x)] Hs in arg') with
                 | left _ =>
-                    Some (rew <- [λ x, Value (valueTy x)] Hs in val')
+                    Some (rew <- [λ x, reflectTy (valueTy x)] Hs in val')
                 | _ => go xs
                 end
             | _ => go xs
@@ -67,7 +66,7 @@ Definition set_value `(c : Cap s) (l : list ACap) :
             match eq_dec n n' with
             | left _ =>
                 match eq_dec arg
-                  (rew <- [λ x, Value (paramTy x)] Hs in arg') with
+                  (rew <- [λ x, reflectTy (paramTy x)] Hs in arg') with
                 | left _ => AToken s c :: go xs
                 | _ => go xs
                 end
@@ -107,8 +106,8 @@ Definition install_capability `(c : Cap s) : PactM () :=
     modify (over resources (set_value c)).
 
 Definition __claim_resource `(c : Cap s)
-           (manager : Value (TPair (valueTy s) (valueTy s)) →
-                      PactM (Value (valueTy s))) : PactM () :=
+           (manager : reflectTy (valueTy s) * reflectTy (valueTy s) →
+                      PactM (reflectTy (valueTy s))) : PactM () :=
   (* Check the current amount of resource associated with this capability, and
      whether the requested amount is available. If so, update the available
      amount. Note: unit is used to represent unmanaged capabilities. *)
@@ -121,7 +120,7 @@ Definition __claim_resource `(c : Cap s)
     | None => throw (Err_Capability c CapErr_NoResourceAvailable)
     | Some amt =>
       let '(Token n p req) := c in
-      amt' <- manager (VPair amt req) ;
+      amt' <- manager (amt, req) ;
       put (st &+ resources %~ set_value (Token n p amt'))
     end.
 
@@ -150,8 +149,8 @@ Definition __claim_resource `(c : Cap s)
     resource. *)
 Definition with_capability (module : string) `(c : Cap s)
            `(predicate : Cap s → PactM ())
-           (manager : Value (TPair (valueTy s) (valueTy s)) →
-                      PactM (Value (valueTy s)))
+           (manager : reflectTy (TPair (valueTy s) (valueTy s)) →
+                      PactM (reflectTy (valueTy s)))
            `(f : PactM a) : PactM a :=
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
@@ -191,8 +190,8 @@ Definition with_capability (module : string) `(c : Cap s)
 
 Definition compose_capability `(c : Cap s)
            `(predicate : Cap s → PactM ())
-           (manager : Value (TPair (valueTy s) (valueTy s)) →
-                      PactM (Value (valueTy s))) : PactM () :=
+           (manager : reflectTy (TPair (valueTy s) (valueTy s)) →
+                      PactM (reflectTy (valueTy s))) : PactM () :=
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
   env <- ask ;

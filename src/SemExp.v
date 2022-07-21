@@ -83,10 +83,7 @@ Qed.
 
 Notation "f =<< x" := (x >>= f) (at level 42, right associativity).
 
-Definition concreteH1 `(f : ⟦ dom ⟶ cod ⟧) (CC : ConcreteP cod) :
-  Value (concreteTy dom) → PactM (Value (concreteTy cod)) :=
-  λ x, r <- f (reflect x) ;
-       pure (concrete r CC).
+Import EqNotations.
 
 Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ) :=
   SemExp (VAR v)     se := pure (SemVar v se);
@@ -146,11 +143,11 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
     nm'  <- SemExp nm se ;
     arg' <- SemExp arg se ;
     val' <- SemExp val se ;
-    pure (f:=PactM)
-         (Token (s:={| paramTy := concreteTy tp
-                     ; valueTy := concreteTy tv |})
-                nm' (concrete arg' Hp)
-                    (concrete val' Hv));
+    pure (Token (s:={| paramTy := reifyTy tp
+                     ; valueTy := reifyTy tv |})
+                nm'
+                (rew <- [λ x, x] (reflectTy_reifyTy (m:=PactM) Hp) in arg')
+                (rew <- [λ x, x] (reflectTy_reifyTy (m:=PactM) Hv) in val'));
 
   SemExp (WithCapability (p:=tp) (v:=tv) Hp Hv modname prd mng c e) se :=
     mn'  <- SemExp modname se ;
@@ -159,11 +156,12 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
     mng' <- SemExp mng se ;
     with_capability
       mn'
-      (s:={| paramTy := concreteTy tp
-           ; valueTy := concreteTy tv |})
+      (s:={| paramTy := reifyTy tp
+           ; valueTy := reifyTy tv |})
       c'
       prd'
-      (concreteH1 (dom:=TyPair tv tv) mng' Hv)
+      (rew <- [λ x, x → PactM _] (reflectTy_reifyTy (m:=PactM) (PairDecP Hv Hv)) in
+       rew <- [λ x, _ → PactM x] (reflectTy_reifyTy (m:=PactM) Hv) in mng')
       (SemExp e se);
 
   SemExp (ComposeCapability (p:=tp) (v:=tv) Hp Hv prd mng c) se :=
@@ -171,11 +169,12 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
     prd' <- SemExp prd se ;
     mng' <- SemExp mng se ;
     compose_capability
-      (s:={| paramTy := concreteTy tp
-           ; valueTy := concreteTy tv |})
+      (s:={| paramTy := reifyTy tp
+           ; valueTy := reifyTy tv |})
       c'
       prd'
-      (concreteH1 (dom:=TyPair tv tv) mng' Hv);
+      (rew <- [λ x, x → PactM _] (reflectTy_reifyTy (m:=PactM) (PairDecP Hv Hv)) in
+       rew <- [λ x, _ → PactM x] (reflectTy_reifyTy (m:=PactM) Hv) in mng');
 
   SemExp (InstallCapability c) se :=
     install_capability =<< SemExp c se;

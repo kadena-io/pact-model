@@ -1,11 +1,12 @@
 Require Export
   Hask.Control.Monad
   Hask.Control.Lens
+  RWSE
   Lib
   Exp
   SemTy
   Value
-  RWSE.
+  Pact.CapabilityType.
 
 (* Set Universe Polymorphism. *)
 
@@ -16,17 +17,7 @@ Generalizable All Variables.
 
 Section Pact.
 
-Inductive CapError : Set :=
-  | CapErr_CapabilityNotAvailable
-  | CapErr_NoResourceAvailable
-  | CapErr_CannotInstallInDefcap
-  | CapErr_CannotWithInDefcap
-  | CapErr_CannotComposeOutsideDefcap
-  | CapErr_CannotWithOutsideDefcapModule.
-
-Derive NoConfusion NoConfusionHom Subterm EqDec for CapError.
-
-Inductive Err : Set :=
+Inductive Err : Type :=
   | Err_Exp : Exp.Err → Err
   | Err_Capability {s} : Cap s → CapError → Err.
 
@@ -39,7 +30,7 @@ Inductive EvalContext : Set :=
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for EvalContext.
 
-Record PactEnv : Set := {
+Record PactEnv : Type := {
   (* We cannot refer to capability tokens by their type here, because
      capability predicates execute in a state monad that reference this
      record type. *)
@@ -61,7 +52,7 @@ Definition context : Lens' PactEnv (list EvalContext) :=
       {| _granted := _granted env
        ; _context := c |}.
 
-Record PactState : Set := {
+Record PactState : Type := {
   (* We cannot refer to capability tokens by their type here, because
      capability predicates execute in a state monad that reference this
      record type. *)

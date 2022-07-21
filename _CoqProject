@@ -12,6 +12,7 @@ src/Log.v
 src/Value.v
 src/Ren.v
 src/Sub.v
+src/Pact/CapabilityType.v
 src/SemTy.v
 src/Pact.v
 src/Pact/Capability.v

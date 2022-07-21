@@ -100,7 +100,44 @@ Inductive ValueTy : Set :=
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for ValueTy.
 
-Fixpoint concreteTy (τ : Ty) : ValueTy :=
+Fixpoint reflectTy (t : ValueTy) : Type :=
+  match t with
+  | TVoid       => False
+  | TUnit       => unit
+  | TSymbol     => string
+  | TInteger    => Z
+  | TDecimal    => N
+  | TTime       => nat
+  | TBool       => bool
+  | TString     => string
+  | TList l     => list (reflectTy l)
+  | TPair t1 t2 => reflectTy t1 * reflectTy t2
+  end.
+
+#[export]
+Program Instance reflectTy_EqDec {t} : EqDec (reflectTy t).
+Next Obligation.
+  induction t; simpl in x, y; auto.
+  - destruct x, y.
+    now left.
+  - apply string_EqDec.
+  - apply Z_EqDec.
+  - apply N_EqDec.
+  - apply nat_EqDec.
+  - apply bool_EqDec.
+  - apply string_EqDec.
+  - apply list_eqdec.
+    unfold EqDec.
+    apply IHt.
+  - destruct x, y.
+    destruct (IHt1 r r1); subst.
+    + destruct (IHt2 r0 r2); subst.
+      * now left.
+      * right; congruence.
+    + right; congruence.
+Defined.
+
+Fixpoint reifyTy (τ : Ty) : ValueTy :=
   match τ with
   | TySym        => TSymbol
   | ℤ            => TInteger
@@ -109,13 +146,12 @@ Fixpoint concreteTy (τ : Ty) : ValueTy :=
   | 𝔹            => TBool
   | 𝕊            => TString
   | 𝕌            => TUnit
-  | TyList t     => TList (concreteTy t)
-  | TyPair t1 t2 => TPair (concreteTy t1) (concreteTy t2)
+  | TyList t     => TList (reifyTy t)
+  | TyPair t1 t2 => TPair (reifyTy t1) (reifyTy t2)
   | _            => TVoid
   end.
 
-Arguments concreteTy τ /.
-
+(*
 Inductive Value : ValueTy → Set :=
   | VUnit         : Value TUnit
   | VSymbol       : string → Value TSymbol
@@ -209,41 +245,7 @@ Next Obligation.
     + right; intro.
       now inv H.
 Defined.
-
-(*************************************************************************
- * Capability values
- *)
-
-Record CapSig : Set := {
-  paramTy : ValueTy;
-  valueTy : ValueTy;
-}.
-
-Derive NoConfusion NoConfusionHom Subterm EqDec for CapSig.
-
-Inductive Cap (s : CapSig) : Set :=
-  | Token (name : string) : Value (paramTy s) → Value (valueTy s) → Cap s.
-
-Derive NoConfusion NoConfusionHom Subterm EqDec for Cap.
-
-Arguments Token {s} name arg val.
-
-Definition nameOf `(c : Cap s) : string :=
-  match c with Token n _ _ => n end.
-
-Definition paramOf `(c : Cap s) : Value (paramTy s) :=
-  match c with Token _ p _ => p end.
-
-Definition valueOf `(c : Cap s) : Value (valueTy s) :=
-  match c with Token _ _ v => v end.
-
-Inductive ACap : Set :=
-  | AToken (s : CapSig) : Cap s → ACap.
-
-Derive NoConfusion NoConfusionHom Subterm EqDec for ACap.
-
-Definition ACap_ext (ac : ACap) : { s : CapSig & Cap s } :=
-  match ac with AToken s c => existT _ s c end.
+*)
 
 End Value.
 

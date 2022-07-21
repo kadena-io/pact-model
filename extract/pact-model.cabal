@@ -36,11 +36,14 @@ library
       Const
       Datatypes
       Either
+      EqDec
       EqDecInstances
+      Eval
       Exp
       Functor
       Identity
       Ilist
+      Init
       Lang
       Lens
       Lib
@@ -48,10 +51,12 @@ library
       Logic
       Ltac
       Monad
+      Nat
       Ren
       RWSE
       SemExp
       SemTy
+      Signature
       Specif
       String
       Tuple
@@ -67,6 +72,7 @@ library
     , bytestring
     , ghc-prim
     , hashable
+    , statistics ==0.15.2.0
   default-language: Haskell2010
 
 test-suite pact-model-test
@@ -84,24 +90,5 @@ test-suite pact-model-test
     , hspec ==2.*
     , pact-model
     , quickcheck-io
-  default-language: Haskell2010
-
-benchmark pact-model-bench
-  type: exitcode-stdio-1.0
-  main-is: Bench.hs
-  other-modules:
-      Paths_pact_model
-  ghc-options: -fmax-simplifier-iterations=10 -fdicts-cheap -fspec-constr-count=6
-  build-depends:
-      QuickCheck
-    , base >=4.8 && <5
-    , blaze-builder
-    , bytestring
-    , bytestring-show
-    , criterion
-    , deepseq
-    , ghc-prim
-    , hashable
-    , pact-model
-    , weigh
+    , statistics ==0.15.2.0
   default-language: Haskell2010

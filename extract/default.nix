@@ -19,14 +19,24 @@ haskellPackages = pkgs.haskell.packages.${ghcCompiler};
 in haskellPackages.developPackage {
   root = ./.;
 
-  overrides = with pkgs.haskell.lib; self: super: {};
+  overrides = with pkgs.haskell.lib; self: super: {
+    statistics = self.callHackageDirect {
+      pkg = "statistics";
+      ver = "0.15.2.0";
+      sha256 = "1sg1gv2sc8rdsl6qby6p80xv3iasy6w2khbkc6cx7j2iva67v33r";
+    } {};
+  };
 
-  source-overrides = {};
+  source-overrides = {
+    ormolu = "0.5.0.0";
+  };
 
   modifier = drv: pkgs.haskell.lib.overrideCabal drv (attrs: {
     buildTools = (attrs.buildTools or []) ++ [
       haskellPackages.cabal-install
       haskellPackages.ormolu
+      (import ../. {}).pact-model_8_15.env
+      pkgs.perl
     ];
 
     enableLibraryProfiling = false;

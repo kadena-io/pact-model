@@ -5,7 +5,9 @@ From Coq Require Extraction.
 Require Import
   Coq.Strings.Ascii
   Lib
-  SemExp.
+  Ty
+  Exp
+  Eval.
 
 (** Eq *)
 
@@ -104,7 +106,9 @@ Extract Constant Qdiv =>
 (** Bool *)
 
 Extract Inductive bool    => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
-Extract Inductive sumbool => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
+Extract Inductive sumbool => "Prelude.Bool"
+  ["Prelude.True" "Prelude.False"]
+  "(\fT fF b -> if b then fT () else fF ())".
 
 (* Extract Inlined Constant Equality.bool_beq => *)
 (*   "((Prelude.==) :: Prelude.Bool -> Prelude.Bool -> Prelude.Bool)". *)
@@ -182,8 +186,10 @@ Unset Extraction KeepSingleton.
 Set Extraction AutoInline.
 Set Extraction Optimize.
 Set Extraction AccessOpaque.
+Set Extraction Conservative Types.
 
 Separate Extraction
-  Pact.ilist
-  Pact.SemTy
-  Pact.SemExp.
+  Pact.Ty.Ty
+  Pact.Exp.Var
+  Pact.Exp.Exp
+  Pact.Eval.eval.

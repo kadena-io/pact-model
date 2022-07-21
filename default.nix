@@ -32,6 +32,7 @@ pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec
     coq coq.ocaml coq.camlp5 coq.findlib
     equations QuickChick coqhammer pkgs.z3-tptp
     category-theory (coq-haskell coqPackages)
+    pkgs.perl
   ];
   enableParallelBuilding = true;
 

@@ -14,11 +14,14 @@
 /extract/src/Const.hs
 /extract/src/Datatypes.hs
 /extract/src/Either.hs
+/extract/src/EqDec.hs
 /extract/src/EqDecInstances.hs
+/extract/src/Eval.hs
 /extract/src/Exp.hs
 /extract/src/Functor.hs
 /extract/src/Identity.hs
 /extract/src/Ilist.hs
+/extract/src/Init.hs
 /extract/src/Lang.hs
 /extract/src/Lens.hs
 /extract/src/Lib.hs
@@ -26,10 +29,12 @@
 /extract/src/Logic.hs
 /extract/src/Ltac.hs
 /extract/src/Monad.hs
+/extract/src/Nat.hs
 /extract/src/RWSE.hs
 /extract/src/Ren.hs
 /extract/src/SemExp.hs
 /extract/src/SemTy.hs
+/extract/src/Signature.hs
 /extract/src/Specif.hs
 /extract/src/String.hs
 /extract/src/Tuple.hs

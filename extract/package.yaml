@@ -14,6 +14,7 @@ dependencies:
   - ghc-prim
   - bytestring
   - hashable
+  - statistics == 0.15.2.0
 
 ghc-options:
   - -fmax-simplifier-iterations=10 
@@ -34,14 +35,12 @@ tests:
       - QuickCheck
       - quickcheck-io
 
-benchmarks:
-  pact-model-bench:
-    main: Bench.hs
-    dependencies:
-      - pact-model
-      - bytestring-show
-      - QuickCheck
-      - blaze-builder
-      - criterion
-      - deepseq
-      - weigh
+# benchmarks:
+#   pact-model-bench:
+#     main: Bench.hs
+#     dependencies:
+#       - pact-model
+#       - bytestring-show
+#       - QuickCheck
+#       - criterion
+#       - deepseq

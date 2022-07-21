@@ -15,6 +15,8 @@ Generalizable All Variables.
 
 Section Pact.
 
+Import ListNotations.
+
 Inductive Err : Type :=
   | Err_Exp : Exp.Err → Err
   | Err_Capability {s} : Cap s → CapError → Err.
@@ -38,6 +40,11 @@ Record PactEnv : Type := {
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for PactEnv.
 
+Definition newPactEnv : PactEnv :=
+  {| _granted := []
+   ; _context := []
+   |}.
+
 Definition granted : Lens' PactEnv (list ACap) :=
   λ _ _ f env,
     f (_granted env) <&> λ g,
@@ -60,6 +67,11 @@ Record PactState : Type := {
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for PactState.
 
+Definition newPactState : PactState :=
+  {| _resources  := []
+   ; _to_compose := []
+   |}.
+
 Definition resources : Lens' PactState (list ACap) :=
   λ _ _ f env,
     f (_resources env) <&> λ r,
@@ -75,6 +87,9 @@ Definition to_compose : Lens' PactState (list ACap) :=
 Record PactLog : Set := MkLog {}.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for PactLog.
+
+Definition newPactLog : PactLog :=
+  MkLog.
 
 Definition PactM : Type → Type := @RWSE PactEnv PactState PactLog Err.
 

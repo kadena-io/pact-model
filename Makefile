@@ -11,8 +11,18 @@ MISSING	 =									\
 all: pact-model
 	-@$(MISSING) || exit 0
 
+#perl -i extract/fixcode.pl Internal.hs
+#perl -i -pe 's/module Internal where/module Pact where/' Internal.hs
+#mv Internal.hs extract/Pact/Internal.hs
 pact-model: Makefile.coq $(wildcard *.v)
+	rm -f PactExt.hs
+	touch extract/PactExt.v
 	make -f Makefile.coq JOBS=$(JOBS)
+	(cd extract;									\
+	 hpack &&									\
+	 nix-shell --command "cabal configure --enable-tests --enable-benchmarks" &&	\
+	 cabal build &&									\
+	 cabal test)
 
 Makefile.coq: _CoqProject
 	coq_makefile -f $< -o $@

@@ -1,0 +1,46 @@
+name:          pact-model
+version:       0.1.0.0
+synopsis:      An formal model and interpreter for the Pact language
+github:        kadena-io/pact-model
+category:      Language
+license:       MIT
+author:
+  - John Wiegley <john@kadena.io>
+maintainer:
+  - John Wiegley <john@kadena.io>
+
+dependencies:
+  - base >=4.8 && <5
+  - ghc-prim
+  - bytestring
+  - hashable
+
+ghc-options:
+  - -fmax-simplifier-iterations=10 
+  - -fdicts-cheap
+  - -fspec-constr-count=6
+
+library:
+  exposed-modules:
+    Pact
+
+tests:
+  pact-model-test:
+    main: Main.hs
+    dependencies:
+      - pact-model
+      - hspec == 2.*
+      - QuickCheck
+      - quickcheck-io
+
+benchmarks:
+  pact-model-bench:
+    main: Bench.hs
+    dependencies:
+      - pact-model
+      - bytestring-show
+      - QuickCheck
+      - blaze-builder
+      - criterion
+      - deepseq
+      - weigh

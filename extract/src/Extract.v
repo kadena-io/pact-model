@@ -184,4 +184,6 @@ Set Extraction Optimize.
 Set Extraction AccessOpaque.
 
 Separate Extraction
+  Pact.ilist
+  Pact.SemTy
   Pact.SemExp.

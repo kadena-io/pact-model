@@ -24,7 +24,40 @@ library
   exposed-modules:
       Pact
   other-modules:
+      Applicative
+      Ascii
+      BinInt
+      BinNat
+      BinNums
+      BinPos
+      Capability
+      CapabilityType
+      Classes
+      Const
+      Datatypes
+      Either
+      EqDecInstances
+      Exp
+      Functor
+      Identity
+      Ilist
+      Lang
+      Lens
+      Lib
+      List
+      Logic
+      Ltac
+      Monad
+      Ren
+      RWSE
+      SemExp
+      SemTy
+      Specif
+      String
+      Tuple
+      Ty
       Util.HString
+      Value
       Paths_pact_model
   hs-source-dirs:
       src

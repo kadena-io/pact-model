@@ -17,7 +17,8 @@ pact-model: Makefile.coq $(wildcard *.v)
 	rm -f Extract.hs
 	touch extract/src/Extract.v
 	make -f Makefile.coq JOBS=$(JOBS)
-	perl -i extract/fixcode.pl extract/src/Pact/*.hs
+	mv *.hs extract/src
+	perl -i extract/fixcode.pl extract/src/*.hs
 	(cd extract;							\
 	 hpack &&							\
 	 nix-shell --command						\

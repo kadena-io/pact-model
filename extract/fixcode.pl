@@ -14,7 +14,6 @@ END_IMPORTS
 
 while (<>) {
     s/import qualified Prelude/$imports/;
-    s/module (.+?) where/module Pact.$1 where/ unless /module Pact/;
     s/unsafeCoerce :: a -> b/--unsafeCoerce :: a -> b/;
     s/'\\000'/0/g;
 

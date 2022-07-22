@@ -148,5 +148,7 @@ Declare Scope Exp_scope.
 Bind Scope Exp_scope with Exp.
 Delimit Scope Exp_scope with exp.
 
-Notation "Γ ∋ τ" := (Var Γ τ%ty) (at level 10) : type_scope.
-Notation "Γ ⊢ τ" := (Exp Γ τ%ty) (at level 10) : type_scope.
+Notation "Γ ∋ τ" :=
+  (Var Γ τ%ty) (at level 10, τ at next level) : type_scope.
+Notation "Γ ⊢ τ" :=
+  (Exp Γ τ%ty) (at level 10, τ at next level) : type_scope.

@@ -199,8 +199,11 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
   SemExp (RequireCapability c) se :=
     require_capability =<< SemExp c se.
 
+Notation "⟦ E ⊨ e ⟧" := (SemExp e E) (at level 9).
+Notation "⟦ e ⟧" := (SemExp e tt) (at level 9).
+
 Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ') :
-  SemExp e (RenSem r se) = SemExp (RenExp r e) se.
+  ⟦ RenSem r se ⊨ e ⟧ = ⟦ se ⊨ RenExp r e ⟧.
 Proof.
   generalize dependent Γ'.
   induction e; simpl; intros; auto; simp SemExp.
@@ -210,17 +213,17 @@ Proof.
     extensionality z.
     sauto.
   }
-  all: sauto.
+  all: sauto lq: on.
 Qed.
 
 Lemma SemExp_wk `(E : SemEnv Γ) {τ τ'} (y : SemTy τ') (e : Exp Γ τ) :
-  SemExp (wk e) (y, E) = SemExp e E.
+  ⟦ (y, E) ⊨ wk e ⟧ = ⟦ E ⊨ e ⟧.
 Proof.
   rewrite /wk -SemExp_RenSem RenSem_skip1 //.
 Qed.
 
 Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
-  ValueP e → ∃ x, SemExp e se = pure x.
+  ValueP e → ∃ x, ⟦ se ⊨ e ⟧ = pure x.
 Proof.
   induction 1; simpl; intros;
   try (now eexists; eauto); reduce; simp SemExp.
@@ -228,7 +231,5 @@ Proof.
   all: extensionality env.
   all: extensionality s0.
   all: extensionality w0.
-  all: sauto.
+  all: sauto lq: on.
 Qed.
-
-Notation "f =<< x" := (x >>= f) (at level 42, right associativity).

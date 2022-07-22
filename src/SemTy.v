@@ -72,16 +72,15 @@ Equations reify `(v : ⟦ t ⟧) (C : ConcreteP t) : Value t :=
   reify (t:=𝕋)     v _ := VTime v;
   reify (t:=𝔹)     v _ := VBool v;
   reify (t:=𝕊)     v _ := VString v;
-  reify (t:=TySym) v _  := VSymbol v;
+  reify (t:=TySym) v _ := VSymbol v;
 
   reify (t:=TyList _) [] _ := VList [];
-  reify (t:=TyList _) xs _ := VList (map (λ x, reify x _) xs);
+  reify (t:=TyList _) xs _ :=
+    VList (map (λ x, reify x ltac:(inversion C)) xs);
 
-  reify (t:=TyPair _ _) (x, y) _ :=
-    VPair (reify x _) (reify y _).
-Next Obligation. now inv C. Qed.
-Next Obligation. now inv C. Qed.
-Next Obligation. now inv C. Qed.
+  reify (t:=TyPair _ _) (x, y) C :=
+    VPair (reify x ltac:(inversion C))
+          (reify y ltac:(inversion C)).
 
 Equations reflect `(v : Value t) : ⟦ t ⟧ :=
   reflect (t:=TyPrim PrimUnit)    VUnit        := tt;

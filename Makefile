@@ -1,5 +1,3 @@
-JOBS = 1
-
 MISSING	 =									\
 	find . \( \( -name Extract.v \) -prune \)				\
 	    -o \( -name '*.v'							\
@@ -16,7 +14,7 @@ all: pact-model
 pact-model: Makefile.coq $(wildcard *.v)
 	rm -f Extract.hs
 	touch extract/src/Extract.v
-	make -f Makefile.coq JOBS=$(JOBS)
+	$(MAKE) -f Makefile.coq
 	mv *.hs extract/src
 	perl -i extract/fixcode.pl extract/src/*.hs
 
@@ -31,10 +29,10 @@ Makefile.coq: _CoqProject
 	coq_makefile -f $< -o $@
 
 clean: _CoqProject Makefile.coq
-	make -f Makefile.coq clean
+	$(MAKE) -f Makefile.coq clean
 
 install: _CoqProject Makefile.coq
-	make -f Makefile.coq install
+	$(MAKE) -f Makefile.coq install
 
 fullclean: clean
 	rm -f Makefile.coq Makefile.coq.conf .Makefile.d

@@ -40,6 +40,16 @@ Ltac branch :=
   | [ H : _ ∨ _ |- _ ] => destruct H
   end.
 
+Ltac matches :=
+  lazymatch goal with
+  | [ |- context[if ?X _ then _ else _] ] =>
+      let Heqe := fresh "Heqe" in
+      destruct X eqn:Heqe
+  | [ |- context[match ?X with | _ => _ end] ] =>
+      let Heqe := fresh "Heqe" in
+      destruct X eqn:Heqe
+  end; simpl; auto.
+
 Ltac inv H := inversion H; subst; clear H; reduce.
 
 Ltac equality := intuition congruence.

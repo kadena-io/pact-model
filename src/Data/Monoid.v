@@ -1,4 +1,3 @@
-Require Import Hask.Prelude.
 Require Export Pact.Data.Semigroup.
 
 Generalizable All Variables.

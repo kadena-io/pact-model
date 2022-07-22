@@ -18,6 +18,7 @@ Context {r s w e : Type}.
 Definition RWSE (a : Type) := r → s → w → e + (a * (s * w)).
 
 Definition ask : RWSE r := λ r s w, inr (r, (s, w)).
+Definition asks {a : Type} (f : r → a) : RWSE a := λ r s w, inr (f r, (s, w)).
 
 Definition local (f : r → r) `(x : RWSE a) : RWSE a :=
   λ r s w, x (f r) s w.

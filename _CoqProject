@@ -16,6 +16,7 @@ src/Lang/CapabilityType.v
 src/SemTy.v
 src/Lang.v
 src/Lang/Capability.v
+src/Lang/CapabilityFacts.v
 src/SemExp.v
 src/Eval.v
 src/Cat.v

@@ -20,4 +20,5 @@ src/Lang/CapabilityFacts.v
 src/SemExp.v
 src/Eval.v
 src/Cat.v
+src/Pred.v
 extract/src/Extract.v

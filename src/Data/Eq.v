@@ -8,6 +8,7 @@ Class Eq (A : Type) := {
   eqb_refl x : eqb x x = true;
   eqb_sym x y : eqb x y = eqb y x;
   eqb_trans {x y z} : eqb x y = true -> eqb y z = true -> eqb x z = true;
+
   eqb_eq {x y} : eqb x y = true -> x = y;
 }.
 

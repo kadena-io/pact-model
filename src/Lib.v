@@ -18,7 +18,12 @@ Require Export
 Require Import
   Coq.ZArith.ZArith.
 
-From Equations Require Import Equations.
+(* From Coq Require Export ssreflect ssrfun ssrbool. *)
+(* Set Implicit Arguments. *)
+(* Unset Strict Implicit. *)
+(* Unset Printing Implicit Defensive. *)
+
+From Equations Require Export Equations.
 Set Equations With UIP.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Ascii.ascii.

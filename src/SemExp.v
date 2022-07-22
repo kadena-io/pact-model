@@ -13,7 +13,6 @@ Require Import
   Pact.Lang
   Pact.Lang.Capability.
 
-From Equations Require Import Equations.
 Set Equations With UIP.
 
 Generalizable All Variables.

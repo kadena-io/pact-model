@@ -12,7 +12,6 @@ Require Import Category.Lib.
 Require Import Category.Theory.Category.
 Require Import Category.Structure.BiCCC.
 
-From Equations Require Import Equations.
 Set Equations With UIP.
 
 Generalizable All Variables.

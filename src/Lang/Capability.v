@@ -5,7 +5,8 @@ Require Import
   Pact.Ty
   Pact.Exp
   Pact.SemTy
-  Pact.Lang.
+  Pact.Lang
+  Hask.Control.Lens.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

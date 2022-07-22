@@ -3,7 +3,6 @@ Set Warnings "-cannot-remove-as-expected".
 Require Import
   Pact.Lib.
 
-From Equations Require Import Equations.
 Set Equations With UIP.
 
 Section Ty.

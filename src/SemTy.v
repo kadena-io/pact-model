@@ -12,11 +12,14 @@ Require Import
   Pact.Sub
   Pact.Lang.CapabilityType.
 
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Set Equations With UIP.
 
 Generalizable All Variables.
-
-Section SemTy.
+Set Primitive Projections.
 
 Import ListNotations.
 
@@ -29,6 +32,8 @@ Definition SemPrimTy (ty : PrimType) : Type :=
   | PrimBool    => bool
   | PrimString  => string
   end.
+
+Section SemTy.
 
 Context `{Monad m}.
 
@@ -106,7 +111,5 @@ Next Obligation.
 Defined.
 
 End SemTy.
-
-Arguments Token {s} name arg val.
 
 Notation "⟦ t ⟧" := (SemTy t) (at level 9) : type_scope.

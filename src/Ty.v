@@ -3,9 +3,14 @@ Set Warnings "-cannot-remove-as-expected".
 Require Import
   Pact.Lib.
 
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Set Equations With UIP.
 
-Section Ty.
+Generalizable All Variables.
+Set Primitive Projections.
 
 Inductive PrimType : Set :=
   | PrimUnit
@@ -82,11 +87,6 @@ Proof.
     try (now left; constructor);
     right; intro; inversion H1; contradiction.
 Qed.
-
-End Ty.
-
-Arguments ListDecP {τ} _.
-Arguments PairDecP {τ1 τ2} _ _.
 
 Declare Scope Ty_scope.
 Bind Scope Ty_scope with Ty.

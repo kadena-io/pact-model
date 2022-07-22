@@ -1,7 +1,7 @@
 JOBS = 1
 
 MISSING	 =									\
-	find . \( \( -name foo \) -prune \)					\
+	find . \( \( -name Extract.v \) -prune \)				\
 	    -o \( -name '*.v'							\
 		  -print \)						|	\
 		xargs egrep -i -Hn '(admit|undefined|jww)'		|	\

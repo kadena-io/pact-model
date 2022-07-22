@@ -8,12 +8,14 @@ Require Import
   Pact.Lang
   Hask.Control.Lens.
 
-From Equations Require Import Equations.
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Set Equations With UIP.
 
 Generalizable All Variables.
-
-Section Capability.
+Set Primitive Projections.
 
 Import ListNotations.
 
@@ -31,7 +33,7 @@ Definition get_cap `(c : Cap s) (l : list ACap) :
   let fix go (l : list ACap) : option (reflectTy (valueTy s)) :=
     match l with
     | [] => None
-    | AToken s' (Token n' arg' val') :: xs =>
+    | @AToken s' (Token n' arg' val') :: xs =>
         match eq_dec s s' with
         | left Hs =>
             match eq_dec n n' with
@@ -53,16 +55,16 @@ Definition set_cap `(c : Cap s) (l : list ACap) : list ACap :=
   let '(Token n arg _) := c in
   let fix go (l : list ACap) : list ACap :=
     match l with
-    | [] => [AToken s c]
+    | [] => [AToken c]
     | x :: xs =>
-        let '(AToken s' (Token n' arg' _)) := x in
+        let '(@AToken s' (Token n' arg' _)) := x in
         match eq_dec s s' with
         | left Hs =>
             match eq_dec n n' with
             | left _ =>
                 match eq_dec arg
                   (rew <- [λ x, reflectTy (paramTy x)] Hs in arg') with
-                | left _ => AToken s c :: go xs
+                | left _ => AToken c :: go xs
                 | _ => x :: go xs
                 end
             | _ => x :: go xs
@@ -202,7 +204,7 @@ Definition with_capability (module : string) `(c : Cap s)
 
         (* The process of "granting" consists merely of making the capability
            visible in the reader environment to the provided expression. *)
-        local (over granted (app (AToken _ c :: st ^_ to_compose)))
+        local (over granted (app (AToken c :: st ^_ to_compose)))
           f
       else
         throw (Err_Capability c CapErr_CannotWithOutsideDefcapModule).
@@ -227,7 +229,7 @@ Definition compose_capability (module : string) `(c : Cap s)
             __claim_resource c manager
           ) ;;
 
-        modify (over to_compose (cons (AToken _ c)))
+        modify (over to_compose (cons (AToken c)))
       else
         throw (Err_Capability c CapErr_CannotComposeOutsideDefcapModule)
     else
@@ -245,5 +247,3 @@ Definition require_capability `(c : Cap s) : PactM () :=
     pure ()
   else
     throw (Err_Capability c CapErr_CapabilityNotAvailable).
-
-End Capability.

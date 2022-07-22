@@ -2,10 +2,16 @@ Require Import
   Coq.Unicode.Utf8
   Coq.Lists.List.
 
-From Equations Require Import Equations.
+From Equations Require Export Equations.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Set Equations With UIP.
 
 Generalizable All Variables.
+Set Primitive Projections.
 
 Import ListNotations.
 
@@ -36,17 +42,17 @@ Equations ilist_ind (P : ∀ (l : list A), ilist l → Prop)
           (Picons : ∀ (a : A) (b : B a) (l : list A) (il : ilist l),
               P l il → P (a :: l) (b, il))
           (l : list A) (il : ilist l) : P l il :=
-  ilist_ind P Pinil Picons [] tt := Pinil;
-  ilist_ind P Pinil Picons (a :: l) (b, il) :=
-    Picons a b l il (ilist_ind P Pinil Picons l il).
+  ilist_ind Pinil Picons (l:=[]) tt := Pinil;
+  ilist_ind Pinil Picons (l:=a :: l) (b, il) :=
+    Picons a b l il (ilist_ind Pinil Picons il).
 
 Equations ilist_rect (P : ∀ (l : list A), ilist l → Type)
           (Pinil : P [] tt)
           (Picons : ∀ (a : A) (b : B a) (l : list A) (il : ilist l),
               P l il → P (a :: l) (b, il))
           (l : list A) (il : ilist l) : P l il :=
-  ilist_rect P Pinil Picons [] tt := Pinil;
-  ilist_rect P Pinil Picons (a :: l) (b, il) :=
-    Picons a b l il (ilist_rect P Pinil Picons l il).
+  ilist_rect Pinil Picons (l:=[]) tt := Pinil;
+  ilist_rect Pinil Picons (l:=a :: l) (b, il) :=
+    Picons a b l il (ilist_rect Pinil Picons il).
 
 End ilist.

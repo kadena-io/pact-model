@@ -5,11 +5,14 @@ Require Import
   Pact.Value
   Pact.Ren.
 
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Set Equations With UIP.
 
 Generalizable All Variables.
-
-Section Sub.
+Set Primitive Projections.
 
 Import ListNotations.
 
@@ -334,7 +337,7 @@ Proof.
   now rewrite RcS_skip1.
 Qed.
 
-Notation "{|| e ; .. ; f ||}" := (Push e .. (Push f idSub) ..).
+Notation "{|| e ; .. ; f ||}" := (Push e%exp .. (Push f%exp idSub) ..).
 
 Lemma SubExp_Push {Γ Γ' τ ty} (x : Exp Γ' ty) (s : Sub Γ' Γ) (e : Exp (ty :: Γ) τ) :
   SubExp (Push x s) e = SubExp {|| x ||} (SubExp (Keepₛ s) e).
@@ -395,6 +398,3 @@ Proof.
   now induction X; simpl; intros; try constructor.
 Defined.
 
-End Sub.
-
-Notation "{|| e ; .. ; f ||}" := (Push e%exp .. (Push f%exp idSub) ..).

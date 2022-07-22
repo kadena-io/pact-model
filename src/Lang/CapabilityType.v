@@ -3,12 +3,14 @@ Require Export
   Pact.Value
   Pact.RWSE.
 
-(* Set Universe Polymorphism. *)
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
-From Equations Require Import Equations.
 Set Equations With UIP.
 
 Generalizable All Variables.
+Set Primitive Projections.
 
 (*************************************************************************
  * Capability values

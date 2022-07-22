@@ -19,12 +19,17 @@ Require Import
   Coq.ZArith.ZArith.
 
 From Coq Require Export ssreflect ssrfun ssrbool.
+
+From Equations Require Export Equations.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-From Equations Require Export Equations.
 Set Equations With UIP.
+
+Generalizable All Variables.
+Set Primitive Projections.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for Ascii.ascii.
 Derive NoConfusion NoConfusionHom Subterm EqDec for string.
@@ -34,8 +39,6 @@ Derive NoConfusion NoConfusionHom Subterm EqDec for N.
 Next Obligation. now apply N.eq_dec. Defined.
 Derive NoConfusion NoConfusionHom Subterm EqDec for nat.
 Derive NoConfusion NoConfusionHom Subterm EqDec for bool.
-
-Generalizable All Variables.
 
 Lemma dec_eq_f1 `{EqDec a} (x y : a) `(f : a → b) :
   dec_eq x y → (∀ x y, f x = f y → x = y) → dec_eq (f x) (f y).

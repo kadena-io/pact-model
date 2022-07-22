@@ -4,11 +4,14 @@ Require Import
   Pact.Exp
   Pact.Value.
 
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Set Equations With UIP.
 
 Generalizable All Variables.
-
-Section Ren.
+Set Primitive Projections.
 
 Import ListNotations.
 
@@ -191,5 +194,3 @@ Proof.
 Defined.
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RenExp skip1.
-
-End Ren.

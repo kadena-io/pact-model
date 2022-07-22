@@ -4,11 +4,14 @@ Require Import
   Pact.Ty
   Pact.Exp.
 
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Set Equations With UIP.
 
 Generalizable All Variables.
-
-Section Value.
+Set Primitive Projections.
 
 Import ListNotations.
 
@@ -19,25 +22,25 @@ Unset Elimination Schemes.
 (* [ValueP] is an inductive proposition that indicates whether an expression
    represents a value, i.e., that it does reduce any further. *)
 Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
-  | LambdaP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP Γ (LAM e)
-  | LiteralP {ty l} : ValueP Γ (Lit (ty:=ty) l)
-  | BuiltinP {τ b} : ValueP Γ (Bltn (τ:=τ) b)
-  | SymbolP {n} : ValueP Γ (Symbol n)
+  | LambdaP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP (LAM e)
+  | LiteralP {ty l} : ValueP (Lit (ty:=ty) l)
+  | BuiltinP {τ b} : ValueP (Bltn (τ:=τ) b)
+  | SymbolP {n} : ValueP (Symbol n)
   | PairP {τ1 τ2} {x : Exp Γ τ1} {y : Exp Γ τ2} :
-    ValueP Γ x → ValueP Γ y → ValueP Γ (Pair x y)
-  | NilP {τ} : ValueP Γ (Nil (τ:=τ))
+    ValueP x → ValueP y → ValueP (Pair x y)
+  | NilP {τ} : ValueP (Nil (τ:=τ))
   | ConsP {τ} (x : Exp Γ τ) xs :
-    ValueP Γ x → ValueP Γ xs → ValueP Γ (Cons x xs)
+    ValueP x → ValueP xs → ValueP (Cons x xs)
   | CapabilityP {tp tv} (s : Exp Γ TySym)
                 (Hp : ConcreteP tp) (Hv : ConcreteP tv)
                 {p : Exp Γ tp} {v : Exp Γ tv} :
-    ValueP Γ s → ValueP Γ p → ValueP Γ v →
-    ValueP Γ (Capability Hp Hv s p v).
+    ValueP s → ValueP p → ValueP v →
+    ValueP (Capability Hp Hv s p v).
 
 Derive Signature for ValueP.
 
 Inductive ErrorP Γ : ∀ {τ}, Exp Γ τ → Prop :=
-  | IsError {τ} m : ErrorP Γ (Error (τ:=τ) m).
+  | IsError {τ} m : ErrorP (Error (τ:=τ) m).
 
 Derive Signature for ErrorP.
 
@@ -48,7 +51,7 @@ Scheme ErrorP_ind := Induction for ErrorP Sort Prop.
 
 #[local] Hint Constructors ValueP ErrorP : core.
 
-Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP _ v) :
+Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP v) :
   H1 = H2.
 Proof.
   dependent induction H1;
@@ -56,7 +59,7 @@ Proof.
   f_equal; congruence.
 Qed.
 
-Lemma ErrorP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ErrorP _ v) :
+Lemma ErrorP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ErrorP v) :
   H1 = H2.
 Proof.
   dependent induction H1;
@@ -65,7 +68,7 @@ Proof.
 Qed.
 
 Lemma ValueP_dec {Γ τ} (e : Exp Γ τ) :
-  ValueP Γ e ∨ ¬ ValueP Γ e.
+  ValueP e ∨ ¬ ValueP e.
 Proof.
   induction e; try solve [now left|now right].
   - destruct IHe1, IHe2;
@@ -80,7 +83,7 @@ Proof.
 Qed.
 
 Lemma ErrorP_dec {Γ τ} (e : Exp Γ τ) :
-  ErrorP Γ e ∨ ¬ ErrorP Γ e.
+  ErrorP e ∨ ¬ ErrorP e.
 Proof.
   induction e; solve [now left|now right].
 Qed.
@@ -243,17 +246,3 @@ Next Obligation.
     + right; intro.
       now inv H.
 Defined.
-
-End Value.
-
-Arguments ValueP {Γ τ} _.
-Arguments LambdaP {Γ dom cod} _.
-Arguments LiteralP {Γ}.
-Arguments BuiltinP {Γ}.
-Arguments SymbolP {Γ}.
-Arguments PairP {Γ τ1 τ2 x y} _ _.
-Arguments NilP {Γ τ}.
-Arguments ConsP {Γ τ _ _} _ _.
-Arguments CapabilityP {Γ tp tv s} Hp Hv {p v} _ _ _.
-
-Arguments ErrorP {Γ τ} _.

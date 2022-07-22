@@ -9,11 +9,14 @@ Require Export
   Pact.Value
   Pact.Lang.CapabilityType.
 
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Set Equations With UIP.
 
 Generalizable All Variables.
-
-Section Pact.
+Set Primitive Projections.
 
 Import ListNotations.
 
@@ -85,12 +88,14 @@ Definition to_compose : Lens' PactState (list ACap) :=
       {| _resources  := _resources env
        ; _to_compose := tc |}.
 
-Record PactLog : Set := MkLog {}.
+Record PactLog : Set := MkLog {
+  entry : unit
+}.
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for PactLog.
 
 Definition newPactLog : PactLog :=
-  MkLog.
+  MkLog tt.
 
 Definition PactM : Type → Type := @RWSE PactEnv PactState PactLog Err.
 
@@ -136,5 +141,3 @@ Proof.
   unfold Tuple.first.
   unfold Either.Either_map.
 Abort.
-
-End Pact.

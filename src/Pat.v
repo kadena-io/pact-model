@@ -3,16 +3,16 @@ Require Import
   Pact.Ty
   Pact.Exp.
 
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Set Equations With UIP.
+
 Generalizable All Variables.
-
-
-Section Pat.
+Set Primitive Projections.
 
 Import ListNotations.
-
-Context {A : Type}.
-Context `{HostExprs A}.
 
 Open Scope Ty_scope.
 
@@ -20,5 +20,3 @@ Open Scope Ty_scope.
 (*   | PPair {Γ Γ' τ1 τ2}  : Pat Γ τ1 → Pat Γ' τ2 → Pat (Γ ++ Γ') (TyPair τ1 τ2). *)
 
 (* Derive Signature NoConfusion for Pat. *)
-
-End Pat.

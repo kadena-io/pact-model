@@ -127,10 +127,3 @@ Inductive Builtin : Ty → Set :=
   | EnforceOne       : Builtin (ℤ ⟶ ℤ ⟶ ℤ)
   | Enumerate        : Builtin (ℤ ⟶ ℤ ⟶ ℤ)
   | EnumerateStepN   : Builtin (ℤ ⟶ ℤ ⟶ ℤ).
-
-
-Definition ℤ := TyPrim PrimInteger.
-Definition ℝ := TyPrim PrimDecimal.
-Definition 𝕋 := TyPrim PrimTime.
-Definition 𝕊 := TyPrim PrimString.
-Definition 𝔹 := TyBool.

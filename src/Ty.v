@@ -72,21 +72,12 @@ Lemma ConcreteP_irrelevance {τ} (H1 H2 : ConcreteP τ) :
   H1 = H2.
 Proof.
   dependent induction H1;
-  dependent elimination H2; auto;
-  f_equal; congruence.
+  dependent elimination H2; sauto.
 Qed.
 
 Lemma ConcreteP_dec {τ} :
   ConcreteP τ ∨ ¬ (ConcreteP τ).
-Proof.
-  induction τ; try solve [now left; constructor|now right].
-  - destruct IHτ;
-    try (now left; constructor);
-    right; intro; inversion H0; contradiction.
-  - destruct IHτ1, IHτ2;
-    try (now left; constructor);
-    right; intro; inversion H1; contradiction.
-Qed.
+Proof. induction τ; sauto. Qed.
 
 Declare Scope Ty_scope.
 Bind Scope Ty_scope with Ty.

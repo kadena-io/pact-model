@@ -35,7 +35,7 @@ Definition SemPrimTy (ty : PrimType) : Type :=
 
 Section SemTy.
 
-Context `{Monad m}.
+Context {m : Type → Type}.
 
 Fixpoint SemTy (τ : Ty) : Type :=
   match τ with
@@ -56,17 +56,7 @@ Notation "⟦ t ⟧" := (SemTy t) (at level 9) : type_scope.
 Lemma reflectTy_reifyTy {τ} :
   ConcreteP τ → reflectTy (reifyTy τ) = ⟦τ⟧.
 Proof.
-  induction τ; simpl in *; intros; auto.
-  - inv H0.
-  - now destruct p.
-  - inv H0.
-    f_equal.
-    now apply IHτ.
-  - inv H0.
-    f_equal.
-    + now apply IHτ1.
-    + now apply IHτ2.
-  - inv H0.
+  induction τ; sauto.
 Qed.
 
 Equations reify `(v : ⟦ t ⟧) (C : ConcreteP t) : Value t :=
@@ -100,14 +90,7 @@ Equations reflect `(v : Value t) : ⟦ t ⟧ :=
 #[export]
 Program Instance SemPrimTy_EqDec {ty} : EqDec (SemPrimTy ty).
 Next Obligation.
-  induction ty; simpl in x, y.
-  - destruct x, y.
-    now left.
-  - apply Z_EqDec.
-  - apply N_EqDec.
-  - apply nat_EqDec.
-  - apply bool_EqDec.
-  - apply string_EqDec.
+  induction ty; auto; sauto.
 Defined.
 
 End SemTy.

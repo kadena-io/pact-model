@@ -55,37 +55,26 @@ Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP v) :
   H1 = H2.
 Proof.
   dependent induction H1;
-  dependent elimination H2; auto;
-  f_equal; congruence.
+  dependent elimination H2; sauto.
 Qed.
 
 Lemma ErrorP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ErrorP v) :
   H1 = H2.
 Proof.
   dependent induction H1;
-  dependent elimination H2; auto;
-  f_equal; congruence.
+  dependent elimination H2; sauto.
 Qed.
 
 Lemma ValueP_dec {Γ τ} (e : Exp Γ τ) :
   ValueP e ∨ ¬ ValueP e.
 Proof.
-  induction e; try solve [now left|now right].
-  - destruct IHe1, IHe2;
-    try (now left; constructor);
-    right; intro; inv H1; contradiction.
-  - destruct IHe1, IHe2;
-    try (now left; constructor);
-    right; intro; inv H1; contradiction.
-  - destruct IHe1, IHe2, IHe3;
-    try (now left; constructor);
-    right; intro; inv H2; contradiction.
+  induction e; branch; sauto lq: on dep: on.
 Qed.
 
 Lemma ErrorP_dec {Γ τ} (e : Exp Γ τ) :
   ErrorP e ∨ ¬ ErrorP e.
 Proof.
-  induction e; solve [now left|now right].
+  induction e; sauto.
 Qed.
 
 Inductive ValueTy : Set :=
@@ -119,24 +108,13 @@ Fixpoint reflectTy (t : ValueTy) : Type :=
 #[export]
 Program Instance reflectTy_EqDec {t} : EqDec (reflectTy t).
 Next Obligation.
-  induction t; simpl in x, y; auto.
-  - destruct x, y.
-    now left.
-  - apply string_EqDec.
-  - apply Z_EqDec.
-  - apply N_EqDec.
-  - apply nat_EqDec.
-  - apply bool_EqDec.
-  - apply string_EqDec.
+  induction t; auto.
+  - sauto.
   - apply list_eqdec.
     unfold EqDec.
     apply IHt.
-  - destruct x, y.
-    destruct (IHt1 r r1); subst.
-    + destruct (IHt2 r0 r2); subst.
-      * now left.
-      * right; congruence.
-    + right; congruence.
+  - destruct x as [x1 x2], y as [y1 y2].
+    destruct (IHt1 x1 y1), (IHt2 x2 y2); sauto.
 Defined.
 
 Fixpoint reifyTy (τ : Ty) : ValueTy :=

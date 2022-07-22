@@ -35,6 +35,11 @@ Ltac reduce :=
           | [ H : { _ : _ & _ } |- _ ] => destruct H
           end; subst).
 
+Ltac branch :=
+  repeat match goal with
+  | [ H : _ ∨ _ |- _ ] => destruct H
+  end.
+
 Ltac inv H := inversion H; subst; clear H; reduce.
 
 Ltac equality := intuition congruence.

@@ -19,8 +19,8 @@ Require Import
   Coq.ZArith.ZArith.
 
 From Coq Require Export ssreflect ssrfun ssrbool.
-
 From Equations Require Export Equations.
+From Hammer Require Export Tactics Hammer.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -40,39 +40,23 @@ Next Obligation. now apply N.eq_dec. Defined.
 Derive NoConfusion NoConfusionHom Subterm EqDec for nat.
 Derive NoConfusion NoConfusionHom Subterm EqDec for bool.
 
+#[export] Hint Resolve Z_EqDec : core.
+#[export] Hint Resolve N_EqDec : core.
+#[export] Hint Resolve nat_EqDec : core.
+#[export] Hint Resolve bool_EqDec : core.
+#[export] Hint Resolve string_EqDec : core.
+#[export] Hint Resolve list_eqdec : core.
+
 Lemma dec_eq_f1 `{EqDec a} (x y : a) `(f : a → b) :
   dec_eq x y → (∀ x y, f x = f y → x = y) → dec_eq (f x) (f y).
-Proof.
-  intros.
-  destruct H0; subst.
-  - now left.
-  - right.
-    intro.
-    contradiction (H1 _ _ H0).
-Defined.
+Proof. sauto. Defined.
 
 Lemma dec_eq_f2 `{EqDec a} (x y : a) `{EqDec b} (z w : b) `(f : a → b → c) :
   dec_eq x y →
   dec_eq z w →
   (∀ x y z w, f x z = f y w → x = y ∧ z = w) →
   dec_eq (f x z) (f y w).
-Proof.
-  intros.
-  destruct H1, H2; subst.
-  - now left.
-  - right.
-    intro.
-    pose proof (H3 _ _ _ _ H1); reduce.
-    contradiction.
-  - right.
-    intro.
-    pose proof (H3 _ _ _ _ H1); reduce.
-    contradiction.
-  - right.
-    intro.
-    pose proof (H3 _ _ _ _ H1); reduce.
-    contradiction.
-Defined.
+Proof. sauto. Defined.
 
 #[export]
 Program Instance EqDec_EqDec {a} : EqDec (EqDec a).
@@ -80,13 +64,10 @@ Next Obligation.
   left.
   extensionality x0.
   extensionality y0.
-  destruct (x x0 y0); subst.
-  - destruct (y y0 y0); subst;
-    now simpl_eq.
-  - destruct (y x0 y0); subst.
-    contradiction.
-    assert (n = n0) by apply proof_irrelevance.
-    now subst.
+  destruct (x _ _), (y _ _);
+  subst; simpl_eq; try sauto.
+  assert (n = n0) by apply proof_irrelevance.
+  now subst.
 Defined.
 
 Corollary sum_id {X Y : Type} (e : X + Y) :

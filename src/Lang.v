@@ -113,31 +113,10 @@ Definition curryM `(f : (a * b) → PactM c) : a → PactM (b → PactM c) :=
 Lemma uncurryM_curryM `(f : (a * b) → PactM c) :
   uncurryM (curryM f) = f.
 Proof.
-  extensionality p.
-  destruct p.
-  unfold uncurryM, curryM.
-  simpl.
-  unfold RWSE_join.
-  extensionality r.
-  extensionality s.
-  extensionality w.
-  f_equal.
-  destruct w.
-  reflexivity.
+  extensionality p; sauto.
 Qed.
 
 Lemma curryM_uncurryM `(f : a → PactM (b → PactM c)) :
   curryM (uncurryM f) = f.
 Proof.
-  extensionality x.
-  unfold uncurryM, curryM.
-  simpl.
-  unfold RWSE_join.
-  extensionality r.
-  extensionality s.
-  extensionality w.
-  unfold Basics.compose.
-  unfold curry.
-  unfold Tuple.first.
-  unfold Either.Either_map.
 Abort.

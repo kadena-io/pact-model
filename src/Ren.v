@@ -51,17 +51,11 @@ Equations RcR {Γ Γ' Γ''} (r : Ren Γ' Γ'') (r' : Ren Γ Γ') : Ren Γ Γ'' :
 
 Lemma RcR_idRen_left {Γ Γ'} (σ : Ren Γ Γ') :
   RcR idRen σ = σ.
-Proof.
-  induction σ; simp RcR; simpl; simp RcR; auto;
-  now rewrite IHσ.
-Qed.
+Proof. induction σ; simp RcR; simpl; simp RcR; sauto. Qed.
 
 Lemma RcR_idRen_right {Γ Γ'} (σ : Ren Γ Γ') :
   RcR σ idRen = σ.
-Proof.
-  induction σ; simp RcR; simpl; simp RcR; auto;
-  now rewrite IHσ.
-Qed.
+Proof. induction σ; simp RcR; simpl; simp RcR; sauto. Qed.
 
 Lemma RcR_assoc {Γ Γ' Γ'' Γ'''}
       (σ : Ren Γ'' Γ''') (δ : Ren Γ' Γ'') (ν : Ren Γ Γ') :
@@ -70,12 +64,10 @@ Proof.
   generalize dependent Γ'''.
   generalize dependent Γ''.
   induction ν; simp RcR; simpl; intros; auto.
-  - simp RcR.
-    now rewrite IHν.
+  - simp RcR; sauto.
   - dependent elimination δ; simp RcR; simpl.
-    + now rewrite IHν.
-    + dependent elimination σ; simp RcR; simpl;
-      now rewrite IHν.
+    + sauto.
+    + dependent elimination σ; simp RcR; simpl; sauto.
 Qed.
 
 Equations RenVar {τ Γ Γ'} (r : Ren Γ Γ') (v : Var Γ' τ) : Var Γ τ :=
@@ -86,10 +78,7 @@ Equations RenVar {τ Γ Γ'} (r : Ren Γ Γ') (v : Var Γ' τ) : Var Γ τ :=
 
 Lemma RenVar_idRen {τ Γ} (v : Var Γ τ) :
   RenVar idRen v = v.
-Proof.
-  induction v; simpl; simp RenVar; intros; auto.
-  now rewrite IHv.
-Qed.
+Proof. induction v; simpl; simp RenVar; intros; sauto. Qed.
 
 Lemma RenVar_skip1 {τ τ' Γ} (v : Var Γ τ) :
   RenVar (skip1 (τ:=τ')) v = SV v.
@@ -103,12 +92,10 @@ Lemma RenVar_RcR {τ Γ Γ' Γ''} (σ : Ren Γ' Γ'') (δ : Ren Γ Γ') (v : Var
 Proof.
   generalize dependent Γ''.
   induction δ; simpl; simp RcR; intros; auto.
-  - simp RenVar.
-    now rewrite <- IHδ.
+  - simp RenVar; sauto.
   - dependent elimination σ; simpl; simp RcR; simp RenVar.
-    + now rewrite IHδ.
-    + dependent elimination v; simp RenVar; auto.
-      now rewrite IHδ.
+    + sauto.
+    + dependent elimination v; simp RenVar; sauto.
 Qed.
 
 Lemma Keep_RcR Γ Γ' Γ'' τ (r : Ren Γ' Γ'') (r' : Ren Γ Γ') :
@@ -156,41 +143,32 @@ Lemma RenExp_preserves_size {Γ Γ' τ} (r : Ren Γ Γ') (e : Exp Γ' τ) :
 Proof.
   generalize dependent r.
   generalize dependent Γ.
-  induction e; simpl; simp RcR; simpl; intros; auto.
-  congruence.
+  induction e; simp RcR; sauto.
 Qed.
 
 Lemma RenExp_idRen {τ Γ} (e : Exp Γ τ) :
   RenExp idRen e = e.
 Proof.
-  induction e; simpl; simp RenVar; simpl; intros; auto;
-  rewrite ?IHe ?IHe1 ?IHe2 ?IHe3 ?IHe4 ?IHe5; auto.
-  - now rewrite RenVar_idRen.
+  induction e;
+  rewrite /= ?RenVar_idRen //; sauto.
 Qed.
 
 Lemma RenExp_DropAll {τ} (e : Exp [] τ) :
   RenExp DropAll e = e.
-Proof.
-  rewrite DropAll_nil_idRen.
-  now rewrite RenExp_idRen.
-Qed.
+Proof. rewrite DropAll_nil_idRen RenExp_idRen //. Qed.
 
 Lemma RenExp_RcR {τ Γ Γ' Γ''} (σ : Ren Γ' Γ'') (δ : Ren Γ Γ') (e : Exp Γ'' τ) :
   RenExp (RcR σ δ) e = RenExp δ (RenExp σ e).
 Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
-  induction e; simpl; intros; auto;
-  rewrite ?IHe ?IHe1 ?IHe2 ?IHe3 ?IHe4 ?IHe5; auto.
-  - now rewrite RenVar_RcR.
-  - now rewrite <- IHe; simp RcR.
+  induction e; intros;
+  rewrite /= ?RenVar_RcR //;
+  simp RcR; sauto.
 Qed.
 
 Lemma RenExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Ren Γ' Γ) :
   ValueP v → ValueP (RenExp σ v).
-Proof.
-  intros X.
-  now induction X; simpl; intros; try constructor.
-Defined.
+Proof. induction 1; sauto. Qed.
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RenExp skip1.

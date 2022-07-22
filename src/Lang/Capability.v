@@ -81,21 +81,9 @@ Proof.
   induction l, c; simpl.
   - now rewrite !eq_dec_refl.
   - destruct a, c; simpl.
-    destruct (eq_dec _ _); subst.
-    + destruct (eq_dec _ _); subst.
-      * destruct (eq_dec _ _); subst.
-        ** now rewrite !eq_dec_refl.
-        ** rewrite !eq_dec_refl.
-           rewrite IHl; simpl.
-           destruct (eq_dec _ _); subst; congruence.
-      * rewrite !eq_dec_refl.
-        rewrite IHl; simpl.
-        destruct (eq_dec _ _); subst; congruence.
-    + destruct (eq_dec _ _); subst.
-      * destruct (eq_dec _ _); subst.
-        ** destruct (eq_dec _ _); subst; congruence.
-        ** now rewrite IHl.
-      * now rewrite IHl.
+    repeat destruct (eq_dec _ _); subst.
+    all: rewrite ?IHl //.
+    all: now simpl_eq.
 Qed.
 
 Definition __in_defcap (env : PactEnv) : bool :=

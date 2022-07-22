@@ -55,19 +55,20 @@ Equations RenSem {Γ Γ'} (r : Ren Γ Γ') (se : SemEnv Γ) : SemEnv Γ' :=
 
 Lemma RenSem_inil (r : Ren [] []) :
   RenSem r () = ().
-Proof. now dependent destruction r. Qed.
+Proof.
+  now dependent destruction r.
+Qed.
 
 Lemma RenSem_idRen {Γ} (se : SemEnv Γ) :
   RenSem idRen se = se.
 Proof.
-  induction Γ; destruct se; simpl; simp RenSem; intros; auto.
-  now rewrite IHΓ.
+  induction Γ; destruct se; simpl; simp RenSem; sauto.
 Qed.
 
 Lemma RenSem_skip1 {Γ τ} (e : SemTy τ) (se : SemEnv Γ) :
   RenSem skip1 (e, se) = se.
 Proof.
-  induction Γ; destruct se; simpl; intros; auto.
+  induction Γ; destruct se; auto.
   unfold skip1; simp RenSem.
   now rewrite RenSem_idRen.
 Qed.
@@ -75,7 +76,6 @@ Qed.
 Lemma SemVar_RenSem Γ τ (v : Var Γ τ) Γ' (r : Ren Γ' Γ) (se : SemEnv Γ') :
   SemVar v (RenSem r se) = SemVar (RenVar r v) se.
 Proof.
-  intros.
   induction r; simp RenSem; simp RenVar; simpl;
   destruct se; simp RenSem; auto.
   now dependent elimination v; simpl; simp RenVar.
@@ -203,23 +203,20 @@ Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ
   SemExp e (RenSem r se) = SemExp (RenExp r e) se.
 Proof.
   generalize dependent Γ'.
-  induction e; simpl; intros; auto; simp SemExp;
-  try now rewrite ?IHe ?IHe1 ?IHe2 ?IHe3 ?IHe4 ?IHe5.
-  - now rewrite SemVar_RenSem.
-  - f_equal.
+  induction e; simpl; intros; auto; simp SemExp.
+  1: now rewrite SemVar_RenSem.
+  1: {
+    f_equal.
     extensionality z.
-    rewrite <- IHe; clear IHe.
-    simpl.
-    now repeat f_equal.
+    sauto.
+  }
+  all: sauto.
 Qed.
 
 Lemma SemExp_wk `(E : SemEnv Γ) {τ τ'} (y : SemTy τ') (e : Exp Γ τ) :
   SemExp (wk e) (y, E) = SemExp e E.
 Proof.
-  unfold wk.
-  rewrite <- SemExp_RenSem; simpl.
-  f_equal.
-  now rewrite RenSem_skip1.
+  rewrite /wk -SemExp_RenSem RenSem_skip1 //.
 Qed.
 
 Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
@@ -227,35 +224,11 @@ Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
 Proof.
   induction 1; simpl; intros;
   try (now eexists; eauto); reduce; simp SemExp.
-  - simpl.
-    eexists.
-    reflexivity.
-  - eexists.
-    extensionality env.
-    extensionality s.
-    extensionality w.
-    admit.                      (* jww (2022-07-20): TODO *)
-  - eexists.
-    extensionality env.
-    extensionality s.
-    extensionality w.
-    admit.                      (* jww (2022-07-20): TODO *)
-  - simpl.
-    eexists.
-    reflexivity.
-  - exists (x1, x0).
-    now rewrite H1 H2; simpl.
-  - exists [].
-    reflexivity.
-  - exists (x1 :: x0).
-    now rewrite H1 H2; simpl.
-  - eexists.
-    extensionality nm'.
-    extensionality nm'0.
-    extensionality nm'1.
-    rewrite H2 H3 H4; simpl.
-    unfold RWSE_join.
-    reflexivity.
-Abort.
+  all: eexists.
+  all: extensionality env.
+  all: extensionality s0.
+  all: extensionality w0.
+  all: sauto.
+Qed.
 
 Notation "f =<< x" := (x >>= f) (at level 42, right associativity).

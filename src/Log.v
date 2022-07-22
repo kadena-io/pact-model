@@ -30,7 +30,9 @@ Equations ExpP `(e : Exp Γ τ) : Prop :=
   ExpP e := P e.
 
 Lemma ExpP_P {τ} {e : Γ ⊢ τ} : ExpP e → P e.
-Proof. intros; induction τ; simpl in *; simp ExpP in H; now reduce. Qed.
+Proof.
+  induction τ; sauto.
+Qed.
 
 Inductive SubP : ∀ {Γ'}, Sub Γ Γ' → Prop :=
   | NoSubP : SubP (NoSub (Γ:=Γ))
@@ -49,7 +51,9 @@ Equations ExpR {τ} (e1 e2 : Exp Γ τ) : Prop :=
   ExpR e1 e2 := R e1 e2.
 
 Lemma ExpR_R {τ} {e1 e2 : Γ ⊢ τ} : ExpR e1 e2 → R e1 e2.
-Proof. intros; induction τ; simpl in *; simp ExpR in H; now reduce. Qed.
+Proof.
+  induction τ; sauto.
+Qed.
 
 Inductive SubR : ∀ {Γ'}, Sub Γ Γ' → Prop :=
   | NoSubR : SubR (NoSub (Γ:=Γ))

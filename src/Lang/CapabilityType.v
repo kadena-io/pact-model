@@ -33,14 +33,10 @@ Derive NoConfusion NoConfusionHom Subterm for Cap.
 #[export]
 Program Instance Cap_EqDec {s} : EqDec (Cap s).
 Next Obligation.
-  destruct x, y.
-  destruct (string_EqDec name name0); subst;
-  [|right; intro; congruence].
-  destruct (reflectTy_EqDec r r1); subst.
-  - destruct (reflectTy_EqDec r0 r2); subst.
-    + now left.
-    + right; intro; congruence.
-  - right; intro; congruence.
+  destruct x as [n1 p1 v1], y as [n2 p2 v2].
+  destruct (string_EqDec n1 n2); [subst|sauto].
+  destruct (reflectTy_EqDec p1 p2); [subst|sauto].
+  destruct (reflectTy_EqDec v1 v2); sauto.
 Defined.
 
 Arguments Token {s} name arg val.
@@ -63,11 +59,10 @@ Derive NoConfusion NoConfusionHom Subterm for ACap.
 Program Instance ACap_EqDec : EqDec ACap.
 Next Obligation.
   destruct x, y.
-  destruct (CapSig_EqDec s s0); subst; [|right; congruence].
+  destruct (CapSig_EqDec s s0); [subst|right; congruence].
   apply dec_eq_f1.
   - apply Cap_EqDec.
-  - intros.
-    now inv H.
+  - now intros ? ? H; inv H.
 Defined.
 
 Inductive CapError : Set :=

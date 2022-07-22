@@ -9,21 +9,21 @@ main = hspec $ do
     it "Unit smoke test" $ do
       eval (Lit LitUnit)
         `shouldBe`
-          Right (VUnit, MkLog)
+          Right (VUnit, MkLog ())
 
     it "AddInt smoke test" $ do
       eval (APP (APP (Bltn AddInt)
                      (Lit (LitInteger 123)))
                 (Lit (LitInteger 456)))
         `shouldBe`
-          Right (VInteger 579, MkLog)
+          Right (VInteger 579, MkLog ())
 
     it "SubInt smoke test" $ do
       eval (APP (APP (Bltn SubInt)
                      (Lit (LitInteger 456)))
                 (Lit (LitInteger 123)))
         `shouldBe`
-          Right (VInteger 333, MkLog)
+          Right (VInteger 333, MkLog ())
 
     it "Unmanaged capability smoke test" $ do
       let cap = Capability (Symbol "ALLOW_USER")
@@ -37,7 +37,7 @@ main = hspec $ do
           cap
           (RequireCapability cap))
         `shouldBe`
-          Right (VUnit, MkLog)
+          Right (VUnit, MkLog ())
 
     it "Managed capability smoke test" $ do
       let cap n =
@@ -57,4 +57,4 @@ main = hspec $ do
             (cap 50)
             (RequireCapability (cap 50))))
         `shouldBe`
-          Right (VUnit, MkLog)
+          Right (VUnit, MkLog ())

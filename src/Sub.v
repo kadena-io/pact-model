@@ -34,7 +34,7 @@ Lemma ScR_idRen {Γ Γ'} (s : Sub Γ Γ') :
   ScR s idRen = s.
 Proof.
   induction s; simp ScR; auto.
-  now rewrite RenExp_idRen, IHs.
+  now rewrite RenExp_idRen IHs.
 Qed.
 
 Fixpoint idSub {Γ} : Sub Γ Γ :=
@@ -108,7 +108,7 @@ Lemma ScR_ScR {Γ Γ' Γ'' Γ'''} (σ : Sub Γ'' Γ''') (δ : Ren Γ' Γ'') (ν 
   ScR (ScR σ δ) ν = ScR σ (RcR δ ν).
 Proof.
   induction σ; simp ScR; auto.
-  now rewrite RenExp_RcR, IHσ.
+  now rewrite RenExp_RcR IHσ.
 Qed.
 
 Lemma ScR_RcS {Γ Γ' Γ'' Γ'''} (σ : Ren Γ'' Γ''') (δ : Sub Γ' Γ'') (ν : Ren Γ Γ') :
@@ -184,7 +184,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto; f_equal.
+  rewrite ?IHe ?IHe1 ?IHe2 ?IHe3 ?IHe4 ?IHe5; auto; f_equal.
   - now rewrite SubVar_RcS.
   - specialize (IHe _ _ (Keep σ) (Keepₛ δ)).
     rewrite <- IHe.
@@ -209,7 +209,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto; f_equal.
+  rewrite ?IHe ?IHe1 ?IHe2 ?IHe3 ?IHe4 ?IHe5; auto; f_equal.
   - now rewrite SubVar_ScR.
   - rewrite <- IHe.
     unfold Keepₛ.
@@ -271,11 +271,8 @@ Lemma SubExp_idSub {Γ τ} (e : Exp Γ τ) :
   SubExp idSub e = e.
 Proof.
   induction e; simpl; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto.
+  rewrite ?IHe ?IHe1 ?IHe2 ?IHe3 ?IHe4 ?IHe5; auto.
   - now rewrite SubVar_idSub.
-  - f_equal.
-    rewrite <- IHe at 2.
-    now f_equal.
 Qed.
 
 Lemma SubExp_ScS {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Sub Γ Γ') (e : Exp Γ'' τ) :
@@ -284,7 +281,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto; f_equal.
+  rewrite ?IHe ?IHe1 ?IHe2 ?IHe3 ?IHe4 ?IHe5; auto; f_equal.
   - now rewrite SubVar_ScS.
   - rewrite <- IHe; clear.
     f_equal.
@@ -363,11 +360,11 @@ Lemma SubExp_SubExp `(s : Sub [] Γ) (s' : Sub Γ []) `(e : [] ⊢ τ) :
 Proof.
   simpl; induction s.
   - dependent elimination s'; simpl.
-    now rewrite !NoSub_idSub, !SubExp_idSub.
+    now rewrite !NoSub_idSub !SubExp_idSub.
   - dependent elimination s'; simpl.
     rewrite <- SubExp_ScS in *.
     simpl.
-    now rewrite !NoSub_idSub, !SubExp_idSub.
+    now rewrite !NoSub_idSub !SubExp_idSub.
 Qed.
 
 Lemma SubExp_RenExp `(s : Sub [] Γ) (r' : Ren Γ []) `(e : [] ⊢ τ) :
@@ -375,8 +372,8 @@ Lemma SubExp_RenExp `(s : Sub [] Γ) (r' : Ren Γ []) `(e : [] ⊢ τ) :
 Proof.
   simpl; induction s.
   - dependent destruction r'; simpl.
-    rewrite !NoSub_idSub, !SubExp_idSub.
-    now rewrite !NoRen_idRen, !RenExp_idRen.
+    rewrite !NoSub_idSub !SubExp_idSub.
+    now rewrite !NoRen_idRen !RenExp_idRen.
   - dependent elimination r'; simpl.
     rewrite <- SubExp_RcS in *.
     simp RcS.

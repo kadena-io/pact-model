@@ -36,6 +36,7 @@
 /extract/src/SemTy.hs
 /extract/src/Signature.hs
 /extract/src/Specif.hs
+/extract/src/Ssrbool.hs
 /extract/src/String.hs
 /extract/src/Tuple.hs
 /extract/src/Ty.hs

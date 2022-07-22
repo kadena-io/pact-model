@@ -201,7 +201,7 @@ Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ
 Proof.
   generalize dependent Γ'.
   induction e; simpl; intros; auto; simp SemExp;
-  try now rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5.
+  try now rewrite ?IHe ?IHe1 ?IHe2 ?IHe3 ?IHe4 ?IHe5.
   - now rewrite SemVar_RenSem.
   - f_equal.
     extensionality z.
@@ -241,16 +241,16 @@ Proof.
     eexists.
     reflexivity.
   - exists (x1, x0).
-    now rewrite H1, H2; simpl.
+    now rewrite H1 H2; simpl.
   - exists [].
     reflexivity.
   - exists (x1 :: x0).
-    now rewrite H1, H2; simpl.
+    now rewrite H1 H2; simpl.
   - eexists.
     extensionality nm'.
     extensionality nm'0.
     extensionality nm'1.
-    rewrite H2, H3, H4; simpl.
+    rewrite H2 H3 H4; simpl.
     unfold RWSE_join.
     reflexivity.
 Abort.

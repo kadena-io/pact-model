@@ -161,9 +161,8 @@ Lemma RenExp_idRen {τ Γ} (e : Exp Γ τ) :
   RenExp idRen e = e.
 Proof.
   induction e; simpl; simp RenVar; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto.
+  rewrite ?IHe ?IHe1 ?IHe2 ?IHe3 ?IHe4 ?IHe5; auto.
   - now rewrite RenVar_idRen.
-  - now rewrite Keep_idRen, IHe.
 Qed.
 
 Lemma RenExp_DropAll {τ} (e : Exp [] τ) :
@@ -179,7 +178,7 @@ Proof.
   generalize dependent Γ'.
   generalize dependent Γ.
   induction e; simpl; intros; auto;
-  rewrite ?IHe, ?IHe1, ?IHe2, ?IHe3, ?IHe4, ?IHe5; auto.
+  rewrite ?IHe ?IHe1 ?IHe2 ?IHe3 ?IHe4 ?IHe5; auto.
   - now rewrite RenVar_RcR.
   - now rewrite <- IHe; simp RcR.
 Qed.

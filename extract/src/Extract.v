@@ -34,8 +34,8 @@ Extract Inductive comparison =>
 (** Int *)
 
 Extract Inductive Datatypes.nat => "Prelude.Int"
-  ["(0 :: Prelude.Int)" "HString.nsucc"]
-  "(\fO fS n -> if n Prelude.<= 0 then fO __ else fS (Prelude.pred n))".
+  ["(0 :: Prelude.Int)" "Prelude.succ"]
+  "(\fO fS n -> if n Prelude.<= 0 then fO Prelude.undefined else fS (Prelude.pred n))".
 
 Extract Inlined Constant EqNat.beq_nat         =>
   "((Prelude.==) :: Prelude.Int -> Prelude.Int -> Prelude.Bool)".
@@ -51,7 +51,7 @@ Extract Inlined Constant Compare_dec.leb       =>
 Extract Inlined Constant plus  => "(Prelude.+)".
 Extract Inlined Constant minus => "(Prelude.-)".
 Extract Inlined Constant mult  => "(Prelude.* )".
-Extract Inlined Constant pred  =>
+Extract Inlined Constant Nat.pred  =>
   "(Prelude.pred :: Prelude.Int -> Prelude.Int)".
 Extract Inlined Constant min   => "Prelude.min".
 Extract Inlined Constant max   =>
@@ -66,12 +66,12 @@ Extract Inductive positive => "Prelude.Int" [
   "(\x -> 2 Prelude.* x Prelude.+ 1)"
   "(\x -> 2 Prelude.* x)"
   "1" ]
-  "(\fI fO fH n -> if n Prelude.== 1 then fH __ else
+  "(\fI fO fH n -> if n Prelude.== 1 then fH Prelude.undefined else
                    if Prelude.odd n then fI (n `Prelude.div` 2)
                                     else fO (n `Prelude.div` 2))".
 
 Extract Inductive Z => "Prelude.Int" [ "0" "(\x -> x)" "Prelude.negate" ]
-  "(\fO fP fN n -> if n Prelude.== 0 then fO __ else
+  "(\fO fP fN n -> if n Prelude.== 0 then fO Prelude.undefined else
                    if n Prelude.> 0 then fP n else fN (Prelude.negate n))".
 
 Extract Inlined Constant Z.add       => "(Prelude.+)".
@@ -88,7 +88,7 @@ Extract Constant Z.modulo =>
   "(\n m -> if m Prelude.== 0 then 0 else Prelude.mod n m)".
 
 Extract Inductive N => "Prelude.Int" [ "0" "(\x -> x)" ]
-  "(\fO fP n -> if n Prelude.== 0 then fO __ else fP n)".
+  "(\fO fP n -> if n Prelude.== 0 then fO Prelude.undefined else fP n)".
 
 Extract Inlined Constant N.add       => "(Prelude.+)".
 Extract Inlined Constant N.sub       => "(Prelude.-)".
@@ -113,7 +113,7 @@ Extract Constant Qdiv =>
 Extract Inductive bool    => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
 Extract Inductive sumbool => "Prelude.Bool"
   ["(\_ -> Prelude.True)" "(\_ -> Prelude.False)"]
-  "(\fT fF b -> if b then fT __ else fF __)".
+  "(\fT fF b -> if b then fT Prelude.undefined else fF Prelude.undefined)".
 
 (* Extract Inlined Constant Equality.bool_beq => *)
 (*   "((Prelude.==) :: Prelude.Bool -> Prelude.Bool -> Prelude.Bool)". *)

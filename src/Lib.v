@@ -18,10 +18,10 @@ Require Export
 Require Import
   Coq.ZArith.ZArith.
 
-(* From Coq Require Export ssreflect ssrfun ssrbool. *)
-(* Set Implicit Arguments. *)
-(* Unset Strict Implicit. *)
-(* Unset Printing Implicit Defensive. *)
+From Coq Require Export ssreflect ssrfun ssrbool.
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 From Equations Require Export Equations.
 Set Equations With UIP.

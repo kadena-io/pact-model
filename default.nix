@@ -1,6 +1,7 @@
 args@{
   rev    ? "e0a42267f73ea52adc061a64650fddc59906fc99"
 , sha256 ? "0r1dsj51x2rm016xwvdnkm94v517jb1rpn4rk63k6krc4d0n3kh9"
+
 , pkgs   ? import (builtins.fetchTarball {
     url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
     inherit sha256; }) {
@@ -16,38 +17,18 @@ inherit
     (pkgs.fetchFromGitHub {
       owner = "jwiegley";
       repo = "coq-haskell";
-      rev = "c46434df74e0de8c398b55cce30e6a764916e9e7";
-      sha256 = "01rd8zlgwb24lwxlzrb85zs3qzl6hp1ig88zv5a5g4b6pch0fliy";
+      rev = "347555e0f89c5729f81b18a881399ccdc79d7cb6";
+      sha256 = "15n02zhi0w6iyqsbzqayfad3vhp5pnh2ny345dyqk30zk91ggk5n";
     }) {}) coq-haskell;
 
-category-theory = coqPackages:
-  with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec {
-    name = "coq${coq.coq-version}-category-theory-${version}";
-    version = "1.0";
-
-    src = pkgs.fetchFromGitHub {
+inherit
+  (pkgs.callPackages
+    (pkgs.fetchFromGitHub {
       owner = "jwiegley";
       repo = "category-theory";
-      rev = "3086979e73be7c68290a1a8aee4605bd535b6d0e";
-      sha256 = "17jgc0pg4my1x9clxw0h8gwx8cjrn7q2fjr6y30jacfqsmhmm3rc";
-    };
-
-    buildInputs = [
-      coq coq.ocaml coq.camlp5 coq.findlib equations
-    ];
-    enableParallelBuilding = true;
-
-    buildFlags = [
-      "-j$(NIX_BUILD_CORES)"
-    ];
-
-    installFlags = "COQLIB=$(out)/lib/coq/${coq.coq-version}/";
-
-    env = pkgs.buildEnv { inherit name; paths = buildInputs; };
-    passthru = {
-      compatibleCoqVersions = v: builtins.elem v [ "8.14" "8.15" ];
-    };
-  };
+      rev = "33857bdea4de0c567cfb6fae9435796e9f3cb33b";
+      sha256 = "13fal1rzw5jd6idl1ainzsrbjamj9rk6hn8l5lqqammrfnjx157q";
+    }) {}) category-theory;
 
 pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec {
   name = "coq${coq.coq-version}-pact-model-${version}";
@@ -59,8 +40,12 @@ pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec
 
   buildInputs = [
     coq coq.ocaml coq.camlp5 coq.findlib
-    equations QuickChick coqhammer pkgs.z3-tptp dpdgraph
-    (category-theory coqPackages) (coq-haskell coqPackages)
+    (category-theory coqPackages)
+    (coq-haskell coqPackages)
+    equations
+    coqhammer pkgs.z3-tptp
+    dpdgraph
+    QuickChick
     pkgs.perl
   ];
   enableParallelBuilding = true;
@@ -74,6 +59,7 @@ pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec
 };
 
 in {
+  inherit pact-model;
   pact-model_8_14 = pact-model "coqPackages_8_14";
   pact-model_8_15 = pact-model "coqPackages_8_15";
 }

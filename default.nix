@@ -38,7 +38,7 @@ category-theory = coqPackages:
     enableParallelBuilding = true;
 
     buildFlags = [
-      "JOBS=$(NIX_BUILD_CORES)"
+      "-j$(NIX_BUILD_CORES)"
     ];
 
     installFlags = "COQLIB=$(out)/lib/coq/${coq.coq-version}/";
@@ -64,10 +64,6 @@ pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec
     pkgs.perl
   ];
   enableParallelBuilding = true;
-
-  buildFlags = [
-    "JOBS=$(NIX_BUILD_CORES)"
-  ];
 
   installFlags = "COQLIB=$(out)/lib/coq/${coq.coq-version}/";
 

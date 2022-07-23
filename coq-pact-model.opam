@@ -1,15 +1,14 @@
 opam-version: "2.0"
 maintainer: "johnw@newartisans.com"
-version: "dev"
 
 homepage: "https://github.com/jwiegley/pact-model"
 dev-repo: "git+https://github.com/jwiegley/pact-model.git"
 bug-reports: "https://github.com/jwiegley/pact-model/issues"
 license: "BSD-3-Clause"
 
-synopsis: "Formal model of Pact"
+synopsis: "Formal model of the Pact Smart Contracts language"
 description: """
-Formal model of Pact
+Formal model of the Pact Smart Contracts language.
 """
 
 build: [make "-j%{jobs}%" ]
@@ -17,6 +16,7 @@ install: [make "install"]
 depends: [
   "coq" {(>= "8.14" & < "8.17~") | (= "dev")}
   "coq-equations" {(>= "1.2" & < "1.4~") | (= "dev")}
+  "coq-hammer" {(>= "1.3") | (= "dev")}
   "coq-hammer-tactics" {(>= "1.3") | (= "dev")}
   "coq-haskell" {(>= "1.1") | (= "dev")}
   "coq-category-theory" {(>= "1.0") | (= "dev")}

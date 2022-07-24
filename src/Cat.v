@@ -5,6 +5,7 @@ Require Import
   Pact.Ty
   Pact.Exp
   Pact.Ren
+  Pact.Sub
   Pact.SemTy
   Pact.SemExp.
 
@@ -20,6 +21,32 @@ Set Equations With UIP.
 
 Generalizable All Variables.
 Set Primitive Projections.
+
+(* (* Renamings form a category. *) *)
+Definition RenCat : Category := {|
+  obj              := Env;
+  hom              := Ren;
+  homset           := λ _ _, {| Setoid.equiv := eq |};
+  Category.id      := @idRen;
+  Category.compose := @RcR;
+  id_left          := @RcR_idRen_left;
+  id_right         := @RcR_idRen_right;
+  comp_assoc       := λ _ _ _ _ f g h, eq_sym (RcR_assoc f g h);
+  comp_assoc_sym   := @RcR_assoc
+|}.
+
+(* Substitutions form a category. *)
+Definition SubCat : Category := {|
+  obj              := Env;
+  hom              := Sub;
+  homset           := λ _ _, {| Setoid.equiv := eq |};
+  Category.id      := @idSub;
+  Category.compose := @ScS;
+  id_left          := @ScS_idSub_left;
+  id_right         := @ScS_idSub_right;
+  comp_assoc       := λ _ _ _ _ f g h, eq_sym (ScS_assoc f g h);
+  comp_assoc_sym   := @ScS_assoc
+|}.
 
 (*
 Section Cat.

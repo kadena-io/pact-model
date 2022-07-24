@@ -57,22 +57,3 @@ Lemma dec_eq_f2 `{EqDec a} (x y : a) `{EqDec b} (z w : b) `(f : a → b → c) :
   (∀ x y z w, f x z = f y w → x = y ∧ z = w) →
   dec_eq (f x z) (f y w).
 Proof. sauto. Defined.
-
-#[export]
-Program Instance EqDec_EqDec {a} : EqDec (EqDec a).
-Next Obligation.
-  left.
-  extensionality x0.
-  extensionality y0.
-  destruct (x _ _), (y _ _);
-  subst; simpl_eq; try sauto.
-  assert (n = n0) by apply proof_irrelevance.
-  now subst.
-Defined.
-
-Corollary sum_id {X Y : Type} (e : X + Y) :
-  match e with
-  | inl x => inl x
-  | inr y => inr y
-  end = e.
-Proof. now destruct e. Qed.

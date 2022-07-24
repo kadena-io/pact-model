@@ -17,10 +17,7 @@ Set Primitive Projections.
 
 Section Log.
 
-Context {A : Type}.
-Context `{L : HostExprs A}.
 Context {Γ : Env}.
-
 Variable P : ∀ {τ}, Exp Γ τ → Prop.
 
 (** [ExpP] is a logical predicate that permits type-directed induction on

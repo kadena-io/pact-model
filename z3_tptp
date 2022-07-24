@@ -1,0 +1,2 @@
+#!/bin/bash
+exec z3_tptp5 "$@"

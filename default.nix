@@ -52,6 +52,10 @@ pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec
 
   installFlags = "COQLIB=$(out)/lib/coq/${coq.coq-version}/";
 
+  shellHook = ''
+    export PATH=$PATH:$PWD
+  '';
+
   env = pkgs.buildEnv { inherit name; paths = buildInputs; };
   passthru = {
     compatibleCoqVersions = v: builtins.elem v [ "8.14" "8.15" ];

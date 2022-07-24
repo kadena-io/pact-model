@@ -14,10 +14,10 @@ Set Equations With UIP.
 
 (** Eq *)
 
-Extraction Implicit eq_rect   [ x y ].
-Extraction Implicit eq_rect_r [ x y ].
-Extraction Implicit eq_rec    [ x y ].
-Extraction Implicit eq_rec_r  [ x y ].
+Extraction Implicit eq_rect   [ 2 5 ].
+Extraction Implicit eq_rect_r [ 2 5 ].
+Extraction Implicit eq_rec    [ 2 5 ].
+Extraction Implicit eq_rec_r  [ 2 5 ].
 
 Extract Inlined Constant eq_rect   => "(\_ _ x _ -> x)".
 Extract Inlined Constant eq_rect_r => "(\_ _ x _ -> x)".

@@ -33,6 +33,12 @@ Definition SemPrimTy (ty : PrimType) : Type :=
   | PrimString  => string
   end.
 
+#[export]
+Program Instance SemPrimTy_EqDec {ty} : EqDec (SemPrimTy ty).
+Next Obligation.
+  induction ty; auto; sauto.
+Defined.
+
 Section SemTy.
 
 Context {m : Type → Type}.
@@ -47,14 +53,12 @@ Fixpoint SemTy (τ : Ty) : Type :=
   | TyList t        => list (SemTy t)
   | TyPair t1 t2    => SemTy t1 * SemTy t2
 
-  (* These types are used by capabilities. *)
+  (** Capabilities *)
   | TyCap p v       => Cap {| paramTy := reifyTy p; valueTy := reifyTy v |}
   end.
 
-Notation "⟦ t ⟧" := (SemTy t) (at level 9) : type_scope.
-
 Lemma reflectTy_reifyTy {τ} :
-  ConcreteP τ → reflectTy (reifyTy τ) = ⟦τ⟧.
+  ConcreteP τ → reflectTy (reifyTy τ) = SemTy τ.
 Proof.
   induction τ; sauto.
 Qed.

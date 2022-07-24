@@ -211,7 +211,7 @@ Proof.
   1: {
     f_equal.
     extensionality z.
-    sauto.
+    sauto lq: on.
   }
   all: sauto lq: on.
 Qed.
@@ -225,11 +225,6 @@ Qed.
 Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
   ValueP e → ∃ x, ⟦ se ⊨ e ⟧ = pure x.
 Proof.
-  induction 1; simpl; intros;
-  try (now eexists; eauto); reduce; simp SemExp.
-  all: eexists.
-  all: extensionality env.
-  all: extensionality s0.
-  all: extensionality w0.
-  all: sauto lq: on.
+  induction 1; reduce; simp SemExp;
+  eexists; rwse; sauto lq: on.
 Qed.

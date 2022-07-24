@@ -11,6 +11,11 @@ Set Primitive Projections.
  * The RWSET Monad transformer
  *)
 
+Ltac rwse :=
+  let r := fresh "r" in extensionality r;
+  let s := fresh "s" in extensionality s;
+  let w := fresh "w" in extensionality w.
+
 Section RWSE.
 
 Context {r s w e : Type}.
@@ -65,17 +70,13 @@ Program Instance RWSE_Monad : Monad RWSE := {
   join := @RWSE_join
 }.
 
-Lemma put_get `(x : s) : (put x >> get) = (put x >> pure x).
-Proof.
-  simpl.
-  unfold RWSE_join, get.
-  extensionality r0.
-  extensionality s0.
-  extensionality w0.
-  reflexivity.
-Qed.
+Corollary put_get `(x : s) : (put x >> get) = (put x >> pure x).
+Proof. reflexivity. Qed.
 
 End RWSE.
+
+#[export] Hint Unfold RWSE_ap : core.
+#[export] Hint Unfold RWSE_join : core.
 
 Arguments RWSE : clear implicits.
 
@@ -96,9 +97,7 @@ Program Instance RWSE_FunctorLaws {r s w e : Type} :
   FunctorLaws (@RWSE r s w e).
 Next Obligation.
   extensionality x.
-  extensionality r0.
-  extensionality s0.
-  extensionality w0.
+  rwse.
   rewrite first_id.
   unfold id.
   now destruct (x r0 s0 w0).
@@ -106,11 +105,9 @@ Qed.
 Next Obligation.
   unfold comp.
   extensionality x.
-  extensionality r0.
-  extensionality s0.
-  extensionality w0.
+  rwse.
   unfold Either_map, first.
-  destruct (x r0 s0 w0); simpl; auto.
+  destruct (x _ _ _); simpl; auto.
   now destruct p.
 Qed.
 
@@ -119,39 +116,28 @@ Program Instance RWSE_Applicative {r s w e : Type} :
   ApplicativeLaws (@RWSE r s w e).
 Next Obligation.
   extensionality x.
-  extensionality r0.
-  extensionality s0.
-  extensionality w0.
+  rwse.
   unfold RWSE_ap.
   rewrite first_id.
-  simpl.
-  unfold Either_map, id.
-  now destruct (x r0 s0 w0).
+  unfold Either_map, id. (* jww (2022-07-24): Prove functor laws for Either *)
+  now destruct (x _ _ _).
 Qed.
 Next Obligation.
-  extensionality r1.
-  extensionality s1.
-  extensionality w1.
+  rwse.
   unfold RWSE_ap; simpl.
-  destruct (u r1 s1 w1); simpl; auto.
-  destruct p; simpl.
-  destruct p; simpl.
-  destruct (v r1 s0 w2); simpl; auto.
-  destruct p; simpl.
-  destruct p; simpl.
-  destruct (w0 r1 s2 w3); simpl; auto.
-  destruct p; simpl.
-  destruct p; simpl.
+  destruct (u _ _ _); simpl; auto.
+  destruct p, p; simpl.
+  destruct (v _ _ _); simpl; auto.
+  destruct p, p; simpl.
+  destruct (w0 _ _ _); simpl; auto.
+  destruct p, p; simpl.
   reflexivity.
 Qed.
 Next Obligation.
-  extensionality r1.
-  extensionality s1.
-  extensionality w1.
+  rwse.
   unfold RWSE_ap; simpl.
-  destruct (u r1 s1 w1); simpl; auto.
-  destruct p; simpl.
-  destruct p; simpl.
+  destruct (u _ _ _); simpl; auto.
+  destruct p, p; simpl.
   reflexivity.
 Qed.
 
@@ -161,37 +147,28 @@ Program Instance RWSE_Monad {r s w e : Type} :
 Next Obligation.
   unfold comp.
   extensionality x.
-  extensionality r1.
-  extensionality s1.
-  extensionality w1.
+  rwse.
   unfold RWSE_join; simpl.
-  destruct (x r1 s1 w1); simpl; auto.
-  destruct p; simpl.
-  destruct p; simpl.
+  destruct (x _ _ _); simpl; auto.
+  destruct p, p; simpl.
   reflexivity.
 Qed.
 Next Obligation.
   unfold comp.
   extensionality x.
-  extensionality r1.
-  extensionality s1.
-  extensionality w1.
+  rwse.
   unfold RWSE_join, id; simpl.
-  destruct (x r1 s1 w1); simpl; auto.
-  destruct p; simpl.
-  destruct p; simpl.
+  destruct (x _ _ _); simpl; auto.
+  destruct p, p; simpl.
   reflexivity.
 Qed.
 Next Obligation.
   unfold comp.
   extensionality x.
-  extensionality r1.
-  extensionality s1.
-  extensionality w1.
+  rwse.
   unfold RWSE_join, id; simpl.
-  destruct (x r1 s1 w1); simpl; auto.
-  destruct p; simpl.
-  destruct p; simpl.
+  destruct (x _ _ _); simpl; auto.
+  destruct p, p; simpl.
   reflexivity.
 Qed.
 

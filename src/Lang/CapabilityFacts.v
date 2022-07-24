@@ -51,11 +51,6 @@ Ltac unravel :=
     /stepdownl'
     /=.
 
-Ltac rwse :=
-  let r := fresh "r" in extensionality r;
-  let s := fresh "s" in extensionality s;
-  let w := fresh "w" in extensionality w.
-
 Theorem with_capability_idem
   (n : string) `(c : Cap s)
   (p : Cap s → PactM ())

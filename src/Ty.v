@@ -86,9 +86,9 @@ Delimit Scope Ty_scope with ty.
 Infix "⟶" := TyArrow (at level 51, right associativity) : Ty_scope.
 Infix "×"  := TyPair  (at level 41, right associativity) : Ty_scope.
 
-Notation "'ℤ'" := (TyPrim PrimInteger).
-Notation "'𝔻'" := (TyPrim PrimDecimal).
-Notation "'𝕋'" := (TyPrim PrimTime).
-Notation "'𝔹'" := (TyPrim PrimBool).
-Notation "'𝕊'" := (TyPrim PrimString).
-Notation "'𝕌'" := (TyPrim PrimUnit).
+Notation "'ℤ'" := (TyPrim PrimInteger) : Ty_scope.
+Notation "'𝔻'" := (TyPrim PrimDecimal) : Ty_scope.
+Notation "'𝕋'" := (TyPrim PrimTime)    : Ty_scope.
+Notation "'𝔹'" := (TyPrim PrimBool)    : Ty_scope.
+Notation "'𝕊'" := (TyPrim PrimString)  : Ty_scope.
+Notation "'𝕌'" := (TyPrim PrimUnit)    : Ty_scope.

@@ -101,11 +101,27 @@ Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
   | RequireCapability c => RequireCapability (SubExp s c)
   end.
 
-Fixpoint ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (δ : Sub Γ Γ') : Sub Γ Γ'' :=
-  match s with
-  | NoSub    => NoSub
-  | Push e σ => Push (SubExp δ e) (ScS σ δ)
-  end.
+Lemma SubVar_ScR {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Ren Γ Γ') (v : Var Γ'' τ) :
+  SubVar (ScR σ δ) v = RenExp δ (SubVar σ v).
+Proof.
+  induction σ; simp SubVar; simp ScR.
+  - sauto.
+  - now dependent elimination v; simp SubVar.
+Qed.
+
+Lemma SubVar_idSub {Γ τ} (v : Var Γ τ) :
+  SubVar idSub v = VAR v.
+Proof.
+  induction v; simpl; simp SubVar; auto.
+  rewrite SubVar_ScR IHv /= RenVar_skip1 //.
+Qed.
+
+Lemma SubExp_idSub {Γ τ} (e : Exp Γ τ) :
+  SubExp idSub e = e.
+Proof.
+  induction e; simpl;
+  rewrite ?SubVar_idSub; sauto.
+Qed.
 
 Lemma ScR_ScR {Γ Γ' Γ'' Γ'''} (σ : Sub Γ'' Γ''') (δ : Ren Γ' Γ'') (ν : Ren Γ Γ') :
   ScR (ScR σ δ) ν = ScR σ (RcR δ ν).
@@ -184,14 +200,6 @@ Proof.
   all: sauto.
 Qed.
 
-Lemma SubVar_ScR {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Ren Γ Γ') (v : Var Γ'' τ) :
-  SubVar (ScR σ δ) v = RenExp δ (SubVar σ v).
-Proof.
-  induction σ; simp SubVar; simp ScR.
-  - sauto.
-  - now dependent elimination v; simp SubVar.
-Qed.
-
 Lemma SubExp_ScR {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Ren Γ Γ') (e : Exp Γ'' τ) :
   SubExp (ScR σ δ) e = RenExp δ (SubExp σ e).
 Proof.
@@ -214,6 +222,12 @@ Proof.
   all: sauto.
 Qed.
 
+Fixpoint ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (δ : Sub Γ Γ') : Sub Γ Γ'' :=
+  match s with
+  | NoSub    => NoSub
+  | Push e σ => Push (SubExp δ e) (ScS σ δ)
+  end.
+
 Lemma ScS_ScR {Γ Γ' Γ'' Γ'''} (σ : Sub Γ'' Γ''') (δ : Ren Γ' Γ'') (ν : Sub Γ Γ') :
   ScS (ScR σ δ) ν = ScS σ (RcS δ ν).
 Proof.
@@ -234,26 +248,12 @@ Proof.
   rewrite /= -SubExp_ScR; sauto.
 Qed.
 
-Lemma SubVar_idSub {Γ τ} (v : Var Γ τ) :
-  SubVar idSub v = VAR v.
-Proof.
-  induction v; simpl; simp SubVar; auto.
-  rewrite SubVar_ScR IHv /= RenVar_skip1 //.
-Qed.
-
 Lemma SubVar_ScS {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Sub Γ Γ') (v : Var Γ'' τ) :
   SubVar (ScS σ δ) v = SubExp δ (SubVar σ v).
 Proof.
   induction σ; simp SubVar; simp ScR.
   - sauto.
   - now dependent elimination v; simpl; simp SubVar.
-Qed.
-
-Lemma SubExp_idSub {Γ τ} (e : Exp Γ τ) :
-  SubExp idSub e = e.
-Proof.
-  induction e; simpl;
-  rewrite ?SubVar_idSub; sauto.
 Qed.
 
 Lemma SubExp_ScS {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Sub Γ Γ') (e : Exp Γ'' τ) :
@@ -297,6 +297,15 @@ Proof.
   induction σ; rewrite //= ScS_ScR RcS_skip1 IHσ //.
 Qed.
 
+Lemma ScS_assoc {Γ Γ' Γ'' Γ'''}
+      (σ : Sub Γ'' Γ''') (δ : Sub Γ' Γ'') (ν : Sub Γ Γ') :
+  ScS (ScS σ δ) ν = ScS σ (ScS δ ν).
+Proof.
+  induction σ; simpl; auto.
+  rewrite -SubExp_ScS /=.
+  now f_equal.
+Qed.
+
 Lemma ScS_Keepₛ {Γ Γ' Γ'' τ} (f : Sub Γ' Γ'') (g : Sub Γ Γ') :
   ScS (Keepₛ (τ:=τ) f) (Keepₛ g) = Keepₛ (ScS f g).
 Proof.
@@ -335,18 +344,6 @@ Proof.
   - rewrite -SubExp_RcS.
     simp RcS.
     now rewrite SubExp_RcS.
-Qed.
-
-Lemma SubExp_VAR_ZV {Γ τ} (s : Sub [] Γ) (x : Exp [] τ) :
-  SubExp (Push x s) (VAR ZV) = x.
-Proof.
-  now simpl; simp SubVar.
-Qed.
-
-Lemma SubExp_VAR_SV {Γ τ τ'} (s : Sub [] Γ) (x : Exp [] τ') (v : Var Γ τ) :
-  SubExp (Push x s) (VAR (SV v)) = SubExp s (VAR v).
-Proof.
-  now simpl; simp SubVar.
 Qed.
 
 Lemma SubExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Sub Γ' Γ) :

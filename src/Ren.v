@@ -35,10 +35,10 @@ Equations DropAll {Γ} : Ren Γ [] :=
   DropAll (Γ:=[])      := NoRen;
   DropAll (Γ:=_ :: xs) := Drop (DropAll (Γ:=xs)).
 
-Corollary NoRen_idRen : NoRen = idRen.
+Corollary NoRen_idRen : NoRen = idRen (Γ:=[]).
 Proof. reflexivity. Qed.
 
-Corollary DropAll_nil_idRen : DropAll (Γ:=[]) = idRen.
+Corollary DropAll_nil_idRen : DropAll = idRen (Γ:=[]).
 Proof. reflexivity. Qed.
 
 Definition skip1 {Γ τ} : Ren (τ :: Γ) Γ := Drop idRen.
@@ -51,7 +51,9 @@ Equations RcR {Γ Γ' Γ''} (r : Ren Γ' Γ'') (r' : Ren Γ Γ') : Ren Γ Γ'' :
 
 Lemma RcR_idRen_left {Γ Γ'} (σ : Ren Γ Γ') :
   RcR idRen σ = σ.
-Proof. induction σ; simp RcR; simpl; simp RcR; sauto. Qed.
+Proof.
+  induction σ; simp RcR; simpl; simp RcR; sauto.
+Qed.
 
 Lemma RcR_idRen_right {Γ Γ'} (σ : Ren Γ Γ') :
   RcR σ idRen = σ.
@@ -63,11 +65,11 @@ Lemma RcR_assoc {Γ Γ' Γ'' Γ'''}
 Proof.
   generalize dependent Γ'''.
   generalize dependent Γ''.
-  induction ν; simp RcR; simpl; intros; auto.
+  induction ν; simp RcR; intros; auto.
   - simp RcR; sauto.
-  - dependent elimination δ; simp RcR; simpl.
+  - dependent elimination δ; simp RcR.
     + sauto.
-    + dependent elimination σ; simp RcR; simpl; sauto.
+    + dependent elimination σ; simp RcR; sauto.
 Qed.
 
 Equations RenVar {τ Γ Γ'} (r : Ren Γ Γ') (v : Var Γ' τ) : Var Γ τ :=
@@ -91,9 +93,9 @@ Lemma RenVar_RcR {τ Γ Γ' Γ''} (σ : Ren Γ' Γ'') (δ : Ren Γ Γ') (v : Var
   RenVar (RcR σ δ) v = RenVar δ (RenVar σ v).
 Proof.
   generalize dependent Γ''.
-  induction δ; simpl; simp RcR; intros; auto.
-  - simp RenVar; sauto.
-  - dependent elimination σ; simpl; simp RcR; simp RenVar.
+  induction δ; intros; auto; simp RcR; simp RenVar.
+  - sauto.
+  - dependent elimination σ; simp RcR; simp RenVar.
     + sauto.
     + dependent elimination v; simp RenVar; sauto.
 Qed.

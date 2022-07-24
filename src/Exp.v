@@ -16,11 +16,11 @@ Import ListNotations.
 
 Inductive Literal : PrimType → Set :=
   | LitString  : string → Literal PrimString
-  | LitInteger : Z → Literal PrimInteger
-  | LitDecimal : N → N → Literal PrimDecimal
-  | LitUnit    : Literal PrimUnit
-  | LitBool    : bool → Literal PrimBool
-  | LitTime    : nat → Literal PrimTime.
+  | LitInteger : Z      → Literal PrimInteger
+  | LitDecimal : N → N  → Literal PrimDecimal
+  | LitUnit    :          Literal PrimUnit
+  | LitBool    : bool   → Literal PrimBool
+  | LitTime    : nat    → Literal PrimTime.
 
 Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Literal.
 
@@ -32,7 +32,7 @@ Inductive Builtin : Ty → Set :=
 
 Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Builtin.
 
-Definition Env := list Ty.
+Definition Env : Set := list Ty.
 
 Inductive Var : Env → Ty → Set :=
   | ZV {Γ τ}    : Var (τ :: Γ) τ
@@ -73,6 +73,8 @@ Inductive Exp Γ : Ty → Set :=
 
   | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
+  (** Capabilities *)
+
   | Capability {p v} :
     ConcreteP p →
     ConcreteP v →
@@ -100,11 +102,11 @@ Inductive Exp Γ : Ty → Set :=
 
 Derive Signature NoConfusionHom Subterm for Exp.
 
-Fixpoint Exp_size {Γ τ} (e : Exp Γ τ) : nat :=
+Fixpoint Exp_size `(e : Exp Γ τ) : nat :=
   match e with
-  | VAR v     => 1
-  | LAM e     => 1 + Exp_size e
-  | APP e1 e2 => 1 + Exp_size e1 + Exp_size e2
+  | VAR v      => 1
+  | LAM e      => 1 + Exp_size e
+  | APP e1 e2  => 1 + Exp_size e1 + Exp_size e2
 
   | Error _ _  => 1
   | Lit _ _    => 1

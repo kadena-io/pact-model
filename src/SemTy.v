@@ -63,6 +63,25 @@ Proof.
   induction τ; sauto.
 Qed.
 
+#[export]
+Program Instance Concrete_EqDec {t} (H : ConcreteP t) : EqDec (SemTy t).
+Next Obligation.
+  generalize dependent y.
+  generalize dependent x.
+  induction t; simpl; intros; auto.
+  - sauto.
+  - apply SemPrimTy_EqDec.
+  - apply list_eqdec.
+    unfold EqDec.
+    apply IHt; sauto.
+  - reduce.
+    assert (ConcreteP t1 ∧ ConcreteP t2) as H0 by sauto.
+    destruct (IHt1 (proj1 H0) s1 s).
+    + destruct (IHt2 (proj2 H0) s2 s0); sauto.
+    + sauto.
+  - sauto.
+Defined.
+
 End SemTy.
 
 Notation "⟦ t ⟧" := (SemTy t) (at level 9) : type_scope.

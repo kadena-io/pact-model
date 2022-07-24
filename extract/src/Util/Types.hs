@@ -12,6 +12,7 @@
 module Util.Types where
 
 import Data.Kind
+import Data.Void
 
 import Ty
 import Exp (Err)
@@ -79,6 +80,22 @@ data Builtin :: Ty -> Type where
    SubInt :: Builtin ('TyArrow ('TyPrim 'PrimInteger)
                               ('TyArrow ('TyPrim 'PrimInteger)
                                         ('TyPrim 'PrimInteger)))
+
+type family SemPrimTy (t :: PrimType) :: Type where
+  SemPrimTy 'PrimUnit    = ()
+  SemPrimTy 'PrimInteger = Integer
+  SemPrimTy 'PrimDecimal = Integer -- jww (2022-07-23): TODO
+  SemPrimTy 'PrimTime    = Integer
+  SemPrimTy 'PrimBool    = Bool
+  SemPrimTy 'PrimString  = String
+
+type family SemTy (t :: Ty) :: Type where
+  SemTy ('TyPrim ty)   = SemPrimTy ty
+  SemTy 'TySym         = String
+  SemTy ('TyList l)    = [SemTy l]
+  SemTy ('TyPair x y)  = (SemTy x, SemTy y)
+  SemTy ('TyArrow _ _) = Void
+  SemTy ('TyCap _ _)   = Void
 
 data Var :: Env -> Ty -> Type where
   ZV :: Var (t : ts) t

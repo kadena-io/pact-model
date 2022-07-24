@@ -22,24 +22,16 @@ Set Primitive Projections.
 
 Import ListNotations.
 
-Definition eval `(e : Exp [] τ) : Err + (Value τ * PactLog) :=
+Definition eval `(e : Exp [] τ) : Err + (SemTy τ * PactLog) :=
   match SemExp e tt newPactEnv newPactState newPactLog with
   | inl err => inl err
-  | inr (result, (_finalState, log)) =>
-      match Reifiable τ with
-      | None   => inl (Err_CannotReify τ)
-      | Some H => inr (reify result H, log)
-      end
+  | inr (result, (_finalState, log)) => inr (result, log)
   end.
 
 Definition evalInModule (modname : string) `(e : Exp [] τ) :
-  Err + (Value τ * PactLog) :=
+  Err + (SemTy τ * PactLog) :=
   match SemExp e tt (newPactEnv &+ context %~ cons (InModule modname))
                newPactState newPactLog with
   | inl err => inl err
-  | inr (result, (_finalState, log)) =>
-      match Reifiable τ with
-      | None   => inl (Err_CannotReify τ)
-      | Some H => inr (reify result H, log)
-      end
+  | inr (result, (_finalState, log)) => inr (result, log)
   end.

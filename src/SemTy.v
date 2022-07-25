@@ -26,6 +26,7 @@ Import ListNotations.
 
 Definition SemPrimTy (ty : PrimType) : Type :=
   match ty with
+  | PrimVoid    => False
   | PrimUnit    => unit
   | PrimInteger => Z
   | PrimDecimal => N
@@ -75,9 +76,6 @@ Next Obligation.
   - sauto.
   - sauto.
   - apply SemPrimTy_EqDec.
-  - apply list_eqdec.
-    unfold EqDec.
-    apply IHt; sauto.
   - reduce.
     assert (ConcreteP t1 ∧ ConcreteP t2) as H0 by sauto.
     destruct (IHt1 (proj1 H0) s1 s).
@@ -91,6 +89,9 @@ Next Obligation.
     + sauto.
     + assert (ConcreteP t2) as H0 by sauto.
       destruct (IHt2 H0 s s0); sauto.
+  - apply list_eqdec.
+    unfold EqDec.
+    apply IHt; sauto.
   - sauto.
 Defined.
 

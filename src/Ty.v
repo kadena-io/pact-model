@@ -13,6 +13,7 @@ Generalizable All Variables.
 Set Primitive Projections.
 
 Inductive PrimType : Set :=
+  | PrimVoid
   | PrimUnit
   | PrimInteger
   | PrimDecimal
@@ -30,9 +31,9 @@ Inductive Ty : Set :=
   | TySym   : Ty
   | TyPrim  : PrimType → Ty
 
-  | TyList  : Ty → Ty
   | TyPair  : Ty → Ty → Ty
   | TySum   : Ty → Ty → Ty
+  | TyList  : Ty → Ty
 
   | TyCap   : Ty → Ty → Ty.
 
@@ -43,11 +44,11 @@ Unset Elimination Schemes.
 Inductive ConcreteP : Ty → Prop :=
   | SymDecP          : ConcreteP TySym
   | PrimDecP {ty}    : ConcreteP (TyPrim ty)
-  | ListDecP {τ}     : ConcreteP τ → ConcreteP (TyList τ)
   | PairDecP {τ1 τ2} : ConcreteP τ1 → ConcreteP τ2 →
                        ConcreteP (TyPair τ1 τ2)
   | SumDecP {τ1 τ2}  : ConcreteP τ1 → ConcreteP τ2 →
-                       ConcreteP (TySum τ1 τ2).
+                       ConcreteP (TySum τ1 τ2)
+  | ListDecP {τ}     : ConcreteP τ → ConcreteP (TyList τ).
 
 Derive Signature for ConcreteP.
 
@@ -59,11 +60,6 @@ Fixpoint Reifiable (t : Ty) : option (ConcreteP t) :=
   match t with
   | TySym        => Some SymDecP
   | TyPrim ty    => Some (PrimDecP (ty:=ty))
-  | TyList τ     =>
-      match Reifiable τ with
-      | Some decP => Some (ListDecP decP)
-      | None => None
-      end
   | TyPair τ1 τ2 =>
       match Reifiable τ1, Reifiable τ2 with
       | Some dec1P, Some dec2P => Some (PairDecP dec1P dec2P)
@@ -73,6 +69,11 @@ Fixpoint Reifiable (t : Ty) : option (ConcreteP t) :=
       match Reifiable τ1, Reifiable τ2 with
       | Some dec1P, Some dec2P => Some (SumDecP dec1P dec2P)
       | _, _ => None
+      end
+  | TyList τ     =>
+      match Reifiable τ with
+      | Some decP => Some (ListDecP decP)
+      | None => None
       end
   | _ => None
   end.
@@ -94,12 +95,12 @@ Delimit Scope Ty_scope with ty.
 
 Infix "⟶" := TyArrow (at level 51, right associativity) : Ty_scope.
 Infix "×"  := TyPair  (at level 41, right associativity) : Ty_scope.
+Infix "+"  := TySum : Ty_scope.
 
-Notation "x + y" := (TySum x y) : Ty_scope.
-
+Notation "'𝕍'" := (TyPrim PrimVoid)    : Ty_scope.
+Notation "'𝕌'" := (TyPrim PrimUnit)    : Ty_scope.
 Notation "'ℤ'" := (TyPrim PrimInteger) : Ty_scope.
 Notation "'𝔻'" := (TyPrim PrimDecimal) : Ty_scope.
 Notation "'𝕋'" := (TyPrim PrimTime)    : Ty_scope.
 Notation "'𝔹'" := (TyPrim PrimBool)    : Ty_scope.
 Notation "'𝕊'" := (TyPrim PrimString)  : Ty_scope.
-Notation "'𝕌'" := (TyPrim PrimUnit)    : Ty_scope.

@@ -22,6 +22,9 @@ import qualified Lang as L
 class ReifyPrim (t :: PrimType) where
   reifyPrim :: PrimType
 
+instance ReifyPrim 'PrimVoid where
+  reifyPrim = PrimVoid
+
 instance ReifyPrim 'PrimUnit where
   reifyPrim = PrimUnit
 
@@ -90,6 +93,7 @@ data Builtin :: Ty -> Type where
                                         ('TyPrim 'PrimInteger)))
 
 type family SemPrimTy (t :: PrimType) :: Type where
+  SemPrimTy 'PrimVoid    = Void
   SemPrimTy 'PrimUnit    = ()
   SemPrimTy 'PrimInteger = Integer
   SemPrimTy 'PrimDecimal = Integer -- jww (2022-07-23): TODO

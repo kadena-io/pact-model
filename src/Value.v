@@ -17,6 +17,60 @@ Import ListNotations.
 
 Open Scope Ty_scope.
 
+Inductive ValueTy : Set :=
+  | TVoid
+  | TUnit
+  | TSymbol
+  | TInteger
+  | TDecimal
+  | TTime
+  | TBool
+  | TString
+  | TList (t : ValueTy)
+  | TPair (t1 t2 : ValueTy).
+
+Derive NoConfusion NoConfusionHom Subterm EqDec for ValueTy.
+
+Fixpoint reifyTy (τ : Ty) : ValueTy :=
+  match τ with
+  | TySym        => TSymbol
+  | ℤ            => TInteger
+  | 𝔻            => TDecimal
+  | 𝕋            => TTime
+  | 𝔹            => TBool
+  | 𝕊            => TString
+  | 𝕌            => TUnit
+  | TyList t     => TList (reifyTy t)
+  | TyPair t1 t2 => TPair (reifyTy t1) (reifyTy t2)
+  | _            => TVoid
+  end.
+
+Fixpoint reflectTy (t : ValueTy) : Type :=
+  match t with
+  | TVoid       => False
+  | TUnit       => unit
+  | TSymbol     => string
+  | TInteger    => Z
+  | TDecimal    => N
+  | TTime       => nat
+  | TBool       => bool
+  | TString     => string
+  | TList l     => list (reflectTy l)
+  | TPair t1 t2 => reflectTy t1 * reflectTy t2
+  end.
+
+#[export]
+Program Instance reflectTy_EqDec {t} : EqDec (reflectTy t).
+Next Obligation.
+  induction t; auto.
+  - sauto.
+  - apply list_eqdec.
+    unfold EqDec.
+    apply IHt.
+  - destruct x as [x1 x2], y as [y1 y2].
+    destruct (IHt1 x1 y1), (IHt2 x2 y2); sauto.
+Defined.
+
 Unset Elimination Schemes.
 
 (* [ValueP] is an inductive proposition that indicates whether an expression
@@ -76,57 +130,3 @@ Lemma ErrorP_dec {Γ τ} (e : Exp Γ τ) :
 Proof.
   induction e; sauto.
 Qed.
-
-Inductive ValueTy : Set :=
-  | TVoid
-  | TUnit
-  | TSymbol
-  | TInteger
-  | TDecimal
-  | TTime
-  | TBool
-  | TString
-  | TList : ValueTy → ValueTy
-  | TPair : ValueTy → ValueTy → ValueTy.
-
-Derive NoConfusion NoConfusionHom Subterm EqDec for ValueTy.
-
-Fixpoint reifyTy (τ : Ty) : ValueTy :=
-  match τ with
-  | TySym        => TSymbol
-  | ℤ            => TInteger
-  | 𝔻            => TDecimal
-  | 𝕋            => TTime
-  | 𝔹            => TBool
-  | 𝕊            => TString
-  | 𝕌            => TUnit
-  | TyList t     => TList (reifyTy t)
-  | TyPair t1 t2 => TPair (reifyTy t1) (reifyTy t2)
-  | _            => TVoid
-  end.
-
-Fixpoint reflectTy (t : ValueTy) : Type :=
-  match t with
-  | TVoid       => False
-  | TUnit       => unit
-  | TSymbol     => string
-  | TInteger    => Z
-  | TDecimal    => N
-  | TTime       => nat
-  | TBool       => bool
-  | TString     => string
-  | TList l     => list (reflectTy l)
-  | TPair t1 t2 => reflectTy t1 * reflectTy t2
-  end.
-
-#[export]
-Program Instance reflectTy_EqDec {t} : EqDec (reflectTy t).
-Next Obligation.
-  induction t; auto.
-  - sauto.
-  - apply list_eqdec.
-    unfold EqDec.
-    apply IHt.
-  - destruct x as [x1 x2], y as [y1 y2].
-    destruct (IHt1 x1 y1), (IHt2 x2 y2); sauto.
-Defined.

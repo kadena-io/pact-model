@@ -30,6 +30,7 @@ library
       BinNat
       BinNums
       BinPos
+      Bltn
       Capability
       CapabilityType
       Classes
@@ -54,6 +55,7 @@ library
       Nat
       Ren
       RWSE
+      SemBltn
       SemExp
       SemTy
       Specif

@@ -8,6 +8,7 @@
 /extract/src/BinNat.hs
 /extract/src/BinNums.hs
 /extract/src/BinPos.hs
+/extract/src/Bltn.hs
 /extract/src/Capability.hs
 /extract/src/CapabilityType.hs
 /extract/src/Classes.hs
@@ -32,6 +33,7 @@
 /extract/src/Nat.hs
 /extract/src/RWSE.hs
 /extract/src/Ren.hs
+/extract/src/SemBltn.hs
 /extract/src/SemExp.hs
 /extract/src/SemTy.hs
 /extract/src/Signature.hs

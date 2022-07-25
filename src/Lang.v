@@ -5,7 +5,6 @@ Require Export
   Pact.Lib
   Pact.Ty
   Pact.Exp
-  Pact.SemTy
   Pact.Value
   Pact.Lang.CapabilityType.
 
@@ -21,7 +20,7 @@ Set Primitive Projections.
 Import ListNotations.
 
 Inductive Err : Type :=
-  | Err_Exp : Exp.Err → Err
+  | Err_Expr : string → Err
   | Err_Capability {s} : Cap s → CapError → Err
   | Err_CannotReify : Ty → Err.
 

@@ -9,6 +9,7 @@ Require Import
   Pact.Exp
   Pact.Value
   Pact.Lang
+  Pact.SemTy
   Pact.SemExp.
 
 Set Implicit Arguments.
@@ -22,15 +23,14 @@ Set Primitive Projections.
 
 Import ListNotations.
 
-Definition eval `(e : Exp [] τ) : Err + (SemTy τ * PactLog) :=
+Definition eval `(e : [] ⊢ τ) : Err + (⟦τ⟧ * PactLog) :=
   match SemExp e tt newPactEnv newPactState newPactLog with
   | inl err => inl err
   | inr (result, (_finalState, log)) => inr (result, log)
   end.
 
-Definition evalInModule (modname : string) `(e : Exp [] τ) :
-  Err + (SemTy τ * PactLog) :=
-  match SemExp e tt (newPactEnv &+ context %~ cons (InModule modname))
+Definition evalInModule (nm : string) `(e : [] ⊢ τ) : Err + (⟦τ⟧ * PactLog) :=
+  match SemExp e tt (newPactEnv &+ context %~ cons (InModule nm))
                newPactState newPactLog with
   | inl err => inl err
   | inr (result, (_finalState, log)) => inr (result, log)

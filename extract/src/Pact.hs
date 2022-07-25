@@ -18,8 +18,6 @@ module Pact (
 
 import qualified Eval
 import Util.Types as Types
-import Exp hiding (Err)
-import qualified Exp
 import Lang
 import Value hiding (Any, __, reifyTy)
 import Ty
@@ -28,7 +26,6 @@ import qualified CapabilityType
 deriving instance Show Ty.PrimType
 deriving instance Show Ty.Ty
 deriving instance Show Value.ValueTy
-deriving instance Show Exp.Err
 deriving instance Show CapabilityType.CapSig
 deriving instance Show CapabilityType.CapError
 deriving instance Show Lang.Err
@@ -37,7 +34,6 @@ deriving instance Show Lang.PactLog
 deriving instance Eq Ty.PrimType
 deriving instance Eq Ty.Ty
 deriving instance Eq Value.ValueTy
-deriving instance Eq Exp.Err
 deriving instance Eq CapabilityType.CapSig
 deriving instance Eq CapabilityType.CapError
 deriving instance Eq Lang.Err

@@ -5,13 +5,15 @@ Require Import
   Pact.ilist
   Pact.Lib
   Pact.Ty
+  Pact.Bltn
   Pact.Exp
   Pact.Value
   Pact.Ren
   Pact.Sub
   Pact.SemTy
   Pact.Lang
-  Pact.Lang.Capability.
+  Pact.Lang.Capability
+  Pact.SemBltn.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -34,12 +36,6 @@ Definition SemLit {ty : PrimType} (l : Literal ty) : SemPrimTy ty :=
   | LitUnit        => tt
   | LitBool b      => b
   | LitTime t      => t
-  end.
-
-Definition SemBltn {τ} (bltn : Builtin τ) : SemTy τ :=
-  match bltn with
-  | AddInt => λ n, pure (λ m, pure (n + m)%Z)
-  | SubInt => λ n, pure (λ m, pure (n - m)%Z)
   end.
 
 Fixpoint SemVar `(v : Var Γ τ) : SemEnv Γ → SemTy τ :=
@@ -101,6 +97,9 @@ Notation "f =<< x" := (x >>= f) (at level 42, right associativity).
 
 Import EqNotations.
 
+Corollary string_sem : SemTy (m:=PactM) 𝕊 = string.
+Proof. reflexivity. Qed.
+
 Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ) :=
   SemExp (VAR v)     se := pure (SemVar v se);
   SemExp (LAM e)     se := pure (λ x, SemExp e (x, se));
@@ -109,7 +108,14 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
     x <- SemExp e2 se ;
     f x;
 
-  SemExp (Error e)  _ := throw (Err_Exp e);
+  SemExp (Raise e) _ := throw =<< SemExp e se;
+  SemExp (Catch e) _ :=
+    λ r s w,
+      match SemExp e se r s w with
+      | inl err           => pure (inl err) r s w
+      | inr (v, (s', w')) => pure (inr v) r s' w'
+      end;
+
   SemExp (Symbol n) _ := pure n;
   SemExp (Lit l)  _   := pure (SemLit l);
   SemExp (Bltn b)   _ := pure (SemBltn b);
@@ -127,6 +133,15 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
   SemExp (Fst p) se := fst <$> SemExp p se;
   SemExp (Snd p) se := snd <$> SemExp p se;
 
+  SemExp (Inl p) se := inl <$> SemExp p se;
+  SemExp (Inr p) se := inr <$> SemExp p se;
+  SemExp (Case e f g) se :=
+    e' <- SemExp e se ;
+    match e' with
+    | inl l => SemExp f se >>= λ f', f' l
+    | inr r => SemExp g se >>= λ g', g' r
+    end;
+
   SemExp Nil se := pure [];
   SemExp (Cons x xs) se :=
     x'  <- SemExp x se ;
@@ -136,13 +151,13 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
   SemExp (Car xs) se :=
     xs' <- SemExp xs se ;
     match xs' with
-    | []     => throw (Err_Exp Err_CarNil)
+    | []     => throw (Err_Expr "car of nil")
     | x :: _ => pure x
     end;
   SemExp (Cdr xs) se :=
     xs' <- SemExp xs se ;
     match xs' with
-    | []      => throw (Err_Exp Err_CdrNil)
+    | []      => throw (Err_Expr "cdr of nil")
     | _ :: xs => pure xs
     end;
 

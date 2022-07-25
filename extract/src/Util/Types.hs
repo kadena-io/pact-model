@@ -15,8 +15,9 @@ import Data.Kind
 import Data.Void
 
 import Ty
-import Exp (Err)
+import qualified Bltn as B
 import qualified Exp as E
+import qualified Lang as L
 
 class ReifyPrim (t :: PrimType) where
   reifyPrim :: PrimType
@@ -46,11 +47,14 @@ instance forall dom cod. (ReifyTy dom, ReifyTy cod)
     => ReifyTy ('TyArrow dom cod) where
   reifyTy = TyArrow (reifyTy @dom) (reifyTy @cod)
 
-instance forall prim. ReifyPrim prim => ReifyTy ('TyPrim prim) where
-  reifyTy = TyPrim (reifyPrim @prim)
+instance ReifyTy 'TyError where
+  reifyTy = TyError
 
 instance ReifyTy 'TySym where
   reifyTy = TySym
+
+instance forall prim. ReifyPrim prim => ReifyTy ('TyPrim prim) where
+  reifyTy = TyPrim (reifyPrim @prim)
 
 instance forall t. ReifyTy t => ReifyTy ('TyList t) where
   reifyTy = TyList (reifyTy @t)
@@ -58,6 +62,10 @@ instance forall t. ReifyTy t => ReifyTy ('TyList t) where
 instance forall t1 t2. (ReifyTy t1, ReifyTy t2)
     => ReifyTy ('TyPair t1 t2) where
   reifyTy = TyPair (reifyTy @t1) (reifyTy @t2)
+
+instance forall t1 t2. (ReifyTy t1, ReifyTy t2)
+    => ReifyTy ('TySum t1 t2) where
+  reifyTy = TySum (reifyTy @t1) (reifyTy @t2)
 
 instance forall p v. (ReifyTy p, ReifyTy v)
     => ReifyTy ('TyCap p v) where
@@ -90,10 +98,12 @@ type family SemPrimTy (t :: PrimType) :: Type where
   SemPrimTy 'PrimString  = String
 
 type family SemTy (t :: Ty) :: Type where
-  SemTy ('TyPrim ty)   = SemPrimTy ty
+  SemTy 'TyError       = L.Err
   SemTy 'TySym         = String
+  SemTy ('TyPrim ty)   = SemPrimTy ty
   SemTy ('TyList l)    = [SemTy l]
   SemTy ('TyPair x y)  = (SemTy x, SemTy y)
+  SemTy ('TySum x y)   = Either (SemTy x) (SemTy y)
   SemTy ('TyArrow _ _) = Void
   SemTy ('TyCap _ _)   = Void
 
@@ -107,8 +117,10 @@ data Exp :: Env -> Ty -> Type where
     => Exp (dom : ts) cod -> Exp ts ('TyArrow dom cod)
   APP :: (ReifyTy dom, ReifyTy cod)
     => Exp ts ('TyArrow dom cod) -> Exp ts dom -> Exp ts cod
-  Error :: ReifyTy t
-    => Err -> Exp ts t
+  Raise :: ReifyTy t
+    => Exp ts 'TyError -> Exp ts t
+  Catch :: ReifyTy t
+    => Exp ts t -> Exp ts ('TySum 'TyError t)
   Lit :: ReifyPrim ty
     => Literal ty -> Exp ts ('TyPrim ty)
   Bltn :: ReifyTy t
@@ -122,6 +134,14 @@ data Exp :: Env -> Ty -> Type where
     => Exp ts ('TyPair t1 t2) -> Exp ts t1
   Snd :: (ReifyTy t1, ReifyTy t2)
     => Exp ts ('TyPair t1 t2) -> Exp ts t2
+  Inl :: (ReifyTy t1, ReifyTy t2)
+    => Exp ts t1 -> Exp ts ('TySum t1 t2)
+  Inr :: (ReifyTy t1, ReifyTy t2)
+    => Exp ts t2 -> Exp ts ('TySum t1 t2)
+  Case :: (ReifyTy t1, ReifyTy t2)
+    => Exp ts ('TySum t1 t2) ->
+      Exp ts ('TyArrow t1 t) -> Exp ts ('TyArrow t2 t) ->
+      Exp ts ('TyPair t1 t2)
   Nil :: ReifyTy t
     => Exp ts ('TyList t)
   Cons :: ReifyTy t
@@ -173,9 +193,9 @@ forgetLiteral LitUnit = E.LitUnit
 forgetLiteral (LitBool b) = E.LitBool b
 forgetLiteral (LitTime t) = E.LitTime t
 
-forgetBultin :: Builtin t -> E.Builtin
-forgetBultin AddInt = E.AddInt
-forgetBultin SubInt = E.SubInt
+forgetBultin :: Builtin t -> B.Builtin
+forgetBultin AddInt = B.AddInt
+forgetBultin SubInt = B.SubInt
 
 forgetVar :: Var ts t -> E.Var
 forgetVar ZV = E.ZV undefined undefined
@@ -185,7 +205,8 @@ forgetExp :: Exp ts t -> E.Exp
 forgetExp (VAR v) = E.VAR undefined (forgetVar v)
 forgetExp (LAM e) = E.LAM undefined undefined (forgetExp e)
 forgetExp (APP e1 e2) = E.APP undefined undefined (forgetExp e1) (forgetExp e2)
-forgetExp (Error err) = E.Error undefined err
+forgetExp (Raise err) = E.Raise undefined (forgetExp err)
+forgetExp (Catch e) = E.Catch undefined (forgetExp e)
 forgetExp (Lit lit) = E.Lit undefined (forgetLiteral lit)
 forgetExp (Bltn bltn) = E.Bltn undefined (forgetBultin bltn)
 forgetExp (Symbol sym) = E.Symbol sym
@@ -193,6 +214,10 @@ forgetExp (If b t e) = E.If undefined (forgetExp b) (forgetExp t) (forgetExp e)
 forgetExp (Pair x y) = E.Pair undefined undefined (forgetExp x) (forgetExp y)
 forgetExp (Fst p) = E.Fst undefined undefined (forgetExp p)
 forgetExp (Snd p) = E.Snd undefined undefined (forgetExp p)
+forgetExp (Inl p) = E.Inl undefined undefined (forgetExp p)
+forgetExp (Inr p) = E.Inr undefined undefined (forgetExp p)
+forgetExp (Case e f g) =
+  E.Case undefined undefined undefined (forgetExp e) (forgetExp f) (forgetExp g)
 forgetExp Nil = E.Nil undefined
 forgetExp (Cons x xs) = E.Cons undefined (forgetExp x) (forgetExp xs)
 forgetExp (Car xs) = E.Car undefined (forgetExp xs)

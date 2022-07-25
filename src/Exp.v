@@ -1,7 +1,8 @@
 Require Import
   Coq.ZArith.ZArith
   Pact.Lib
-  Pact.Ty.
+  Pact.Ty
+  Pact.Bltn.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -26,12 +27,6 @@ Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Literal.
 
 Open Scope Ty_scope.
 
-Inductive Builtin : Ty → Set :=
-  | AddInt : Builtin (ℤ ⟶ ℤ ⟶ ℤ)
-  | SubInt : Builtin (ℤ ⟶ ℤ ⟶ ℤ).
-
-Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Builtin.
-
 Definition Env : Set := list Ty.
 
 Inductive Var : Env → Ty → Set :=
@@ -40,38 +35,38 @@ Inductive Var : Env → Ty → Set :=
 
 Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Var.
 
-Inductive Err : Set :=
-  | Err_CarNil
-  | Err_CdrNil.
-
-Derive NoConfusion NoConfusionHom Subterm EqDec for Err.
-
 Inductive Exp Γ : Ty → Set :=
-  | VAR {τ}       : Var Γ τ → Exp Γ τ
-  | LAM {dom cod} : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
-  | APP {dom cod} : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod
+  | VAR {τ}        : Var Γ τ → Exp Γ τ
+  | LAM {dom cod}  : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
+  | APP {dom cod}  : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod
 
   (* The following terms represent Pact beyond lambda calculus. *)
-  | Error {τ}     : Err → Exp Γ τ
+  | Raise {τ}      : Exp Γ TyError → Exp Γ τ
+  | Catch {τ}      : Exp Γ τ → Exp Γ (TySum TyError τ)
 
-  | Lit {ty}      : Literal ty → Exp Γ (TyPrim ty)
-  | Bltn {τ}      : Builtin τ → Exp Γ τ
+  | Lit {ty}       : Literal ty → Exp Γ (TyPrim ty)
+  | Bltn {τ}       : Builtin τ → Exp Γ τ
 
-  | Symbol        : string → Exp Γ TySym
+  | Symbol         : string → Exp Γ TySym
 
-  | If {τ}        : Exp Γ 𝔹 → Exp Γ τ → Exp Γ τ → Exp Γ τ
+  | If {τ}         : Exp Γ 𝔹 → Exp Γ τ → Exp Γ τ → Exp Γ τ
 
-  | Pair {τ1 τ2}  : Exp Γ τ1 → Exp Γ τ2 → Exp Γ (TyPair τ1 τ2)
-  | Fst {τ1 τ2}   : Exp Γ (TyPair τ1 τ2) → Exp Γ τ1
-  | Snd {τ1 τ2}   : Exp Γ (TyPair τ1 τ2) → Exp Γ τ2
+  | Pair {τ1 τ2}   : Exp Γ τ1 → Exp Γ τ2 → Exp Γ (TyPair τ1 τ2)
+  | Fst {τ1 τ2}    : Exp Γ (TyPair τ1 τ2) → Exp Γ τ1
+  | Snd {τ1 τ2}    : Exp Γ (TyPair τ1 τ2) → Exp Γ τ2
 
-  | Nil {τ}       : Exp Γ (TyList τ)
-  | Cons {τ}      : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
-  | Car {τ}       : Exp Γ (TyList τ) → Exp Γ τ
-  | Cdr {τ}       : Exp Γ (TyList τ) → Exp Γ (TyList τ)
-  | IsNil {τ}     : Exp Γ (TyList τ) → Exp Γ 𝔹
+  | Inl {τ1 τ2}    : Exp Γ τ1 → Exp Γ (TySum τ1 τ2)
+  | Inr {τ1 τ2}    : Exp Γ τ2 → Exp Γ (TySum τ1 τ2)
+  | Case {τ1 τ2 τ} : Exp Γ (TySum τ1 τ2) →
+                     Exp Γ (τ1 ⟶ τ) → Exp Γ (τ2 ⟶ τ) → Exp Γ τ
 
-  | Seq {τ τ'}    : Exp Γ τ' → Exp Γ τ → Exp Γ τ
+  | Nil {τ}        : Exp Γ (TyList τ)
+  | Cons {τ}       : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
+  | Car {τ}        : Exp Γ (TyList τ) → Exp Γ τ
+  | Cdr {τ}        : Exp Γ (TyList τ) → Exp Γ (TyList τ)
+  | IsNil {τ}      : Exp Γ (TyList τ) → Exp Γ 𝔹
+
+  | Seq {τ τ'}     : Exp Γ τ' → Exp Γ τ → Exp Γ τ
 
   (** Capabilities *)
 
@@ -108,14 +103,22 @@ Fixpoint Exp_size `(e : Exp Γ τ) : nat :=
   | LAM e      => 1 + Exp_size e
   | APP e1 e2  => 1 + Exp_size e1 + Exp_size e2
 
-  | Error _ _  => 1
+  | Raise e    => 1 + Exp_size e
+  | Catch e    => 1 + Exp_size e
+
   | Lit _ _    => 1
   | Bltn _ _   => 1
   | Symbol _ _ => 1
+
   | If b t e   => 1 + Exp_size b + Exp_size t + Exp_size e
   | Pair x y   => 1 + Exp_size x + Exp_size y
   | Fst p      => 1 + Exp_size p
   | Snd p      => 1 + Exp_size p
+
+  | Inl p      => 1 + Exp_size p
+  | Inr p      => 1 + Exp_size p
+  | Case p l r => 1 + Exp_size p + Exp_size l + Exp_size r
+
   | Nil _      => 1
   | Cons x xs  => 1 + Exp_size x + Exp_size xs
   | Car xs     => 1 + Exp_size xs
@@ -136,7 +139,6 @@ Corollary Exp_size_preserved {Γ τ} (e1 e2 : Exp Γ τ) :
   Exp_size e1 ≠ Exp_size e2 → e1 ≠ e2.
 Proof. repeat intro; subst; contradiction. Qed.
 
-Arguments Error {Γ τ} _.
 Arguments Lit {Γ ty} _.
 Arguments Bltn {Γ τ} _.
 Arguments Symbol {Γ} _.

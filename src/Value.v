@@ -27,7 +27,8 @@ Inductive ValueTy : Set :=
   | TBool
   | TString
   | TList (t : ValueTy)
-  | TPair (t1 t2 : ValueTy).
+  | TPair (t1 t2 : ValueTy)
+  | TSum (t1 t2 : ValueTy).
 
 Derive NoConfusion NoConfusionHom Subterm EqDec for ValueTy.
 
@@ -42,6 +43,7 @@ Fixpoint reifyTy (τ : Ty) : ValueTy :=
   | 𝕌            => TUnit
   | TyList t     => TList (reifyTy t)
   | TyPair t1 t2 => TPair (reifyTy t1) (reifyTy t2)
+  | TySum t1 t2  => TSum (reifyTy t1) (reifyTy t2)
   | _            => TVoid
   end.
 
@@ -57,6 +59,7 @@ Fixpoint reflectTy (t : ValueTy) : Type :=
   | TString     => string
   | TList l     => list (reflectTy l)
   | TPair t1 t2 => reflectTy t1 * reflectTy t2
+  | TSum t1 t2  => reflectTy t1 + reflectTy t2
   end.
 
 #[export]
@@ -69,6 +72,11 @@ Next Obligation.
     apply IHt.
   - destruct x as [x1 x2], y as [y1 y2].
     destruct (IHt1 x1 y1), (IHt2 x2 y2); sauto.
+  - destruct x as [x1|x2], y as [y1|y2].
+    + destruct (IHt1 x1 y1); sauto.
+    + sauto.
+    + sauto.
+    + destruct (IHt2 x2 y2); sauto.
 Defined.
 
 Unset Elimination Schemes.
@@ -82,6 +90,8 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
   | SymbolP {n} : ValueP (Symbol n)
   | PairP {τ1 τ2} {x : Exp Γ τ1} {y : Exp Γ τ2} :
     ValueP x → ValueP y → ValueP (Pair x y)
+  | InlP {τ1 τ2} {x : Exp Γ τ1} : ValueP x → ValueP (Inl (τ2:=τ2) x)
+  | InrP {τ1 τ2} {y : Exp Γ τ2} : ValueP y → ValueP (Inr (τ1:=τ1) y)
   | NilP {τ} : ValueP (Nil (τ:=τ))
   | ConsP {τ} (x : Exp Γ τ) xs :
     ValueP x → ValueP xs → ValueP (Cons x xs)
@@ -94,7 +104,7 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
 Derive Signature for ValueP.
 
 Inductive ErrorP Γ : ∀ {τ}, Exp Γ τ → Prop :=
-  | IsError {τ} m : ErrorP (Error (τ:=τ) m).
+  | IsError {τ} m : ErrorP (Raise (τ:=τ) m).
 
 Derive Signature for ErrorP.
 
@@ -109,20 +119,28 @@ Lemma ValueP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ValueP v) :
   H1 = H2.
 Proof.
   dependent induction H1;
-  dependent elimination H2; sauto.
+  dependent elimination H2; sauto lq: on.
 Qed.
 
 Lemma ErrorP_irrelevance {Γ τ} (v : Exp Γ τ) (H1 H2 : ErrorP v) :
   H1 = H2.
 Proof.
   dependent induction H1;
-  dependent elimination H2; sauto.
+  dependent elimination H2; sauto lq: on.
 Qed.
+
+#[local] Hint Extern 5 =>
+  match goal with
+  | [ H : ¬ _ |- _ ∨ ¬ _ ] =>
+      let H0 := fresh "H0" in
+      right; intro H0; apply H; inv H0; auto
+  end : core.
 
 Lemma ValueP_dec {Γ τ} (e : Exp Γ τ) :
   ValueP e ∨ ¬ ValueP e.
 Proof.
-  induction e; branch; sauto lq: on dep: on.
+  induction e; branch; auto;
+  sauto lq: on dep: on.
 Qed.
 
 Lemma ErrorP_dec {Γ τ} (e : Exp Γ τ) :

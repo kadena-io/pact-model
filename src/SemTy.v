@@ -10,6 +10,7 @@ Require Import
   Pact.Value
   Pact.Ren
   Pact.Sub
+  Pact.Lang
   Pact.Lang.CapabilityType.
 
 Set Implicit Arguments.
@@ -47,11 +48,13 @@ Fixpoint SemTy (τ : Ty) : Type :=
   match τ with
   | TyArrow dom cod => SemTy dom → m (SemTy cod)
 
-  | TyPrim p        => SemPrimTy p
+  | TyError         => Err
   | TySym           => string
+  | TyPrim p        => SemPrimTy p
 
   | TyList t        => list (SemTy t)
   | TyPair t1 t2    => SemTy t1 * SemTy t2
+  | TySum t1 t2     => SemTy t1 + SemTy t2
 
   (** Capabilities *)
   | TyCap p v       => Cap {| paramTy := reifyTy p; valueTy := reifyTy v |}
@@ -60,7 +63,7 @@ Fixpoint SemTy (τ : Ty) : Type :=
 Lemma reflectTy_reifyTy {τ} :
   ConcreteP τ → reflectTy (reifyTy τ) = SemTy τ.
 Proof.
-  induction τ; sauto.
+  induction τ; try sauto.
 Qed.
 
 #[export]
@@ -69,6 +72,7 @@ Next Obligation.
   generalize dependent y.
   generalize dependent x.
   induction t; simpl; intros; auto.
+  - sauto.
   - sauto.
   - apply SemPrimTy_EqDec.
   - apply list_eqdec.
@@ -79,6 +83,14 @@ Next Obligation.
     destruct (IHt1 (proj1 H0) s1 s).
     + destruct (IHt2 (proj2 H0) s2 s0); sauto.
     + sauto.
+  - reduce.
+    destruct x, y.
+    + assert (ConcreteP t1) as H0 by sauto.
+      destruct (IHt1 H0 s s0); sauto.
+    + sauto.
+    + sauto.
+    + assert (ConcreteP t2) as H0 by sauto.
+      destruct (IHt2 H0 s s0); sauto.
   - sauto.
 Defined.
 

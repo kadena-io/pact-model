@@ -28,7 +28,8 @@ Definition WalkExp
     | APP e1 e2     => APP (go r e1) (go r e2)
     | LAM e         => LAM (go (l r) e)
 
-    | Error e       => Error e
+    | Raise e       => Raise (go r e)
+    | Catch e       => Catch (go r e)
 
     | Lit v         => Lit v
     | Bltn b        => Bltn b
@@ -39,6 +40,10 @@ Definition WalkExp
     | Pair x y      => Pair (go r x) (go r y)
     | Fst p         => Fst (go r p)
     | Snd p         => Snd (go r p)
+
+    | Inl x         => Inl (go r x)
+    | Inr y         => Inr (go r y)
+    | Case e g h    => Case (go r e) (go r g) (go r h)
 
     | Nil           => Nil
     | Cons x xs     => Cons (go r x) (go r xs)

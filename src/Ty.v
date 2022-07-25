@@ -26,11 +26,13 @@ Inductive Ty : Set :=
   | TyArrow : Ty → Ty → Ty
 
   (* The following types represent Pact beyond lambda calculus. *)
-  | TyPrim  : PrimType → Ty
+  | TyError : Ty
   | TySym   : Ty
+  | TyPrim  : PrimType → Ty
 
   | TyList  : Ty → Ty
   | TyPair  : Ty → Ty → Ty
+  | TySum   : Ty → Ty → Ty
 
   | TyCap   : Ty → Ty → Ty.
 
@@ -39,11 +41,13 @@ Derive NoConfusion NoConfusionHom Subterm EqDec for Ty.
 Unset Elimination Schemes.
 
 Inductive ConcreteP : Ty → Prop :=
-  | PrimDecP {ty}    : ConcreteP (TyPrim ty)
   | SymDecP          : ConcreteP TySym
+  | PrimDecP {ty}    : ConcreteP (TyPrim ty)
   | ListDecP {τ}     : ConcreteP τ → ConcreteP (TyList τ)
   | PairDecP {τ1 τ2} : ConcreteP τ1 → ConcreteP τ2 →
-                       ConcreteP (TyPair τ1 τ2).
+                       ConcreteP (TyPair τ1 τ2)
+  | SumDecP {τ1 τ2}  : ConcreteP τ1 → ConcreteP τ2 →
+                       ConcreteP (TySum τ1 τ2).
 
 Derive Signature for ConcreteP.
 
@@ -53,8 +57,8 @@ Scheme ConcreteP_ind := Induction for ConcreteP Sort Prop.
 
 Fixpoint Reifiable (t : Ty) : option (ConcreteP t) :=
   match t with
-  | TyPrim ty    => Some (PrimDecP (ty:=ty))
   | TySym        => Some SymDecP
+  | TyPrim ty    => Some (PrimDecP (ty:=ty))
   | TyList τ     =>
       match Reifiable τ with
       | Some decP => Some (ListDecP decP)
@@ -63,6 +67,11 @@ Fixpoint Reifiable (t : Ty) : option (ConcreteP t) :=
   | TyPair τ1 τ2 =>
       match Reifiable τ1, Reifiable τ2 with
       | Some dec1P, Some dec2P => Some (PairDecP dec1P dec2P)
+      | _, _ => None
+      end
+  | TySum τ1 τ2 =>
+      match Reifiable τ1, Reifiable τ2 with
+      | Some dec1P, Some dec2P => Some (SumDecP dec1P dec2P)
       | _, _ => None
       end
   | _ => None
@@ -85,6 +94,8 @@ Delimit Scope Ty_scope with ty.
 
 Infix "⟶" := TyArrow (at level 51, right associativity) : Ty_scope.
 Infix "×"  := TyPair  (at level 41, right associativity) : Ty_scope.
+
+Notation "x + y" := (TySum x y) : Ty_scope.
 
 Notation "'ℤ'" := (TyPrim PrimInteger) : Ty_scope.
 Notation "'𝔻'" := (TyPrim PrimDecimal) : Ty_scope.

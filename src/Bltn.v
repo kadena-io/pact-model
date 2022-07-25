@@ -1,8 +1,16 @@
 Require Import
-  Pact.Ty
-  Pact.Exp.
+  Pact.Lib
+  Pact.Ty.
 
 Open Scope Ty_scope.
+
+Inductive Builtin : Ty → Set :=
+  | AddInt : Builtin (ℤ ⟶ ℤ ⟶ ℤ)
+  | SubInt : Builtin (ℤ ⟶ ℤ ⟶ ℤ).
+
+Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Builtin.
+
+(*
 
 Inductive Builtin : Ty → Set :=
   (* IntOps *)
@@ -127,3 +135,5 @@ Inductive Builtin : Ty → Set :=
   | EnforceOne       : Builtin (ℤ ⟶ ℤ ⟶ ℤ)
   | Enumerate        : Builtin (ℤ ⟶ ℤ ⟶ ℤ)
   | EnumerateStepN   : Builtin (ℤ ⟶ ℤ ⟶ ℤ).
+
+*)

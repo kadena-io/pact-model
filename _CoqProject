@@ -6,6 +6,7 @@ src/RWSE.v
 src/Lib.v
 src/Ltac.v
 src/Ty.v
+src/Bltn.v
 src/Exp.v
 src/Pat.v
 src/Log.v
@@ -17,6 +18,7 @@ src/SemTy.v
 src/Lang.v
 src/Lang/Capability.v
 src/Lang/CapabilityFacts.v
+src/SemBltn.v
 src/SemExp.v
 src/Eval.v
 src/Cat.v

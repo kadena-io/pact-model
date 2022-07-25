@@ -199,8 +199,8 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
   SemExp (RequireCapability c) se :=
     require_capability =<< SemExp c se.
 
-Notation "⟦ E ⊨ e ⟧" := (SemExp e E) (at level 9).
-Notation "⟦ e ⟧" := (SemExp e tt) (at level 9).
+Notation "⟦ E ⊨ e ⟧" := (SemExp e E)  (at level 9).
+Notation "⟦ e ⟧"     := (SemExp e tt) (at level 9).
 
 Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ') :
   ⟦ RenSem r se ⊨ e ⟧ = ⟦ se ⊨ RenExp r e ⟧.

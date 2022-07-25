@@ -57,7 +57,7 @@ Equations RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') : Sub Γ Γ'' :=
 Definition Dropₛ {Γ Γ' τ} (s : Sub Γ Γ') : Sub (τ :: Γ) Γ' :=
   ScR s skip1.
 
-Definition Keepₛ {Γ Γ' τ} (s : Sub Γ Γ') : Sub (τ :: Γ) (τ :: Γ') :=
+Definition Keepₛ {τ Γ Γ'} (s : Sub Γ Γ') : Sub (τ :: Γ) (τ :: Γ') :=
   Push (VAR ZV) (Dropₛ s).
 
 Corollary Keepₛ_idSub {Γ τ} :
@@ -68,38 +68,8 @@ Equations SubVar {Γ Γ' τ} (s : Sub Γ Γ') (v : Var Γ' τ) : Exp Γ τ :=
   SubVar (Push t σ) ZV     := t;
   SubVar (Push t σ) (SV v) := SubVar σ v.
 
-Fixpoint SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
-  match e with
-  | VAR v         => SubVar s v
-  | APP e1 e2     => APP (SubExp s e1) (SubExp s e2)
-  | LAM e         => LAM (SubExp (Keepₛ s) e)
-
-  | Error e       => Error e
-  | Lit l         => Lit l
-  | Bltn b        => Bltn b
-  | Symbol s      => Symbol s
-  | If b t e      => If (SubExp s b) (SubExp s t) (SubExp s e)
-  | Pair x y      => Pair (SubExp s x) (SubExp s y)
-  | Fst p         => Fst (SubExp s p)
-  | Snd p         => Snd (SubExp s p)
-  | Nil           => Nil
-  | Cons x xs     => Cons (SubExp s x) (SubExp s xs)
-  | Car xs        => Car (SubExp s xs)
-  | Cdr xs        => Cdr (SubExp s xs)
-  | IsNil xs      => IsNil (SubExp s xs)
-  | Seq exp1 exp2 => Seq (SubExp s exp1) (SubExp s exp2)
-
-  | Capability Hp Hv n p v =>
-      Capability Hp Hv (SubExp s n) (SubExp s p) (SubExp s v)
-  | WithCapability Hv mn p m c e =>
-      WithCapability Hv (SubExp s mn) (SubExp s p) (SubExp s m)
-                     (SubExp s c) (SubExp s e)
-  | ComposeCapability Hv mn p m c =>
-      ComposeCapability Hv (SubExp s mn) (SubExp s p) (SubExp s m)
-                        (SubExp s c)
-  | InstallCapability c => InstallCapability (SubExp s c)
-  | RequireCapability c => RequireCapability (SubExp s c)
-  end.
+Definition SubExp {Γ Γ' τ} (s : Sub Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
+  WalkExp s (@Keepₛ) (λ _ _ _ r v, SubVar r v) e.
 
 Lemma SubVar_ScR {Γ Γ' Γ'' τ} (σ : Sub Γ' Γ'') (δ : Ren Γ Γ') (v : Var Γ'' τ) :
   SubVar (ScR σ δ) v = RenExp δ (SubVar σ v).
@@ -349,5 +319,5 @@ Qed.
 Lemma SubExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Sub Γ' Γ) :
   ValueP v → ValueP (SubExp σ v).
 Proof.
-  induction 1; sauto.
+  induction 1; sauto lq: on.
 Qed.

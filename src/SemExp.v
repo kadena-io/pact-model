@@ -97,9 +97,6 @@ Notation "f =<< x" := (x >>= f) (at level 42, right associativity).
 
 Import EqNotations.
 
-Corollary string_sem : SemTy (m:=PactM) 𝕊 = string.
-Proof. reflexivity. Qed.
-
 Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ) :=
   SemExp (VAR v)     se := pure (SemVar v se);
   SemExp (LAM e)     se := pure (λ x, SemExp e (x, se));
@@ -209,10 +206,8 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
       (rew <- [λ x, x → PactM _] (reflectTy_reifyTy (m:=PactM) (PairDecP Hv Hv)) in
        rew <- [λ x, _ → PactM x] (reflectTy_reifyTy (m:=PactM) Hv) in mng');
 
-  SemExp (InstallCapability c) se :=
-    install_capability =<< SemExp c se;
-  SemExp (RequireCapability c) se :=
-    require_capability =<< SemExp c se.
+  SemExp (InstallCapability c) se := install_capability =<< SemExp c se;
+  SemExp (RequireCapability c) se := require_capability =<< SemExp c se.
 
 Notation "⟦ E ⊨ e ⟧" := (SemExp e E)  (at level 9).
 Notation "⟦ e ⟧"     := (SemExp e tt) (at level 9).

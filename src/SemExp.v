@@ -237,6 +237,10 @@ Proof.
   rewrite /wk -SemExp_RenSem RenSem_skip1 //.
 Qed.
 
+Corollary SemExp_VAR_ZV `(E : SemEnv Γ) `(x : ⟦τ⟧) :
+  ⟦ (x, E) ⊨ VAR ZV ⟧ = pure x.
+Proof. reflexivity. Qed.
+
 Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
   ValueP e → ∃ x, ⟦ se ⊨ e ⟧ = pure x.
 Proof.

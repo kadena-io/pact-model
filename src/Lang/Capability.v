@@ -2,8 +2,6 @@ Require Import
   Hask.Control.Monad
   Data.Monoid
   Pact.Lib
-  Pact.Ty
-  Pact.Exp
   Pact.SemTy
   Pact.Lang
   Hask.Control.Lens.

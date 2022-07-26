@@ -1,5 +1,6 @@
 -R src Pact
 src/ilist.v
+src/Data/Either.v
 src/Data/Semigroup.v
 src/Data/Monoid.v
 src/RWSE.v

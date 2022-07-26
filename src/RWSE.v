@@ -1,8 +1,9 @@
-Require Import Hask.Prelude.
+Require Import Hask.Data.Tuple.
 Require Import Hask.Control.Monad.
 Require Import Coq.Unicode.Utf8.
 Require Import FunctionalExtensionality.
 Require Import Pact.Data.Monoid.
+Require Import Pact.Data.Either.
 
 Generalizable All Variables.
 Set Primitive Projections.

@@ -236,8 +236,47 @@ Corollary SemExp_VAR_ZV `(E : SemEnv Γ) `(x : ⟦τ⟧) :
 Proof. reflexivity. Qed.
 
 Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
-  ValueP e → ∃ x, ⟦ se ⊨ e ⟧ = pure x.
+  ValueP e -> ∃ x, ⟦ se ⊨ e ⟧ = pure x.
 Proof.
   induction 1; reduce; simp SemExp;
   eexists; rwse; sauto lq: on.
 Qed.
+
+Require Import Pact.Sub.
+
+#[local] Hint Unfold RWSE_join : core.
+#[local] Hint Unfold RWSE_ap : core.
+#[local] Hint Unfold Either_map : core.
+#[local] Hint Unfold Tuple.first : core.
+
+Lemma SemExp_SubExp `(E : SemEnv Γ) `(e : Exp (dom :: Γ) τ) (v : Exp Γ dom) x :
+  ⟦ E ⊨ v ⟧ = pure x →
+  ⟦ E ⊨ SubExp {|| v ||} e ⟧ = ⟦ (x, E) ⊨ e ⟧.
+Proof.
+  intros.
+  generalize dependent v.
+  generalize dependent x.
+  dependent induction e;
+  simp SemExp; simpl;
+  autounfold; intros; rwse;
+  simp SemExp; simpl;
+  autounfold.
+  1: {
+    dependent elimination v; simp SubVar.
+    - rewrite H //.
+    - rewrite SubVar_idSub.
+      now simp SemExp.
+  }
+  1: {
+    repeat f_equal.
+    specialize (IHe dom0 (dom :: Γ) (x, E) e JMeq_refl JMeq_refl).
+    extensionality x0.
+    simpl in IHe.
+    admit.
+  }
+  1: {
+    erewrite IHe1; eauto.
+    erewrite IHe2; eauto.
+  }
+  all: sauto lq: on.
+Admitted.

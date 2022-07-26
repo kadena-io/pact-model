@@ -34,9 +34,9 @@ Definition log   : Type := PactLog.
 (* Definition EvalP (r : env) (s : state) `(e : Exp [] τ) *)
 (*   (s' : state) (v : SemTy τ) (er : Err) : Prop := *)
 
-(* Implicit Type G : env → Prop. *)
-(* Implicit Type H : state → Prop. *)
-(* Implicit Type Z : Err → Prop. *)
+Implicit Type G : env → Prop.
+Implicit Type H : state → Prop.
+Implicit Type Z : Err → Prop.
 
 Definition hoare
   (G : env → Prop)
@@ -47,16 +47,45 @@ Definition hoare
   (Z : Err → Prop) : Prop :=
   ∀ (r : env), G r →
   ∀ (s : state), H s ->
-  ∃ (s' : state) (w' : log) (v : ⟦τ⟧),
-    Q v s' ∧
   match ⟦e⟧ r s : Err + ⟦τ⟧ * (state * log) with
   | inr (v, (s', w)) => Q v s' ∧ Y w
   | inl err => Z err
   end.
 
-Notation "{ G | H } x ← e { Q | Y | Z }" :=
-  (hoare G H e (λ x, Q) Y Z)
-    (at level 1, e at next level).
+Notation "{ G & H } x ← e { Q & Y | Z }" :=
+  (hoare G H e (λ x, Q) Y Z) (at level 1, e at next level).
+
+#[local] Hint Unfold hoare : core.
+
+Theorem hoare_post_true G H `(Q : ⟦τ⟧ → state → Prop) (Y : log → Prop) Z e :
+  (∀ v s, Q v s) →
+  (∀ l, Y l) →
+  (∀ err, Z err) →
+  { G & H } x ← e { Q x & Y | Z }.
+Proof.
+  unfold hoare; sauto.
+Qed.
+
+Theorem hoare_pre_false G H `(Q : ⟦τ⟧ → state → Prop) (Y : log → Prop) Z e :
+  (∀ r, ¬ (G r)) ∨ (∀ s, ¬ (H s)) →
+  { G & H } x ← e { Q x & Y | Z }.
+Proof.
+  unfold hoare; sauto.
+Qed.
+
+Definition hprop_conj `(Q : state → Prop) (H : state → Prop) : state → Prop :=
+  λ st, Q st ∧ H st.
+
+Notation "Q \∧ H" := (hprop_conj Q H) (at level 10).
+
+Definition quadruple
+  (G : env → Prop)
+  (H : state → Prop)
+  `(e : Exp [] τ)
+  (Q : ⟦τ⟧ → state → Prop)
+  (Y : log → Prop)
+  (Z : Err → Prop) : Prop :=
+  ∀ H', { G & H \∧ H' } x ← e { Q x \∧ H' & Y | Z }.
 
 (* This encodes a boolean predicate in positive normal form. *)
 Inductive Pred Γ : ∀ {τ}, Γ ⊢ τ → Set :=

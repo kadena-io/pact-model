@@ -208,8 +208,8 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
   SemExp (InstallCapability c) se := install_capability =<< SemExp c se;
   SemExp (RequireCapability c) se := require_capability =<< SemExp c se.
 
-Notation "⟦ E ⊨ e ⟧" := (SemExp e E)  (at level 9).
-Notation "⟦ e ⟧"     := (SemExp e tt) (at level 9).
+Notation "⟦ se ⊨ e ⟧" := (SemExp e se)  (at level 9).
+Notation "⟦ e ⟧"      := (SemExp e tt) (at level 9).
 
 Lemma SemExp_RenSem {Γ Γ' τ} (e : Exp Γ τ) (r : Ren Γ' Γ) (se : SemEnv Γ') :
   ⟦ RenSem r se ⊨ e ⟧ = ⟦ se ⊨ RenExp r e ⟧.
@@ -225,14 +225,14 @@ Proof.
   all: sauto lq: on.
 Qed.
 
-Lemma SemExp_wk `(E : SemEnv Γ) {τ τ'} (y : SemTy τ') (e : Exp Γ τ) :
-  ⟦ (y, E) ⊨ wk e ⟧ = ⟦ E ⊨ e ⟧.
+Lemma SemExp_wk `(se : SemEnv Γ) {τ τ'} (y : SemTy τ') (e : Exp Γ τ) :
+  ⟦ (y, se) ⊨ wk e ⟧ = ⟦ se ⊨ e ⟧.
 Proof.
   rewrite /wk -SemExp_RenSem RenSem_skip1 //.
 Qed.
 
-Corollary SemExp_VAR_ZV `(E : SemEnv Γ) `(x : ⟦τ⟧) :
-  ⟦ (x, E) ⊨ VAR ZV ⟧ = pure x.
+Corollary SemExp_VAR_ZV `(se : SemEnv Γ) `(x : ⟦τ⟧) :
+  ⟦ (x, se) ⊨ VAR ZV ⟧ = pure x.
 Proof. reflexivity. Qed.
 
 Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :

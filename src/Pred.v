@@ -154,12 +154,12 @@ Corollary hrimplize_dehrimpl `(H : P =[ G ]=> Q) :
   hrimplize (dehrimpl H) = H.
 Proof. reflexivity. Qed.
 
-Definition qimpl {τ} (Q R : vprop τ) : Prop :=
+Definition vimpl {τ} (Q R : vprop τ) : Prop :=
   ∀ v, Q v ==> R v.
 
-#[local] Hint Unfold qimpl : core.
+#[local] Hint Unfold vimpl : core.
 
-Notation "Q ===> R" := (qimpl Q R) (at level 55) : pred_scope.
+Notation "Q ===> R" := (vimpl Q R) (at level 55) : pred_scope.
 
 Theorem wp_equiv {G H} `{e : Exp [] τ} {Q Z} :
   (H =[G]=> wp e Q Z) ↔ (quadruple G H e Q Z).
@@ -183,10 +183,6 @@ Proof.
   extensionality x.
   now apply propositional_extensionality.
 Qed.
-
-Lemma himpl_refl {H} :
-  H ==> H.
-Proof. now repeat intro. Qed.
 
 Lemma himpl_trans {H1 H2 H3} :
   (H1 ==> H2) →
@@ -231,16 +227,16 @@ Proof.
     apply H; intros.
     subst.
     apply hrimplize; intros; subst.
-    apply himpl_refl.
+    reflexivity.
   - destruct (H (λ r', r = r') (wp2 τ e Q Z r) τ e Q Z) as [H5 H6]; clear H.
     eapply dehrimpl in H5; eauto.
     apply H0; intros.
     subst.
     apply hrimplize; intros; subst.
-    apply himpl_refl.
+    reflexivity.
 Qed.
 
-Theorem triple_conseq {G τ} {e : Exp [] τ} {H' Q' H Q Z} :
+Theorem quadruple_conseq {G τ} {e : Exp [] τ} {H' Q' H Q Z} :
   quadruple G H' e Q' Z →
   H ==> H' →
   Q' ===> Q →
@@ -257,9 +253,9 @@ Proof.
   intuition.
 Qed.
 
-Lemma vimpl_refl {τ} {Q : vprop τ} :
-  Q ===> Q.
-Proof. now repeat intro. Qed.
+#[export]
+Program Instance vimpl_PreOrder {τ} : PreOrder (vimpl (τ:=τ)).
+Next Obligation. now apply H0, H. Qed.
 
 Theorem wp_from_weakest_pre (wp' : WP) :
   (∀ G H τ (e : Exp [] τ) Q Z r,
@@ -271,7 +267,7 @@ Theorem wp_from_weakest_pre (wp' : WP) :
 Proof.
   intros M1 M2.
   split; intro M.
-  - eapply triple_conseq; eauto.
+  - eapply quadruple_conseq; eauto.
   - eapply M2; eauto.
 Qed.
 

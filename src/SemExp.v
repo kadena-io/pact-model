@@ -107,10 +107,10 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
 
   SemExp Error _     := throw Err_Expr;
   SemExp (Catch e) _ :=
-    λ r s w,
-      match SemExp e se r s w with
-      | inl err           => pure (inl tt) r s w
-      | inr (v, (s', w')) => pure (inr v) r s' w'
+    λ r s,
+      match SemExp e se r s with
+      | inl err           => pure (inl tt) r s
+      | inr (v, (s', w')) => inr (inr v, (s', w'))
       end;
 
   SemExp (Symbol n) _ := pure n;

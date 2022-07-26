@@ -68,7 +68,10 @@ Definition uncurry {Γ a b c} (f : Exp Γ (a ⟶ b ⟶ c)) : Exp Γ (a × b ⟶ 
   LAM (APP (APP (wk f) (Fst (VAR ZV))) (Snd (VAR ZV))).
 
 #[local] Hint Unfold Either.Either_map : core.
+#[local] Hint Unfold RWSE_ap : core.
+#[local] Hint Unfold RWSE_join : core.
 #[local] Hint Unfold Tuple.first : core.
+#[local] Hint Unfold id : core.
 #[local] Hint Unfold composition : core.
 #[local] Hint Unfold identity : core.
 
@@ -94,10 +97,12 @@ Proof.
   autounfold.
   rwse.
   rewrite SemExp_wk.
-  destruct (⟦ E ⊨ f ⟧ _ _ _); auto.
+  destruct (⟦ E ⊨ f ⟧ _ _); auto.
   destruct p, p; simpl.
   rewrite SemExp_wk.
-  sauto lq: on.
+  destruct (⟦ E ⊨ g ⟧ _ _); auto.
+  destruct p1, p1; simpl.
+  sauto.
 Qed.
 
 Lemma SemExp_composition_identity_right `(E : SemEnv Γ)
@@ -114,7 +119,8 @@ Proof.
   rwse; simpl; autounfold.
   rewrite H0 /=.
   simp SemExp; simpl.
-  now simp SemExp.
+  simp SemExp; simpl.
+  sauto.
 Qed.
 
 Lemma SemExp_composition_identity_left `(E : SemEnv Γ)
@@ -131,7 +137,10 @@ Proof.
   rwse; simpl; autounfold.
   rewrite H0 /=.
   simp SemExp; simpl.
-  sauto.
+  destruct (x _ _ _); auto.
+  destruct p, p; simpl.
+  simp SemExp; simpl.
+  sauto lq: on.
 Qed.
 
 Lemma SemExp_composition_assoc `(E : SemEnv Γ)

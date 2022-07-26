@@ -24,14 +24,14 @@ Set Primitive Projections.
 Import ListNotations.
 
 Definition eval `(e : [] ⊢ τ) : Err + (⟦τ⟧ * PactLog) :=
-  match SemExp e tt newPactEnv newPactState newPactLog with
+  match SemExp e tt newPactEnv newPactState with
   | inl err => inl err
   | inr (result, (_finalState, log)) => inr (result, log)
   end.
 
 Definition evalInModule (nm : string) `(e : [] ⊢ τ) : Err + (⟦τ⟧ * PactLog) :=
   match SemExp e tt (newPactEnv &+ context %~ cons (InModule nm))
-               newPactState newPactLog with
+               newPactState with
   | inl err => inl err
   | inr (result, (_finalState, log)) => inr (result, log)
   end.

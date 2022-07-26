@@ -4,9 +4,7 @@ Generalizable All Variables.
 Set Primitive Projections.
 
 Class Semigroup (m : Type) := {
-  mappend : m -> m -> m;
-
-  mappend_assoc : forall a b c, mappend a (mappend b c) = mappend (mappend a b) c;
+  mappend : m -> m -> m
 }.
 
 Arguments mappend {m _ } _ _.
@@ -24,6 +22,13 @@ Definition Maybe_append `{Semigroup a} (x y : Maybe a) : Maybe a :=
 Program Instance Semigroup_Maybe `{Semigroup a} : Semigroup (Maybe a) := {
   mappend := Maybe_append
 }.
+
+Class SemigroupLaws (m : Type) `{Semigroup m} := {
+  mappend_assoc : forall a b c, mappend a (mappend b c) = mappend (mappend a b) c;
+}.
+
+#[global]
+Program Instance SemigroupLaws_Maybe `{SemigroupLaws a} : SemigroupLaws (Maybe a).
 Next Obligation.
   destruct a0, b, c; simpl; try reflexivity.
   now rewrite mappend_assoc.

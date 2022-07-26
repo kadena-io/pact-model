@@ -52,11 +52,13 @@ library
       Logic
       Ltac
       Monad
+      Monoid
       Nat
       Ren
       RWSE
       SemBltn
       SemExp
+      Semigroup
       SemTy
       Specif
       Ssrbool

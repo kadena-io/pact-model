@@ -4,10 +4,11 @@ From Coq Require Extraction.
 
 Require Import
   Coq.Strings.Ascii
-  Lib
-  Ty
-  Exp
-  Eval.
+  Pact.Data.Semigroup
+  Pact.Lib
+  Pact.Ty
+  Pact.Exp
+  Pact.Eval.
 
 From Equations Require Import Equations.
 Set Equations With UIP.

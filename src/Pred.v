@@ -40,21 +40,22 @@ Definition log   : Type := PactLog.
 
 Definition hoare
   (G : env → Prop)
-  (H : state → log → Prop)
+  (H : state → Prop)
   `(e : Exp [] τ)
-  (Q : ⟦τ⟧ → state → log → Prop)
+  (Q : ⟦τ⟧ → state → Prop)
+  (Y : log → Prop)
   (Z : Err → Prop) : Prop :=
   ∀ (r : env), G r →
-  ∀ (s : state) (w : log), H s w ->
+  ∀ (s : state), H s ->
   ∃ (s' : state) (w' : log) (v : ⟦τ⟧),
-    Q v s' w ∧
-  match ⟦e⟧ r s w : Err + ⟦τ⟧ * (state * log) with
-  | inr (v, (s', w')) => Q v s' w'
+    Q v s' ∧
+  match ⟦e⟧ r s : Err + ⟦τ⟧ * (state * log) with
+  | inr (v, (s', w)) => Q v s' ∧ Y w
   | inl err => Z err
   end.
 
-Notation "{ G | H } x ← e { Q | Z }" :=
-  (hoare G H e (λ x, Q) Z)
+Notation "{ G | H } x ← e { Q | Y | Z }" :=
+  (hoare G H e (λ x, Q) Y Z)
     (at level 1, e at next level).
 
 (* This encodes a boolean predicate in positive normal form. *)

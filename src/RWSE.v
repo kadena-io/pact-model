@@ -13,56 +13,66 @@ Set Primitive Projections.
 
 Ltac rwse :=
   let r := fresh "r" in extensionality r;
-  let s := fresh "s" in extensionality s;
-  let w := fresh "w" in extensionality w.
+  let s := fresh "s" in extensionality s.
 
 Section RWSE.
 
 Context {r s w e : Type}.
+Context `{Monoid w}.
 
-Definition RWSE (a : Type) := r → s → w → e + (a * (s * w)).
+Definition RWSE (a : Type) := r → s → e + (a * (s * w)).
 
-Definition ask : RWSE r := λ r s w, inr (r, (s, w)).
-Definition asks {a : Type} (f : r → a) : RWSE a := λ r s w, inr (f r, (s, w)).
+Definition ask : RWSE r := λ r s, inr (r, (s, mempty)).
+Definition asks {a : Type} (f : r → a) : RWSE a :=
+  λ r s, inr (f r, (s, mempty)).
 
 Definition local (f : r → r) `(x : RWSE a) : RWSE a :=
-  λ r s w, x (f r) s w.
+  λ r s, x (f r) s.
 
-Definition get : RWSE s := λ _ s w, inr (s, (s, w)).
-Definition gets {a : Type} (f : s → a) : RWSE a := λ _ s w, inr (f s, (s, w)).
-Definition put (x : s) : RWSE unit := λ _ _ w, inr (tt, (x, w)).
-Definition modify (f : s → s) : RWSE unit := λ _ s w, inr (tt, (f s, w)).
+Definition get : RWSE s := λ _ s, inr (s, (s, mempty)).
+Definition gets {a : Type} (f : s → a) : RWSE a :=
+  λ _ s, inr (f s, (s, mempty)).
+Definition put (x : s) : RWSE unit := λ _ _, inr (tt, (x, mempty)).
+Definition modify (f : s → s) : RWSE unit := λ _ s, inr (tt, (f s, mempty)).
 
 Definition tell `{Monoid w} (v : w) : RWSE unit :=
-  λ _ s w, inr (tt, (s, w ⨂ v)).
+  λ _ s, inr (tt, (s, v)).
 
-Definition tellf (f : w → w) : RWSE unit := λ _ s w, inr (tt, (s, f w)).
-
-Definition throw {a : Type} (err : e) : RWSE a := λ _ _ _, inl err.
+Definition throw {a : Type} (err : e) : RWSE a := λ _ _, inl err.
 
 #[export]
 Program Instance RWSE_Functor : Functor RWSE := {
-  fmap := λ A B f (x : RWSE A), λ r s w, first f <$> x r s w
+  fmap := λ A B f (x : RWSE A), λ r s, first f <$> x r s
 }.
 
 Definition RWSE_ap {a b : Type} (f : RWSE (a → b)) (x : RWSE a) :
-  RWSE b := λ r s w,
-  match f r s w with
+  RWSE b := λ r s,
+  match f r s with
   | inl e => inl e
-  | inr (f', (s', w')) => first f' <$> x r s' w'
+  | inr (f', (s', w')) =>
+      match first f' <$> x r s' with
+      | inl e => inl e
+      | inr (y, (s'', w'')) =>
+          inr (y, (s'', w' ⨂ w''))
+      end
   end.
 
 #[export]
 Program Instance RWSE_Applicative : Applicative RWSE := {
-  pure := λ _ x, λ _ s w, inr (x, (s, w));
+  pure := λ _ x, λ _ s, inr (x, (s, mempty));
   ap   := @RWSE_ap
 }.
 
 Definition RWSE_join `(x : RWSE (RWSE a)) :
-  RWSE a := λ r s w,
-  match x r s w with
+  RWSE a := λ r s,
+  match x r s with
   | inl e => inl e
-  | inr (y, (s', w')) => y r s' w'
+  | inr (y, (s', w')) =>
+      match y r s' with
+      | inl e => inl e
+      | inr (z, (s'', w'')) =>
+          inr (z, (s'', w' ⨂ w''))
+      end
   end.
 
 #[export]
@@ -75,14 +85,17 @@ Proof. reflexivity. Qed.
 
 End RWSE.
 
-#[export] Hint Unfold RWSE_ap : core.
-#[export] Hint Unfold RWSE_join : core.
-
 Arguments RWSE : clear implicits.
 
 Module RWSELaws.
 
 Include MonadLaws.
+
+#[local] Hint Unfold RWSE_ap : core.
+#[local] Hint Unfold RWSE_join : core.
+#[local] Hint Unfold Either_map : core.
+#[local] Hint Unfold Tuple.first : core.
+#[local] Hint Unfold id : core.
 
 Lemma first_id : forall a z, first (a:=a) (b:=a) (z:=z) id = id.
 Proof.
@@ -94,80 +107,110 @@ Qed.
 
 #[global]
 Program Instance RWSE_FunctorLaws {r s w e : Type} :
-  FunctorLaws (@RWSE r s w e).
+  FunctorLaws (RWSE r s w e).
 Next Obligation.
   extensionality x.
   rwse.
   rewrite first_id.
   unfold id.
-  now destruct (x r0 s0 w0).
+  now destruct (x r0 s0).
 Qed.
 Next Obligation.
   unfold comp.
   extensionality x.
   rwse.
   unfold Either_map, first.
-  destruct (x _ _ _); simpl; auto.
+  destruct (x _ _); simpl; auto.
   now destruct p.
 Qed.
 
 #[global]
-Program Instance RWSE_Applicative {r s w e : Type} :
-  ApplicativeLaws (@RWSE r s w e).
+Program Instance RWSE_ApplicativeLaws {r s w e : Type} `{MonoidLaws w} :
+  ApplicativeLaws (RWSE r s w e).
 Next Obligation.
   extensionality x.
   rwse.
   unfold RWSE_ap.
-  rewrite first_id.
-  unfold Either_map, id. (* jww (2022-07-24): Prove functor laws for Either *)
-  now destruct (x _ _ _).
+  rewrite first_id; simpl.
+  autounfold.
+  destruct (x _ _); auto.
+  destruct p, p; simpl.
+  now rewrite mempty_left.
 Qed.
 Next Obligation.
   rwse.
   unfold RWSE_ap; simpl.
-  destruct (u _ _ _); simpl; auto.
+  destruct (u _ _); simpl; auto.
   destruct p, p; simpl.
-  destruct (v _ _ _); simpl; auto.
+  destruct (v _ _); simpl; auto.
   destruct p, p; simpl.
-  destruct (w0 _ _ _); simpl; auto.
+  destruct (w0 _ _); simpl; auto.
   destruct p, p; simpl.
-  reflexivity.
+  rewrite mempty_left.
+  now rewrite mappend_assoc.
 Qed.
 Next Obligation.
   rwse.
   unfold RWSE_ap; simpl.
-  destruct (u _ _ _); simpl; auto.
+  now rewrite mempty_left.
+Qed.
+Next Obligation.
+  autounfold.
+  rwse.
+  destruct (u _ _); simpl; auto.
   destruct p, p; simpl.
-  reflexivity.
+  now rewrite mempty_left, mempty_right.
+Qed.
+Next Obligation.
+  autounfold.
+  extensionality x.
+  rwse; simpl.
+  autounfold.
+  destruct (x _ _); simpl; auto.
+  destruct p, p; simpl.
+  now rewrite mempty_left.
 Qed.
 
 #[global]
-Program Instance RWSE_Monad {r s w e : Type} :
-  MonadLaws (@RWSE r s w e).
+Program Instance RWSE_MonadLaws {r s w e : Type} `{MonoidLaws w} :
+  MonadLaws (RWSE r s w e) := {|
+    has_applicative_laws := RWSE_ApplicativeLaws
+|}.
 Next Obligation.
-  unfold comp.
+  autounfold.
   extensionality x.
-  rwse.
-  unfold RWSE_join; simpl.
-  destruct (x _ _ _); simpl; auto.
+  rwse; simpl.
+  destruct (x _ _); auto.
   destruct p, p; simpl.
-  reflexivity.
+  destruct (r1 _ _); auto.
+  destruct p, p; simpl.
+  destruct (r2 _ _); auto.
+  destruct p, p; simpl.
+  now rewrite mappend_assoc.
 Qed.
 Next Obligation.
-  unfold comp.
+  autounfold.
   extensionality x.
-  rwse.
-  unfold RWSE_join, id; simpl.
-  destruct (x _ _ _); simpl; auto.
+  rwse; simpl.
+  destruct (x _ _); auto.
   destruct p, p; simpl.
-  reflexivity.
+  now rewrite mempty_right.
 Qed.
 Next Obligation.
-  unfold comp.
+  autounfold.
   extensionality x.
-  rwse.
-  unfold RWSE_join, id; simpl.
-  destruct (x _ _ _); simpl; auto.
+  rwse; simpl.
+  destruct (x _ _); auto.
+  destruct p, p; simpl.
+  now rewrite mempty_left.
+Qed.
+Next Obligation.
+  autounfold.
+  extensionality x.
+  rwse; simpl.
+  destruct (x _ _); auto.
+  destruct p, p; simpl.
+  destruct (r1 _ _); auto.
   destruct p, p; simpl.
   reflexivity.
 Qed.

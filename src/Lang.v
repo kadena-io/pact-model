@@ -1,6 +1,7 @@
 Require Export
   Hask.Control.Monad
   Hask.Control.Lens
+  Pact.Data.Monoid
   Pact.RWSE
   Pact.Lib
   Pact.Ty
@@ -93,6 +94,24 @@ Record PactLog : Set := MkLog {
   entry : unit
 }.
 
+#[export]
+Program Instance PactLog_Semigroup : Semigroup PactLog := {|
+  mappend := λ '(MkLog _) '(MkLog _), MkLog tt
+|}.
+
+#[export]
+Program Instance PactLog_SemigroupLaws : SemigroupLaws PactLog.
+
+#[export]
+Program Instance PactLog_Monoid : Monoid PactLog := {|
+  mempty := MkLog tt
+|}.
+
+#[export]
+Program Instance PactLog_MonoidLaws : MonoidLaws PactLog.
+Next Obligation. sauto. Qed.
+Next Obligation. sauto. Qed.
+
 Derive NoConfusion NoConfusionHom Subterm EqDec for PactLog.
 
 Definition newPactLog : PactLog :=
@@ -114,7 +133,11 @@ Definition curryM `(f : (a * b) → PactM c) : a → PactM (b → PactM c) :=
 Lemma uncurryM_curryM `(f : (a * b) → PactM c) :
   uncurryM (curryM f) = f.
 Proof.
-  extensionality p; sauto.
+  extensionality p.
+  destruct p; simpl.
+  unfold RWSE_join.
+  rwse.
+  sauto lq: on.
 Qed.
 
 Lemma curryM_uncurryM `(f : a → PactM (b → PactM c)) :

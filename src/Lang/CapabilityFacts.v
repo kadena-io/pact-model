@@ -64,10 +64,12 @@ Proof.
   unravel; rwse.
   matches.
   - rewrite Heqe //.
+    sauto.
   - do 2 matches.
-    destruct (p _ _ _ _) as [|[? [? ?]]]; auto.
-    destruct (__claim_resource _ _ _ _ _) as [|[? [? ?]]]; auto.
+    destruct (p _ _ _) as [|[? [? ?]]]; auto.
+    destruct (__claim_resource _ _ _ _) as [|[? [? ?]]]; auto.
     rewrite get_cap_head //.
+    sauto.
 Qed.
 
 Theorem require_capability_idem (n : string) `(c : Cap s) :
@@ -122,11 +124,10 @@ Proof.
     + exfalso.
       apply extend_f with (x:=r) in H.
       apply extend_f with (x:=s0) in H.
-      apply extend_f with (x:=w) in H.
       inv H.
       congruence.
     + matches.
-      * destruct (p _ _ _ _) as [|[? [? ?]]] eqn:Heqe2; auto.
+      * destruct (p _ _ _) as [|[? [? ?]]] eqn:Heqe2; auto.
         ** rewrite H1 in Heqe2.
            discriminate.
         ** unfold __claim_resource.
@@ -135,7 +136,6 @@ Proof.
            unfold gets in H5.
            apply extend_f with (x:=r) in H5.
            apply extend_f with (x:=s0) in H5.
-           apply extend_f with (x:=w) in H5.
            inv H5.
            rewrite H1 in Heqe2.
            inv Heqe2.
@@ -144,7 +144,6 @@ Proof.
         unfold asks in H0.
         apply extend_f with (x:=r) in H0.
         apply extend_f with (x:=s0) in H0.
-        apply extend_f with (x:=w) in H0.
         inv H0.
         congruence.
 Qed.

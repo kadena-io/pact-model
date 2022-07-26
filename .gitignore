@@ -30,12 +30,14 @@
 /extract/src/Logic.hs
 /extract/src/Ltac.hs
 /extract/src/Monad.hs
+/extract/src/Monoid.hs
 /extract/src/Nat.hs
 /extract/src/RWSE.hs
 /extract/src/Ren.hs
 /extract/src/SemBltn.hs
 /extract/src/SemExp.hs
 /extract/src/SemTy.hs
+/extract/src/Semigroup.hs
 /extract/src/Signature.hs
 /extract/src/Specif.hs
 /extract/src/Ssrbool.hs

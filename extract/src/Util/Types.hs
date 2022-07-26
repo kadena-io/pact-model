@@ -121,8 +121,8 @@ data Exp :: Env -> Ty -> Type where
     => Exp (dom : ts) cod -> Exp ts ('TyArrow dom cod)
   APP :: (ReifyTy dom, ReifyTy cod)
     => Exp ts ('TyArrow dom cod) -> Exp ts dom -> Exp ts cod
-  Raise :: ReifyTy t
-    => Exp ts 'TyError -> Exp ts t
+  Error :: ReifyTy t
+    => Exp ts t
   Catch :: ReifyTy t
     => Exp ts t -> Exp ts ('TySum 'TyError t)
   Lit :: ReifyPrim ty
@@ -209,7 +209,7 @@ forgetExp :: Exp ts t -> E.Exp
 forgetExp (VAR v) = E.VAR undefined (forgetVar v)
 forgetExp (LAM e) = E.LAM undefined undefined (forgetExp e)
 forgetExp (APP e1 e2) = E.APP undefined undefined (forgetExp e1) (forgetExp e2)
-forgetExp (Raise err) = E.Raise undefined (forgetExp err)
+forgetExp Error = E.Error undefined
 forgetExp (Catch e) = E.Catch undefined (forgetExp e)
 forgetExp (Lit lit) = E.Lit undefined (forgetLiteral lit)
 forgetExp (Bltn bltn) = E.Bltn undefined (forgetBultin bltn)

@@ -242,16 +242,184 @@ Proof.
   eexists; rwse; sauto lq: on.
 Qed.
 
+Definition expM τ := PactM (SemTy (m:=PactM) τ).
+
+(* An expression is considered "pure" if its denotation has no impact
+   whatsoever on the state. *)
+Definition pureP `(se : SemEnv Γ)
+  `(v : Exp Γ τ) (x : SemTy (m:=PactM) τ) : Prop :=
+  ⟦ se ⊨ v ⟧ = pure x.
+
+Arguments pureP {_} _ {_} _ _ /.
+
+(* An expression is considered "safe" if its denotation can never result in an
+   error. *)
+Definition safeP `(se : SemEnv Γ)
+  `(v : Exp Γ τ) (x : SemTy (m:=PactM) τ) : Prop :=
+  ∀ r s, ∃ s' w, ⟦ se ⊨ v ⟧ r s = inr (x, (s', w)).
+
+Arguments safeP {_} _ {_} _ _ /.
+
+(************************************************************************
+ * SubSem
+ *)
+
 Require Import Pact.Sub.
+Require Import Pact.Log.
 
 #[local] Hint Unfold RWSE_join : core.
 #[local] Hint Unfold RWSE_ap : core.
 #[local] Hint Unfold Either_map : core.
 #[local] Hint Unfold Tuple.first : core.
 
-Lemma SemExp_SubExp `(E : SemEnv Γ) `(e : Exp (dom :: Γ) τ) (v : Exp Γ dom) x :
-  ⟦ E ⊨ v ⟧ = pure x →
-  ⟦ E ⊨ SubExp {|| v ||} e ⟧ = ⟦ (x, E) ⊨ e ⟧.
+Equations SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : PactM (SemEnv Γ') :=
+  SubSem NoSub      se := pure tt;
+  SubSem (Push t σ) se :=
+    v  <- SemExp t se ;
+    vs <- SubSem σ se ;
+    pure (v, vs).
+
+Lemma SubSem_inil (s : Sub [] []) :
+  SubSem s () = pure ().
+Proof. now dependent elimination s. Qed.
+
+Lemma SubSem_ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') (se : SemEnv Γ) :
+  SubSem (ScR s r) se = SubSem s (RenSem r se).
+Proof.
+  generalize dependent Γ''.
+  generalize dependent Γ'.
+  destruct Γ, se; simpl; intros; auto.
+  - dependent elimination r; simp RenSem.
+    rewrite NoRen_idRen.
+    now rewrite ScR_idRen.
+  - clear.
+    dependent induction s1; simp ScR.
+    + now simp SubSem.
+    + simp SubSem.
+      f_equal.
+      * extensionality v.
+        rwse.
+        simpl.
+        autounfold.
+        rewrite IHs1.
+        reflexivity.
+      * now rewrite SemExp_RenSem.
+Qed.
+
+Lemma SubSem_idSub {Γ} (se : SemEnv Γ) :
+  SubSem idSub se = pure se.
+Proof.
+  induction Γ; destruct se; simpl; simp SubSem; simpl; intros; auto.
+  rewrite SubSem_ScR.
+  rewrite RenSem_skip1.
+  now rewrite IHΓ.
+Qed.
+
+Lemma SemVar_SubSem {Γ Γ' τ} (v : Var Γ τ) (s : Sub Γ' Γ) (se : SemEnv Γ') :
+  SemVar v <$> SubSem s se = SemExp (SubVar s v) se.
+Proof.
+  intros.
+  generalize dependent τ.
+  generalize dependent se.
+  simpl.
+  autounfold.
+  induction s; simp SubSem; simp SubVar; simpl; intros.
+  - now inversion v.
+  - rwse.
+    dependent induction v; simp SubVar.
+    + simp SubSem; simpl; autounfold.
+      destruct (⟦ se ⊨ e ⟧ r s0); auto; reduce.
+      admit.
+    + rewrite <- IHs.
+      destruct (SubSem s se r s0); auto.
+      reduce.
+Admitted.
+
+(*
+Lemma SemExp_SubSem {Γ Γ' τ} (e : Exp Γ τ) (s : Sub Γ' Γ) (se : SemEnv Γ') :
+  SubP (@concrete Γ' se) s →
+  SemExp e =<< SubSem s se = SemExp (SubExp s e) se.
+Proof.
+  generalize dependent τ.
+  generalize dependent se.
+  induction s; simpl; intros;
+  autounfold; rwse;
+  simp SubSem; simpl;
+  autounfold.
+  - admit.
+  - inv H.
+    simp ExpP in H3; reduce.
+    simpl in *; reduce.
+    rewrite H.
+    autounfold in *.
+    admit.
+Abort.
+(*
+  - simp SemExp; simpl.
+    extensionality z.
+    fold SemTy in z.
+    rewrite <- IHe; clear IHe.
+    simpl.
+    unfold Keepₛ, Dropₛ; simp SubSem.
+    repeat f_equal.
+    rewrite SubSem_ScR.
+    now rewrite RenSem_skip1.
+  - now rewrite IHe1, IHe2.
+Qed.
+*)
+
+Lemma SubSem_ScS {Γ Γ' Γ''} (s : Sub Γ' Γ'') (t : Sub Γ Γ') (se : SemEnv Γ) :
+  (∃ x, SubSem t se = pure x) →
+  SubSem (ScS s t) se = SubSem s =<< SubSem t se.
+Proof.
+  intros.
+  destruct H.
+  generalize dependent Γ''.
+  induction s; intros; simpl; simp SubSem; auto.
+  simpl; autounfold; rwse.
+  - rewrite H; sauto.
+  - rwse; simpl; autounfold.
+
+
+Abort.
+
+Lemma SubSem_RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') (se : SemEnv Γ) :
+  SubP (@concrete Γ se) s →
+  SubSem (RcS r s) se = RenSem r <$> SubSem s se.
+Proof.
+  generalize dependent Γ.
+  induction r; intros;
+  simpl; simp RcS; simp RenSem; auto;
+  dependent elimination s;
+  simp RcS; simp SubSem; simp RenSem;
+  simpl; rwse.
+  - sauto.
+  - inv H.
+    rewrite IHr; auto.
+    simpl; autounfold.
+    simp ExpP in H3; reduce.
+    simpl in H; reduce.
+    rewrite H.
+    destruct (SubSem _ _ _ _); auto.
+    reduce.
+    simp RenSem.
+    sauto lq: on.
+  - inv H.
+    rewrite IHr; auto.
+    simpl; autounfold.
+    simp ExpP in H3; reduce.
+    simpl in H; reduce.
+    rewrite H.
+    destruct (SubSem _ _ _ _); auto.
+    reduce.
+    simp RenSem.
+    sauto lq: on.
+Qed.
+
+Lemma SemExp_SubExp `(se : SemEnv Γ) `(e : Exp (dom :: Γ) τ) (v : Exp Γ dom) x :
+  SubP (@concrete Γ se) idSub →
+  ⟦ se ⊨ v ⟧ = pure x →
+  ⟦ se ⊨ SubExp {|| v ||} e ⟧ = ⟦ (x, se) ⊨ e ⟧.
 Proof.
   intros.
   generalize dependent v.
@@ -263,13 +431,13 @@ Proof.
   autounfold.
   1: {
     dependent elimination v; simp SubVar.
-    - rewrite H //.
+    - rewrite H0 //.
     - rewrite SubVar_idSub.
       now simp SemExp.
   }
   1: {
     repeat f_equal.
-    specialize (IHe dom0 (dom :: Γ) (x, E) e JMeq_refl JMeq_refl).
+    specialize (IHe dom0 (dom :: Γ) (x, se) e JMeq_refl JMeq_refl).
     extensionality x0.
     simpl in IHe.
     admit.
@@ -280,3 +448,4 @@ Proof.
   }
   all: sauto lq: on.
 Admitted.
+*)

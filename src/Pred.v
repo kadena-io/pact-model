@@ -43,10 +43,10 @@ Implicit Type G : rprop.
 Implicit Type H : sprop.
 Implicit Type Z : eprop.
 
-Definition hoare G H `(e : Exp [] τ) (Q : vprop τ) Z : Prop :=
+Definition hoare G H `(e : expM τ) (Q : vprop τ) Z : Prop :=
   ∀ (r : env), G r →
   ∀ (s : state), H s ->
-  match ⟦e⟧ r s : Err + ⟦τ⟧ * (state * _) with
+  match e r s : Err + ⟦τ⟧ * (state * _) with
   | inr (v, (s', _)) => Q v s'
   | inl err => Z err
   end.
@@ -83,21 +83,21 @@ Arguments sprop_conj _ _ /.
 
 Notation "Q \∧ H" := (sprop_conj Q H) (at level 10) : pred_scope.
 
-Definition quadruple
+Definition quintuple
   (G : rprop)
   (H : sprop)
-  `(e : Exp [] τ)
+  `(e : expM τ)
   (Q : vprop τ)
   (Z : eprop) : Prop :=
   ∀ H', { G & H \∧ H' } x ← e { Q x \∧ H' | Z }.
 
-#[local] Hint Unfold quadruple : core.
+#[local] Hint Unfold quintuple : core.
 
-Theorem frame_rule {G H} `{e : Exp [] τ} {Q Z H'} :
-  quadruple G H e Q Z →
-  quadruple G (H \∧ H') e (λ x, Q x \∧ H') Z.
+Theorem frame_rule {G H} `{e : expM τ} {Q Z H'} :
+  quintuple G H e Q Z →
+  quintuple G (H \∧ H') e (λ x, Q x \∧ H') Z.
 Proof.
-  unfold quadruple, hoare.
+  unfold quintuple, hoare.
   intros.
   destruct H2, H2.
   pose proof (H0 _ _ H1 _ (conj H2 H4)).
@@ -106,15 +106,15 @@ Proof.
 Qed.
 
 Definition WP : Type :=
-  ∀ τ (e : Exp [] τ) (Q : vprop τ) (Z : eprop), env → sprop.
+  ∀ τ (e : expM τ) (Q : vprop τ) (Z : eprop), env → sprop.
 
 Definition wp
-  `(e : Exp [] τ)
+  `(e : expM τ)
   (Q : vprop τ)
   (Z : eprop) : env → sprop :=
   λ r st,
     ∃ (G : rprop) (H : sprop),
-      G r ∧ (H \∧ (λ _, quadruple G H e Q Z) st).
+      G r ∧ (H \∧ (λ _, quintuple G H e Q Z) st).
 
 #[local] Hint Unfold wp : core.
 
@@ -161,10 +161,10 @@ Definition vimpl {τ} (Q R : vprop τ) : Prop :=
 
 Notation "Q ===> R" := (vimpl Q R) (at level 55) : pred_scope.
 
-Theorem wp_equiv {G H} `{e : Exp [] τ} {Q Z} :
-  (H =[G]=> wp e Q Z) ↔ (quadruple G H e Q Z).
+Theorem wp_equiv {G H} `{e : expM τ} {Q Z} :
+  (H =[G]=> wp e Q Z) ↔ (quintuple G H e Q Z).
 Proof.
-  unfold hrimpl, wp, quadruple, hoare, sprop_conj.
+  unfold hrimpl, wp, quintuple, hoare, sprop_conj.
   split; intros.
   - reduce.
     specialize (H0 _ _ H1 H2).
@@ -209,10 +209,10 @@ Proof.
 Qed.
 
 Theorem wp_unique (wp1 wp2 : WP) :
-  (∀ G H τ (e : Exp [] τ) Q Z,
-     quadruple G H e Q Z ↔ H =[G]=> wp1 _ e Q Z) →
-  (∀ G H τ (e : Exp [] τ) Q Z,
-     quadruple G H e Q Z ↔ H =[G]=> wp2 _ e Q Z) →
+  (∀ G H τ (e : expM τ) Q Z,
+     quintuple G H e Q Z ↔ H =[G]=> wp1 _ e Q Z) →
+  (∀ G H τ (e : expM τ) Q Z,
+     quintuple G H e Q Z ↔ H =[G]=> wp2 _ e Q Z) →
   wp1 = wp2.
 Proof.
   intros.
@@ -236,11 +236,11 @@ Proof.
     reflexivity.
 Qed.
 
-Theorem quadruple_conseq {G τ} {e : Exp [] τ} {H' Q' H Q Z} :
-  quadruple G H' e Q' Z →
+Theorem quintuple_conseq {G τ} {e : expM τ} {H' Q' H Q Z} :
+  quintuple G H' e Q' Z →
   H ==> H' →
   Q' ===> Q →
-  quadruple G H e Q Z.
+  quintuple G H e Q Z.
 Proof.
   intros.
   repeat intro.
@@ -258,16 +258,16 @@ Program Instance vimpl_PreOrder {τ} : PreOrder (vimpl (τ:=τ)).
 Next Obligation. now apply H0, H. Qed.
 
 Theorem wp_from_weakest_pre (wp' : WP) :
-  (∀ G H τ (e : Exp [] τ) Q Z r,
-     quadruple G (wp' _ e Q Z r) e Q Z) →          (* wp_pre *)
-  (∀ G H τ (e : Exp [] τ) Q Z,
-     quadruple G H e Q Z → ∀ r, G r → H ==> wp' _ e Q Z r) → (* wp_weakest *)
-  (∀ G H τ (e : Exp [] τ) Q Z,
-     ∀ r, G r → H ==> wp' _ e Q Z r ↔ quadruple G H e Q Z).  (* wp_equiv *)
+  (∀ G H τ (e : expM τ) Q Z r,
+     quintuple G (wp' _ e Q Z r) e Q Z) →          (* wp_pre *)
+  (∀ G H τ (e : expM τ) Q Z,
+     quintuple G H e Q Z → ∀ r, G r → H ==> wp' _ e Q Z r) → (* wp_weakest *)
+  (∀ G H τ (e : expM τ) Q Z,
+     ∀ r, G r → H ==> wp' _ e Q Z r ↔ quintuple G H e Q Z).  (* wp_equiv *)
 Proof.
   intros M1 M2.
   split; intro M.
-  - eapply quadruple_conseq; eauto.
+  - eapply quintuple_conseq; eauto.
   - eapply M2; eauto.
 Qed.
 
@@ -281,54 +281,58 @@ Qed.
 Notation "G =====> H" :=
   (∀ Q Z r, wp G Q Z r ==> wp H Q Z r) (at level 100, H at next level) : pred_scope.
 
-Lemma quadruple_if G H b τ (t1 t2 : Exp [] τ) Q Z :
-  quadruple G H (if b then t1 else t2) Q Z →
-  quadruple G H (If (Lit (LitBool b)) t1 t2) Q Z.
+Lemma quintuple_if G H b τ (t1 t2 : Exp [] τ) Q Z :
+  quintuple G H (if b then ⟦t1⟧ else ⟦t2⟧) Q Z →
+  quintuple G H ⟦If (Lit (LitBool b)) t1 t2⟧ Q Z.
 Proof.
   autounfold.
   repeat intro.
   reduce.
   simp SemExp; simpl.
   autounfold.
-  specialize (H0 _ _ H1 _ (conj H2 H3)).
-  destruct b; sauto.
+  sauto lq: on.
 Qed.
+
+Ltac wp r H :=
+  intros;
+  apply (dehrimpl (G:=λ r', r = r')); eauto;
+  eapply wp_equiv;
+  apply H;
+  eapply wp_equiv;
+  apply hrimplize; intros;
+  subst;
+  reflexivity.
 
 (* An if statement simply propagates the environment. *)
-Lemma wp_if b τ (t1 t2 : Exp [] τ) :
-  (if b then t1 else t2) =====> If (Lit (LitBool b)) t1 t2.
-Proof.
-  intros.
-  apply (dehrimpl (G:=λ r', r = r')); eauto.
-  eapply wp_equiv.
-  apply quadruple_if.
-  eapply wp_equiv.
-  apply hrimplize; intros.
-  subst.
-  reflexivity.
-Qed.
+Corollary wp_if b τ (t1 t2 : Exp [] τ) :
+  (if b then ⟦t1⟧ else ⟦t2⟧) =====> ⟦If (Lit (LitBool b)) t1 t2⟧.
+Proof. wp r quintuple_if. Qed.
 
-Lemma quadruple_app_fun G H `(v : Exp [] dom) `(e : Exp [dom] cod) Q Z :
-  ValueP v →
-  quadruple G H (SubExp {|| v ||} e) Q Z →
-  quadruple G H (APP (LAM e) v) Q Z.
+Lemma quintuple_app_fun G H `(v : Exp [] dom) `(e : Exp [dom] cod) Q Z :
+  quintuple G H (x <- ⟦v⟧ ; ⟦ (x, tt) ⊨ e ⟧) Q Z →
+  quintuple G H ⟦APP (LAM e) v⟧ Q Z.
 Proof.
+  simp SemExp. simpl.
   autounfold.
   simp SemExp; simpl.
   autounfold.
   intros.
-  specialize (H1 _ _ H2 _ H3).
-  autounfold.
-  pose proof (SemExp_ValueP (Γ:=[]) tt H0).
   reduce.
-  rewrite H4; simpl.
-  rewrite NoSub_idSub in H1.
-  erewrite SemExp_SubExp in H1; eauto.
-  simpl in *.
-  destruct (⟦ (x, ()) ⊨ e ⟧ r s); auto.
-  reduce.
-  intuition.
+  specialize (H0 _ _ H1 _ (conj H2 H3)).
+  sauto.
 Qed.
+
+Lemma wp_app_fun `(v : Exp [] dom) `(e : Exp [dom] cod) :
+  (x <- ⟦v⟧ ; ⟦ (x, tt) ⊨ e ⟧) =====> ⟦APP (LAM e) v⟧.
+Proof. wp r quintuple_app_fun. Qed.
+
+(*
+Equations wpc `(e : Exp [] τ) (Q : vprop τ) Z : vprop τ :=
+  wpc (APP (LAM f) x) Q Z := wpc e1 (wpc e2 Q Z) Z;
+  wpc (Seq e1 e2) Q Z := wpc e1 (wpc e2 Q Z) Z;
+  wpc (If b t e)  Q Z := if b then wpc t Q Z else wpc e Q Z;
+  wpc _ Q Z := _.
+*)
 
 (* This encodes a boolean predicate in positive normal form. *)
 Inductive Pred Γ : ∀ {τ}, Γ ⊢ τ → Set :=

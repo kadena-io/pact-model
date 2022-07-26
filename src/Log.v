@@ -22,9 +22,13 @@ Variable P : ∀ {τ}, Exp Γ τ → Prop.
 
 (** [ExpP] is a logical predicate that permits type-directed induction on
     expressions. *)
-Equations ExpP `(e : Exp Γ τ) : Prop :=
-  ExpP (τ:=_ ⟶ _) e := P e ∧ (∀ x, ExpP x → ExpP (APP e x));
-  ExpP e := P e.
+Equations ExpP `(e : Exp Γ τ) : Prop := {
+  ExpP e := P e ∧ ExpP' e
+}
+where ExpP' `(e : Exp Γ τ) : Prop := {
+  ExpP' (τ:=_ ⟶ _) e := (∀ x, ExpP x → ExpP (APP e x));
+  ExpP' e := True
+}.
 
 Lemma ExpP_P {τ} {e : Γ ⊢ τ} : ExpP e → P e.
 Proof.
@@ -42,10 +46,14 @@ Variable R : ∀ {τ}, Exp Γ τ → Exp Γ τ → Prop.
 
 (** [ExpR] is a logical predicate that permits type-directed induction on
     expressions. *)
-Equations ExpR {τ} (e1 e2 : Exp Γ τ) : Prop :=
-  ExpR (τ:=_ ⟶ _) f1 f2 :=
-    R f1 f2 ∧ (∀ x1 x2, ExpR x1 x2 → ExpR (APP f1 x1) (APP f1 x2));
-  ExpR e1 e2 := R e1 e2.
+Equations ExpR {τ} (e1 e2 : Exp Γ τ) : Prop := {
+  ExpR f1 f2 := R f1 f2 ∧ ExpR' f1 f2
+}
+where ExpR' {τ} (e1 e2 : Exp Γ τ) : Prop := {
+  ExpR' (τ:=_ ⟶ _) f1 f2 :=
+    (∀ x1 x2, ExpR x1 x2 → ExpR (APP f1 x1) (APP f1 x2));
+  ExpR' e1 e2 := True
+}.
 
 Lemma ExpR_R {τ} {e1 e2 : Γ ⊢ τ} : ExpR e1 e2 → R e1 e2.
 Proof.

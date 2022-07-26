@@ -104,7 +104,7 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
     x <- SemExp e2 se ;
     f x;
 
-  SemExp Error _     := throw Err_Expr;
+  SemExp Error     _ := throw Err_Expr;
   SemExp (Catch e) _ :=
     λ r s,
       match SemExp e se r s with
@@ -113,7 +113,7 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
       end;
 
   SemExp (Symbol n) _ := pure n;
-  SemExp (Lit l)  _   := pure (SemLit l);
+  SemExp (Lit l)    _ := pure (SemLit l);
   SemExp (Bltn b)   _ := pure (SemBltn b);
 
   SemExp (If b t e) se :=

@@ -41,8 +41,8 @@ Inductive Exp Γ : Ty → Set :=
   | APP {dom cod}  : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod
 
   (* The following terms represent Pact beyond lambda calculus. *)
-  | Raise {τ}      : Exp Γ TyError → Exp Γ τ
-  | Catch {τ}      : Exp Γ τ → Exp Γ (TySum TyError τ)
+  | Error {τ}      : Exp Γ τ
+  | Catch {τ}      : Exp Γ τ → Exp Γ (TySum 𝕌 τ)
 
   | Lit {ty}       : Literal ty → Exp Γ (TyPrim ty)
   | Bltn {τ}       : Builtin τ → Exp Γ τ
@@ -103,7 +103,7 @@ Fixpoint Exp_size `(e : Exp Γ τ) : nat :=
   | LAM e      => 1 + Exp_size e
   | APP e1 e2  => 1 + Exp_size e1 + Exp_size e2
 
-  | Raise e    => 1 + Exp_size e
+  | Error _    => 1
   | Catch e    => 1 + Exp_size e
 
   | Lit _ _    => 1
@@ -141,6 +141,7 @@ Proof. repeat intro; subst; contradiction. Qed.
 
 Arguments Lit {Γ ty} _.
 Arguments Bltn {Γ τ} _.
+Arguments Error {Γ τ}.
 Arguments Symbol {Γ} _.
 Arguments Nil {Γ τ}.
 

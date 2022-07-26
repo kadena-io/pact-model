@@ -104,7 +104,7 @@ Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
 Derive Signature for ValueP.
 
 Inductive ErrorP Γ : ∀ {τ}, Exp Γ τ → Prop :=
-  | IsError {τ} m : ErrorP (Raise (τ:=τ) m).
+  | IsError {τ} : ErrorP (Error (τ:=τ)).
 
 Derive Signature for ErrorP.
 

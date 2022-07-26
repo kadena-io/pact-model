@@ -28,7 +28,7 @@ Definition WalkExp
     | APP e1 e2     => APP (go r e1) (go r e2)
     | LAM e         => LAM (go (l r) e)
 
-    | Raise e       => Raise (go r e)
+    | Error         => Error
     | Catch e       => Catch (go r e)
 
     | Lit v         => Lit v

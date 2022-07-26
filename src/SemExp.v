@@ -105,11 +105,11 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
     x <- SemExp e2 se ;
     f x;
 
-  SemExp (Raise e) _ := throw =<< SemExp e se;
+  SemExp Error _     := throw Err_Expr;
   SemExp (Catch e) _ :=
     λ r s w,
       match SemExp e se r s w with
-      | inl err           => pure (inl err) r s w
+      | inl err           => pure (inl tt) r s w
       | inr (v, (s', w')) => pure (inr v) r s' w'
       end;
 
@@ -148,13 +148,13 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
   SemExp (Car xs) se :=
     xs' <- SemExp xs se ;
     match xs' with
-    | []     => throw (Err_Expr "car of nil")
+    | []     => throw Err_CarOfNil
     | x :: _ => pure x
     end;
   SemExp (Cdr xs) se :=
     xs' <- SemExp xs se ;
     match xs' with
-    | []      => throw (Err_Expr "cdr of nil")
+    | []      => throw Err_CdrOfNil
     | _ :: xs => pure xs
     end;
 

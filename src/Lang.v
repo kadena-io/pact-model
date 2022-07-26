@@ -20,7 +20,9 @@ Set Primitive Projections.
 Import ListNotations.
 
 Inductive Err : Type :=
-  | Err_Expr : string → Err
+  | Err_Expr
+  | Err_CarOfNil
+  | Err_CdrOfNil
   | Err_Capability {s} : Cap s → CapError → Err
   | Err_CannotReify : Ty → Err.
 

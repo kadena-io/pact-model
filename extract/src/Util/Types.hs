@@ -85,12 +85,12 @@ data Literal :: PrimType -> Type where
   LitTime :: Prelude.Int -> Literal 'PrimTime
 
 data Builtin :: Ty -> Type where
-   AddInt :: Builtin ('TyArrow ('TyPrim 'PrimInteger)
-                              ('TyArrow ('TyPrim 'PrimInteger)
-                                        ('TyPrim 'PrimInteger)))
-   SubInt :: Builtin ('TyArrow ('TyPrim 'PrimInteger)
-                              ('TyArrow ('TyPrim 'PrimInteger)
-                                        ('TyPrim 'PrimInteger)))
+  AddInt :: Builtin ('TyArrow ('TyPrim 'PrimInteger)
+                             ('TyArrow ('TyPrim 'PrimInteger)
+                                       ('TyPrim 'PrimInteger)))
+  SubInt :: Builtin ('TyArrow ('TyPrim 'PrimInteger)
+                             ('TyArrow ('TyPrim 'PrimInteger)
+                                       ('TyPrim 'PrimInteger)))
 
 type family SemPrimTy (t :: PrimType) :: Type where
   SemPrimTy 'PrimVoid    = Void

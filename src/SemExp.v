@@ -9,7 +9,6 @@ Require Import
   Pact.Exp
   Pact.Value
   Pact.Ren
-  Pact.Sub
   Pact.SemTy
   Pact.Lang
   Pact.Lang.Capability

@@ -1,7 +1,7 @@
 Require Export
   Pact.Lib
   Pact.Value
-  Pact.RWSE.
+  Pact.Data.RWSE.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

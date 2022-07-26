@@ -2,7 +2,7 @@ Set Warnings "-notation-overridden".
 
 Require Import
   Hask.Control.Monad
-  Pact.RWSE
+  Pact.Data.RWSE
   Pact.Lang
   Pact.Lib
   Pact.Ty

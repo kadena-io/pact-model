@@ -2,7 +2,7 @@ Require Export
   Hask.Control.Monad
   Hask.Control.Lens
   Pact.Data.Monoid
-  Pact.RWSE
+  Pact.Data.RWSE
   Pact.Lib
   Pact.Ty
   Pact.Exp

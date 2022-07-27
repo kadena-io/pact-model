@@ -2,7 +2,9 @@ Require Import Pact.Lib.
 Require Import Hask.Control.Monad.
 Require Import Hask.Control.Monad.Cont.
 Require Import Hask.Control.Monad.Trans.State.
+Require Import Hask.Control.Monad.Trans.Either.
 Require Import Hask.Data.Functor.Identity.
+Require Import Pact.Data.Either.
 Require Import Coq.Classes.RelationClasses.
 
 Generalizable All Variables.
@@ -74,8 +76,16 @@ Program Instance Wpure_Order : Order Wpure := {|
   wle := λ _ w₁ w₂, ∀ p, w₂ p → w₁ p
 |}.
 
-Definition M (s : Type)   := StateT s id.
-Definition Wst (s : Type) := StateT s (Cont Prop).
+(*************************************************************************
+ * Example
+ *)
+
+Section DijkstraExample.
+
+Variable s : Type.
+
+Definition M := StateT s id.
+Definition W := StateT s (Cont Prop).
 
 #[export]
 Program Instance id_Functor : Functor id := {|
@@ -90,40 +100,38 @@ Program Instance id_Applicative : Applicative id := {|
 Program Instance id_Monad : Monad id.
 
 #[export]
-Instance M_Functor {s} : Functor (M s) := StateT_Functor.
+Instance M_Functor : Functor M := StateT_Functor.
 #[export]
-Instance M_Applicative {s} : Applicative (M s) := StateT_Applicative.
+Instance M_Applicative : Applicative M := StateT_Applicative.
 #[export]
-Instance M_Monad {s} : Monad (M s) := StateT_Monad.
+Instance M_Monad : Monad M := StateT_Monad.
 
 #[export]
-Program Instance Wst_Order {s : Type} : Order (Wst s) := {|
+Program Instance W_Order : Order W := {|
   wle := λ _ w₁ w₂, ∀ p s, w₂ p s → w₁ p s
 |}.
 
-Definition θst {s : Type} : observation (M s) (Wst s) :=
-  λ _ c s p, p (c s).
+Definition θst : observation M W := λ _ c s p, p (c s).
 
 #[export]
-Program Instance θst_LaxMorphism {s : Type} : LaxMorphism (θst (s:=s)).
+Program Instance θst_LaxMorphism : LaxMorphism θst.
 Next Obligation. sauto. Qed.
 
 #[export]
-Program Instance θst_Morphism {s : Type} : Morphism (θst (s:=s)).
+Program Instance θst_Morphism : Morphism θst.
 Next Obligation.
   unfold Cont_map, Prelude.flip, Prelude.compose,
     comp, Tuple.first, θst in *.
   sauto.
 Qed.
 
-Definition ST {s : Type} (A : Type) (w : Wst s A) :=
-  ∑ c : M s A, θst _ c ≤ᵂ w.
+Definition ST (A : Type) (w : W A) := ∑ c : M A, θst _ c ≤ᵂ w.
 
 #[export]
-Program Instance ST_Dijkstra {s : Type} : DijkstraMonad (ST (s:=s)) := {|
-  retᴰ := λ _ x, (pure[M s] x; _);
+Program Instance ST_Dijkstra : DijkstraMonad ST := {|
+  retᴰ := λ _ x, (pure[M] x; _);
   bindᴰ := λ A B w wf (c : ST A w) (f : ∀ x, ST B (wf x)),
-    (bind (m:=M s) (λ x, projT1 (f x)) (projT1 c); _);
+    (bind (m:=M) (λ x, projT1 (f x)) (projT1 c); _);
   subcompᴰ := λ A w w' (c : ST A w) (h : w ≤ᵂ w'), _
 |}.
 Next Obligation.
@@ -138,47 +146,100 @@ Next Obligation.
   destruct (x p).
   destruct (f a); simpl.
   sauto.
-Qed.
+Defined.
 Next Obligation.
   sauto.
-Qed.
+Defined.
 Next Obligation.
   unfold Cont_join, Cont_map, Prelude.flip, Prelude.compose,
     comp, Tuple.first, θst, Datatypes.id, StateT_join, comp,
     curry, Prelude.apply in *.
   extensionality s0; simpl.
   sauto.
-Qed.
+Defined.
 
-Program Definition getST {s : Type} : ST s (θst _ State.get) :=
-  (State.get; _).
+Program Definition liftST0 `(f : M a) : ST a (θst _ f) := (f; _).
+Program Definition liftST1 `(f : a → M b) (x : a) :
+  ST b (θst _ (f x)) := (f x; _).
 
-Program Definition putST {s : Type} (x : s) : ST () (θst _ (State.put x)) :=
-  (State.put x; _).
+Definition getST := liftST0 State.get.
+Definition putST := liftST1 State.put.
 
-Definition modify `(f : s → s) :=
-  bindᴰ getST (λ x, putST (f x)).
+Definition modify' := liftST1 State.modify.
+
+Definition modifyST `(f : s → s) := bindᴰ getST (λ x, putST (f x)).
+
+End DijkstraExample.
+
+Ltac calculate H :=
+  cbv [
+    Cont
+    Cont_Applicative
+    Cont_Functor
+    Cont_Monad
+    Cont_join
+    Cont_map
+    Datatypes.id
+    Identity_Applicative
+    Identity_Functor
+    Identity_Monad
+    Prelude.apply
+    Prelude.compose
+    Prelude.flip
+    State.get
+    State.modify
+    State.put
+    StateT_Applicative
+    StateT_Functor
+    StateT_Monad
+    StateT_join
+    Tuple.curry
+    Tuple.first
+    bind
+    comp
+    fmap
+    getT
+    is_applicative
+    is_functor
+    join
+    modifyT
+    pure
+    putT
+    θst
+  ] in H.
 
 Goal True.
-  pose proof Type.
-  pose (@getST X).
-  unfold θst in s.
-  unfold State.get in s.
-  unfold getST in s.
+  pose getST.
+  calculate s.
 
-  pose (@putST X).
-  unfold θst in *.
-  unfold State.put in *.
-  unfold getST in s.
+  pose putST.
+  calculate s0.
 
-  pose (@modify).
-  unfold θst in *.
-  unfold State.get, State.put in *.
-  unfold bind in s1.
-  simpl in s1.
-  unfold StateT_join in s1.
-  simpl in s1.
-  unfold Cont_join, Cont_map, Prelude.flip, Prelude.compose,
-    comp, Tuple.first, θst, Datatypes.id, StateT_join, comp,
-    curry, Prelude.apply in s1.
-Abort.
+  pose modify'.
+  calculate s1.
+
+  pose modifyST.
+  calculate s2.
+
+  auto.
+Qed.
+
+Require Import Coq.Arith.Arith.
+
+Definition algorithm : M nat nat :=
+  n <- getT ;
+  if n <? 10
+  then
+    putT (n + 1) ;;
+    pure (n + 100)
+  else pure 0.
+
+Definition algorithmST := liftST0 _ algorithm.
+
+Goal True.
+  pose algorithmST.
+  unfold algorithm in s.
+  calculate s.
+
+  auto.
+Qed.

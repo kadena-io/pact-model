@@ -9,8 +9,6 @@ Require Import Pact.Data.Either.
 
 Generalizable All Variables.
 Set Primitive Projections.
-Set Universe Polymorphism.
-Unset Transparent Obligations.
 
 (******************************************************************************
  * The RWSET Monad transformer
@@ -25,36 +23,38 @@ Section RWSET.
 Context {r w s e : Type}.
 Context {m : Type → Type}.
 
-Definition RWSET (a : Type) : Type :=
+Definition RWSET `{Monad m} `{Monoid w} (a : Type) : Type :=
   r → s → m (e + (a * (s * w)))%type.
 
-Definition ask `{Monoid w} `{Applicative m} : RWSET r :=
+Context `{Monad m}.
+Context `{Monoid w}.
+
+Definition ask : RWSET r :=
   λ r s, pure (inr (r, (s, mempty))).
-Definition asks`{Monoid w } `{Applicative m} {a : Type} (f : r → a) : RWSET a :=
+Definition asks {a : Type} (f : r → a) : RWSET a :=
   λ r s, pure (inr (f r, (s, mempty))).
 Definition local (f : r → r) `(x : RWSET a) : RWSET a :=
   λ r s, x (f r) s.
-Definition get `{Monoid w} `{Applicative m} : RWSET s :=
+Definition get : RWSET s :=
   λ _ s, pure (inr (s, (s, mempty))).
-Definition gets `{Monoid w} `{Applicative m} {a : Type} (f : s → a) : RWSET a :=
+Definition gets {a : Type} (f : s → a) : RWSET a :=
   λ _ s, pure (inr (f s, (s, mempty))).
-Definition put `{Monoid w} `{Applicative m} (x : s) : RWSET unit :=
+Definition put (x : s) : RWSET unit :=
   λ _ _, pure (inr (tt, (x, mempty))).
-Definition modify `{Monoid w} `{Applicative m} (f : s → s) : RWSET unit :=
+Definition modify (f : s → s) : RWSET unit :=
   λ _ s, pure (inr (tt, (f s, mempty))).
-Definition tell `{Applicative m} (v : w) : RWSET unit :=
+Definition tell (v : w) : RWSET unit :=
   λ _ s, pure (inr (tt, (s, v))).
-Definition throw `{Applicative m} {a : Type} (err : e) : RWSET a :=
+Definition throw {a : Type} (err : e) : RWSET a :=
   λ _ _, pure (inl err).
 
 #[export]
-Instance RWSET_Functor `{Functor m} : Functor RWSET := {
+Instance RWSET_Functor : Functor RWSET := {
   fmap := λ a _ f (x : RWSET a), λ r s,
     fmap[m] (fmap (first f)) (x r s)
 }.
 
-Definition RWSET_ap `{Semigroup w} `{Monad m}
-  `(f : RWSET (a → b)) (x : RWSET a) :
+Definition RWSET_ap `(f : RWSET (a → b)) (x : RWSET a) :
   RWSET b := λ r s,
     f' <- f r s ;
     match f' with
@@ -69,13 +69,13 @@ Definition RWSET_ap `{Semigroup w} `{Monad m}
     end.
 
 #[export]
-Instance RWSET_Applicative `{Monoid w} `{Monad m} : Applicative RWSET := {
+Instance RWSET_Applicative : Applicative RWSET := {
   is_functor := RWSET_Functor;
   pure := λ _ x, λ _ s, pure (inr (x, (s, mempty)));
   ap   := λ _ _, RWSET_ap
 }.
 
-Definition RWSET_join `{Semigroup w} `{Monad m} `(x : RWSET (RWSET a)) :
+Definition RWSET_join `(x : RWSET (RWSET a)) :
   RWSET a := λ r s,
     x' <- x r s ;
     match x' with
@@ -90,18 +90,18 @@ Definition RWSET_join `{Semigroup w} `{Monad m} `(x : RWSET (RWSET a)) :
     end.
 
 #[export]
-Instance RWSET_Monad `{Monoid w} `{Monad m} : Monad RWSET | 1 := {
+Instance RWSET_Monad : Monad RWSET | 1 := {
   is_applicative := RWSET_Applicative;
   join := λ _, RWSET_join
 }.
 
 End RWSET.
 
-Arguments RWSET : clear implicits.
+Arguments RWSET r w s e m {_ _}.
 
-Definition RWSE r w s e := RWSET r w s e Identity.
+Definition RWSE r w s e `{Monoid w} := RWSET r w s e Identity.
 
-Definition RWSEP r w s e := RWSET r w s e (Cont Prop).
+Definition RWSEP r w s e `{Monoid w} := RWSET r w s e (Cont Prop).
 
 Module RWSETLaws.
 
@@ -128,8 +128,12 @@ Proof.
   now destruct x.
 Qed.
 
+Context {r w s e : Type}.
+Context `{MonoidLaws w}.
+Context `{MonadLaws m}.
+
 #[global]
-Program Instance RWSET_FunctorLaws {r w s e : Type} `{FunctorLaws m} :
+Program Instance RWSET_FunctorLaws :
   FunctorLaws (RWSET r w s e m).
 Next Obligation.
   extensionality x.
@@ -143,17 +147,16 @@ Next Obligation.
   rwse; simpl.
   rewrite fmap_comp_x.
   pose proof (fmap_comp (FunctorLaws:=Either_FunctorLaws (e:=e))).
-  simpl in H1.
-  unfold comp in H1.
-  rewrite H1.
+  simpl in H3.
+  unfold comp in H3.
+  rewrite H3.
   repeat f_equal.
   extensionality x0.
   now apply first_comp.
 Qed.
 
 #[global]
-Program Instance RWSET_ApplicativeLaws {r w s e : Type}
-  `{MonoidLaws w} `{MonadLaws m} :
+Program Instance RWSET_ApplicativeLaws :
   ApplicativeLaws (RWSET r w s e m).
 Next Obligation.
   extensionality x.
@@ -186,8 +189,7 @@ Next Obligation.
 Admitted.
 
 #[global]
-Program Instance RWSET_MonadLaws {r w s e : Type}
-  `{MonoidLaws w} `{MonadLaws m} :
+Program Instance RWSET_MonadLaws :
   MonadLaws (RWSET r w s e m) := {|
     has_applicative_laws := RWSET_ApplicativeLaws
 |}.
@@ -205,9 +207,9 @@ Admitted.
 Notation "a >>[ H ] b" :=
   (bind (H:=H) (fun _ => b) a) (at level 90, right associativity) : monad_scope.
 
-Lemma put_getM {r w s e : Type} `{Monoid w} `{MonadLaws m} `(x : s) :
-  (put x >>[RWSET_Monad (r:=r) (e:=e)] get) =
-  (put x >>[RWSET_Monad (r:=r) (e:=e)] pure x).
+Lemma put_getM `(x : s) :
+  (put x >> get (r:=r) (e:=e)) =
+  (put x >> pure x).
 Proof.
   simpl.
   rwse.
@@ -216,3 +218,17 @@ Proof.
 Qed.
 
 End RWSETLaws.
+
+Require Import Coq.Arith.Arith.
+
+Program Instance Unit_Semigroup : Semigroup unit.
+Program Instance Unit_Monoid : Monoid unit.
+Next Obligation. exact tt. Defined.
+
+Definition sample {m : Type → Type} `{Monad m} :
+  RWSET nat unit nat nat m nat :=
+  x <- get ;
+  put (x + 1) ;;
+  if x <? 20
+  then throw 100
+  else pure 50.

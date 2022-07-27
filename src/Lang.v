@@ -117,7 +117,7 @@ Derive NoConfusion NoConfusionHom Subterm EqDec for PactLog.
 Definition newPactLog : PactLog :=
   MkLog tt.
 
-Definition PactM : Type → Type := @RWSE PactEnv PactState PactLog Err.
+Definition PactM : Type → Type := @RWSE PactEnv PactLog PactState Err.
 
 #[export] Instance PactM_Functor     : Functor PactM     := RWSE_Functor.
 #[export] Instance PactM_Applicative : Applicative PactM := RWSE_Applicative.

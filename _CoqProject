@@ -5,6 +5,7 @@ src/Data/Semigroup.v
 src/Data/Monoid.v
 src/Data/RWSE.v
 src/Data/RWSET.v
+src/Data/Dijkstra.v
 src/Lib.v
 src/Ltac.v
 src/Ty.v

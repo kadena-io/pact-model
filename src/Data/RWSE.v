@@ -18,7 +18,7 @@ Ltac rwse :=
 
 Section RWSE.
 
-Context {r s w e : Type}.
+Context {r w s e : Type}.
 Context `{Monoid w}.
 
 Definition RWSE (a : Type) := r → s → e + (a * (s * w)).
@@ -107,8 +107,8 @@ Proof.
 Qed.
 
 #[global]
-Program Instance RWSE_FunctorLaws {r s w e : Type} :
-  FunctorLaws (RWSE r s w e).
+Program Instance RWSE_FunctorLaws {r w s e : Type} :
+  FunctorLaws (RWSE r w s e).
 Next Obligation.
   extensionality x.
   rwse.
@@ -126,8 +126,8 @@ Next Obligation.
 Qed.
 
 #[global]
-Program Instance RWSE_ApplicativeLaws {r s w e : Type} `{MonoidLaws w} :
-  ApplicativeLaws (RWSE r s w e).
+Program Instance RWSE_ApplicativeLaws {r w s e : Type} `{MonoidLaws w} :
+  ApplicativeLaws (RWSE r w s e).
 Next Obligation.
   extensionality x.
   rwse.
@@ -173,8 +173,8 @@ Next Obligation.
 Qed.
 
 #[global]
-Program Instance RWSE_MonadLaws {r s w e : Type} `{MonoidLaws w} :
-  MonadLaws (RWSE r s w e) := {|
+Program Instance RWSE_MonadLaws {r w s e : Type} `{MonoidLaws w} :
+  MonadLaws (RWSE r w s e) := {|
     has_applicative_laws := RWSE_ApplicativeLaws
 |}.
 Next Obligation.

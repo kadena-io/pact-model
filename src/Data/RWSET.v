@@ -98,6 +98,14 @@ Instance RWSET_Monad : Monad RWSET | 1 := {
 End RWSET.
 
 Arguments RWSET r w s e m {_ _}.
+Arguments RWSET_ap {r w s e m _ _ a b} f x _ _ /.
+Arguments RWSET_join {r w s e m _ _ a} x _ _ /.
+
+#[export] Hint Unfold RWSET_ap : core.
+#[export] Hint Unfold RWSET_join : core.
+#[export] Hint Unfold Either_map : core.
+#[export] Hint Unfold Tuple.first : core.
+#[export] Hint Unfold id : core.
 
 Definition RWSE r w s e `{Monoid w} := RWSET r w s e Identity.
 
@@ -105,14 +113,8 @@ Definition RWSEP r w s e `{Monoid w} := RWSET r w s e (Cont Prop).
 
 Module RWSETLaws.
 
-Include MonadLaws.
 Module Import EL := EitherLaws.
-
-#[local] Hint Unfold RWSET_ap : core.
-#[local] Hint Unfold RWSET_join : core.
-#[local] Hint Unfold Either_map : core.
-#[local] Hint Unfold Tuple.first : core.
-#[local] Hint Unfold id : core.
+Include MonadLaws.
 
 Lemma first_id a z : first (a:=a) (b:=a) (z:=z) id = id.
 Proof.
@@ -127,6 +129,8 @@ Proof.
   unfold first.
   now destruct x.
 Qed.
+
+Section RWSETLaws.
 
 Context {r w s e : Type}.
 Context `{MonoidLaws w}.
@@ -219,10 +223,13 @@ Qed.
 
 End RWSETLaws.
 
+End RWSETLaws.
+
+
 Require Import Coq.Arith.Arith.
 
-Program Instance Unit_Semigroup : Semigroup unit.
-Program Instance Unit_Monoid : Monoid unit.
+#[export] Program Instance Unit_Semigroup : Semigroup unit.
+#[export] Program Instance Unit_Monoid : Monoid unit.
 Next Obligation. exact tt. Defined.
 
 Definition sample {m : Type → Type} `{Monad m} :

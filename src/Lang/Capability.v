@@ -1,10 +1,13 @@
 Require Import
   Hask.Control.Monad
-  Data.Monoid
+  Pact.Data.Monoid
   Pact.Lib
+  Pact.Value
   Pact.SemTy
   Pact.Lang
-  Hask.Control.Lens.
+  Pact.Lang.CapabilityType
+  Hask.Control.Lens
+  Pact.Data.RWSE.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

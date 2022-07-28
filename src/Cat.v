@@ -3,15 +3,17 @@ Set Warnings "-notation-overridden".
 Require Import
   Hask.Control.Monad
   Pact.Data.RWSE
-  Pact.Lang
   Pact.Lib
   Pact.Ty
+  Pact.Value
   Pact.Exp
   Pact.Ren
   Pact.Sub
   Pact.SemTy
   Pact.SemBltn
-  Pact.SemExp.
+  Pact.SemExp
+  Pact.SemRen
+  Pact.Lang.
 
 Require Import Category.Lib.
 Require Import Category.Theory.Category.

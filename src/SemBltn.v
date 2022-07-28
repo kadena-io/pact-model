@@ -2,6 +2,7 @@ Require Import
   Coq.ZArith.ZArith
   Hask.Control.Monad
   Data.Either
+  Pact.Lib
   Pact.Bltn
   Pact.SemTy
   Pact.Lang.

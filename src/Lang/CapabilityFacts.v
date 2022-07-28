@@ -1,11 +1,14 @@
 Require Import
   Hask.Control.Monad
-  Data.Monoid
+  Pact.Data.Monoid
+  Pact.Data.RWSE
   Pact.Lib
   Pact.Ty
+  Pact.Value
   Pact.Exp
   Pact.SemTy
   Pact.Lang
+  Pact.Lang.CapabilityType
   Pact.Lang.Capability
   Hask.Control.Lens.
 

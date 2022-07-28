@@ -1,4 +1,4 @@
-Require Export
+Require Import
   Pact.Lib
   Pact.Value
   Pact.Data.RWSE.

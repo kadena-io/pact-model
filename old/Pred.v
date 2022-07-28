@@ -283,12 +283,6 @@ Qed.
 Notation "e =====> e'" :=
   (∀ Q Z r, wp e Q Z r ==> wp e' Q Z r) (at level 100, e' at next level) : pred_scope.
 
-Definition eval `(e : Exp [] τ) s (v : ⟦τ⟧) s' :=
-  ∀ r, ∃ (w : log), ⟦ e ⟧ r s = inr (A:=Err) (v, (s', w)).
-
-Notation "e ~[ s => v ]~> t" :=
-  (eval e s t v) (at level 40, v at next level, t at next level).
-
 Lemma eval_if_trm (t0 : Exp [] 𝔹) v0 {τ} (t1 t2 : Exp [] τ) (v : SemTy τ) s s' s'' :
   t0 ~[s => s']~> v0 →
   If (Lit (LitBool v0)) t1 t2 ~[s' => s'']~> v →

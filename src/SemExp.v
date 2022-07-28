@@ -449,3 +449,24 @@ Proof.
   all: sauto lq: on.
 Admitted.
 *)
+
+Definition eval `(e : Exp [] τ) s (v : ⟦τ⟧) s' :=
+  ∀ r, ∃ w, ⟦ e ⟧ r s = inr (v, (s', w)).
+
+Notation "e ~[ s => v ]~> t" :=
+  (eval e s t v) (at level 40, v at next level, t at next level).
+
+Lemma sem_app_lam `(e : Exp [dom] cod) (v : Exp [] dom) x r s s' :
+  v ~[ s => s' ]~> x →
+  ⟦ APP (LAM e) v ⟧ r s = ⟦ (x, tt) ⊨ e ⟧ r s'.
+Proof.
+  unfold eval.
+  intros.
+  simp SemExp; simpl.
+  autounfold.
+  specialize (H r).
+  reduce.
+  rewrite H.
+  destruct (⟦ (x, tt) ⊨ e ⟧ r s'); auto.
+  sauto lq: on.
+Qed.

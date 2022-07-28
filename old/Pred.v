@@ -33,6 +33,7 @@ Section Pred.
 
 Definition env   : Type := PactEnv.
 Definition state : Type := PactState.
+Definition log   : Type := PactLog.
 
 Definition rprop   : Type := env → Prop.
 Definition sprop   : Type := state → Prop.
@@ -111,9 +112,9 @@ Definition WP : Type :=
 Definition wp
   `(e : expM τ)
   (Q : vprop τ)
-  (Z : eprop) : env → sprop :=
-  λ r st,
-    ∃ (G : rprop) (H : sprop),
+  (Z : eprop) : sprop :=
+  λ st,
+    ∃ r (G : rprop) (H : sprop),
       G r ∧ (H \∧ (λ _, quintuple G H e Q Z) st).
 
 #[local] Hint Unfold wp : core.
@@ -162,14 +163,15 @@ Definition vimpl {τ} (Q R : vprop τ) : Prop :=
 Notation "Q ===> R" := (vimpl Q R) (at level 55) : pred_scope.
 
 Theorem wp_equiv {G H} `{e : expM τ} {Q Z} :
-  (H =[G]=> wp e Q Z) ↔ (quintuple G H e Q Z).
+  (H ==> wp e Q Z) ↔ (quintuple G H e Q Z).
 Proof.
   unfold hrimpl, wp, quintuple, hoare, sprop_conj.
   split; intros.
   - reduce.
-    specialize (H0 _ _ H1 H2).
+    specialize (H0 _ H2).
+    simpl in H0.
     reduce.
-    unshelve epose proof (H5 _ r _ s (conj _ H3)); auto.
+    unshelve epose proof (H5 _ _ H0 _ (conj _ H3)); auto.
   - exists G.
     exists H.
     split; auto.
@@ -278,61 +280,117 @@ Qed.
 #[local] Hint Unfold Basics.compose : core.
 #[local] Hint Unfold Datatypes.id : core.
 
-Notation "G =====> H" :=
-  (∀ Q Z r, wp G Q Z r ==> wp H Q Z r) (at level 100, H at next level) : pred_scope.
+Notation "e =====> e'" :=
+  (∀ Q Z r, wp e Q Z r ==> wp e' Q Z r) (at level 100, e' at next level) : pred_scope.
 
-Lemma quintuple_if G H b τ (t1 t2 : Exp [] τ) Q Z :
-  quintuple G H (if b then ⟦t1⟧ else ⟦t2⟧) Q Z →
-  quintuple G H ⟦If (Lit (LitBool b)) t1 t2⟧ Q Z.
+Definition eval `(e : Exp [] τ) s (v : ⟦τ⟧) s' :=
+  ∀ r, ∃ (w : log), ⟦ e ⟧ r s = inr (A:=Err) (v, (s', w)).
+
+Notation "e ~[ s => v ]~> t" :=
+  (eval e s t v) (at level 40, v at next level, t at next level).
+
+Lemma eval_if_trm (t0 : Exp [] 𝔹) v0 {τ} (t1 t2 : Exp [] τ) (v : SemTy τ) s s' s'' :
+  t0 ~[s => s']~> v0 →
+  If (Lit (LitBool v0)) t1 t2 ~[s' => s'']~> v →
+  If t0 t1 t2 ~[s => s'']~> v.
+Proof.
+  unfold eval.
+  intros.
+  simp SemExp in *; simpl in *; autounfold in *.
+  specialize (H r).
+  specialize (H0 r).
+  reduce.
+  rewrite H.
+  sauto.
+Qed.
+
+Lemma hoare_if G H (b : Exp [] 𝔹) τ (t1 t2 : Exp [] τ) Q Q' Z :
+  hoare G H ⟦b⟧ Q' Z →
+  (∀ v, hoare G (Q' v) ⟦If (Lit (LitBool v)) t1 t2⟧ Q Z) →
+  hoare G H ⟦If b t1 t2⟧ Q Z.
 Proof.
   autounfold.
   repeat intro.
+  simp SemExp in *; simpl in *; autounfold in *.
+  specialize (H0 _ H2 _ H3).
+  destruct (⟦b⟧ _ _) eqn:Heqe; auto.
   reduce.
-  simp SemExp; simpl.
-  autounfold.
+  specialize (H1 _ _ H2 _ H0).
+  simp SemExp in *; simpl in *; autounfold in *.
   sauto lq: on.
+Qed.
+
+Lemma quintuple_if G H (b : Exp [] 𝔹) τ (t1 t2 : Exp [] τ) Q Q' Z :
+  quintuple G H ⟦b⟧ Q' Z →
+  (∀ v, quintuple G (Q' v) ⟦If (Lit (LitBool v)) t1 t2⟧ Q Z) →
+  quintuple G H ⟦If b t1 t2⟧ Q Z.
+Proof.
+  unfold quintuple.
+  intros.
+  eapply hoare_if; eauto.
+  intros.
+  apply H1.
 Qed.
 
 Ltac wp r H :=
   intros;
   apply (dehrimpl (G:=λ r', r = r')); eauto;
   eapply wp_equiv;
-  apply H;
+  eapply H; eauto;
   eapply wp_equiv;
   apply hrimplize; intros;
-  subst;
-  reflexivity.
+  subst; reflexivity.
 
 (* An if statement simply propagates the environment. *)
-Corollary wp_if b τ (t1 t2 : Exp [] τ) :
-  (if b then ⟦t1⟧ else ⟦t2⟧) =====> ⟦If (Lit (LitBool b)) t1 t2⟧.
-Proof. wp r quintuple_if. Qed.
-
-Lemma quintuple_app_fun G H `(v : Exp [] dom) `(e : Exp [dom] cod) Q Z :
-  quintuple G H (x <- ⟦v⟧ ; ⟦ (x, tt) ⊨ e ⟧) Q Z →
-  quintuple G H ⟦APP (LAM e) v⟧ Q Z.
+Corollary wp_if (b : Exp [] 𝔹) τ (t1 t2 : Exp [] τ) Q Z :
+  wp ⟦b⟧ (λ v, wp ⟦If (Lit (LitBool v)) t1 t2⟧ Q Z) Z
+    ==> wp ⟦If b t1 t2⟧ Q Z.
 Proof.
-  simp SemExp. simpl.
-  autounfold.
-  simp SemExp; simpl.
-  autounfold.
+  unfold wp.
+  simpl.
+  repeat intro.
+  destruct H as [G [H [HG [HH H0]]]].
+  exists G, H.
+  do 2 (split; auto).
+  eapply quintuple_if; eauto.
   intros.
+  simpl.
+  unfold quintuple, hoare in *.
+  intros.
+  simpl in *.
   reduce.
-  specialize (H0 _ _ H1 _ (conj H2 H3)).
-  sauto.
+  specialize (H0 _ _ H1 _ (conj HH HH)).
+  destruct (⟦b⟧ _ _); simp SemExp in *; simpl in *; autounfold in *.
+  - specialize (H5 _ _ H2 _ (conj H4 H3)).
+    destruct v.
+    apply H5.
+
+  specialize (H0 H').
+
+  unshelve eapply quintuple_conseq; eauto.
+    admit.
 Qed.
 
-Lemma wp_app_fun `(v : Exp [] dom) `(e : Exp [dom] cod) :
-  (x <- ⟦v⟧ ; ⟦ (x, tt) ⊨ e ⟧) =====> ⟦APP (LAM e) v⟧.
+Lemma quintuple_app_fun G H `(v : Exp [] dom) x `(e : Exp [dom] cod) Q Z :
+  ⟦v⟧ = pure x →
+  quintuple G H ⟦ (x, tt) ⊨ e ⟧ Q Z →
+  quintuple G H ⟦APP (LAM e) v⟧ Q Z.
+Proof.
+  intros.
+  erewrite sem_app_lam; eauto.
+Qed.
+
+Lemma wp_app_fun `(v : Exp [] dom) x `(e : Exp [dom] cod) :
+  ⟦v⟧ = pure x →
+  ⟦ (x, tt) ⊨ e ⟧ =====> ⟦APP (LAM e) v⟧.
 Proof. wp r quintuple_app_fun. Qed.
 
-(*
-Equations wpc `(e : Exp [] τ) (Q : vprop τ) Z : vprop τ :=
-  wpc (APP (LAM f) x) Q Z := wpc e1 (wpc e2 Q Z) Z;
-  wpc (Seq e1 e2) Q Z := wpc e1 (wpc e2 Q Z) Z;
-  wpc (If b t e)  Q Z := if b then wpc t Q Z else wpc e Q Z;
+Equations wpc `(e : Exp [] τ) (Q : vprop τ) Z : env → sprop :=
+  wpc (APP f v) Q Z := wp ⟦APP f v⟧ Q Z;
+  wpc (Seq e1 e2) Q Z := λ r, wpc e1 (λ v, wpc e2 Q Z r) Z r;
+  wpc (If (Lit (LitBool b)) t e) Q Z :=
+    if b then wpc t Q Z else wpc e Q Z;
   wpc _ Q Z := _.
-*)
 
 (* This encodes a boolean predicate in positive normal form. *)
 Inductive Pred Γ : ∀ {τ}, Γ ⊢ τ → Set :=

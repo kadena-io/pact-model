@@ -1,8 +1,8 @@
 Require Import
   Coq.ZArith.ZArith
   Hask.Control.Monad
-  Data.Either
-  Pact.ilist
+  Pact.Data.Either
+  Pact.Data.IList
   Pact.Lib
   Pact.Ty
   Pact.Bltn

@@ -1,5 +1,5 @@
 -R src Pact
-src/ilist.v
+src/Data/IList.v
 src/Data/Either.v
 src/Data/Semigroup.v
 src/Data/Monoid.v
@@ -25,5 +25,4 @@ src/SemBltn.v
 src/SemExp.v
 src/Eval.v
 src/Cat.v
-src/Pred.v
 extract/src/Extract.v

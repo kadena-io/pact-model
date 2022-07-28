@@ -43,7 +43,7 @@ library
       Exp
       Functor
       Identity
-      Ilist
+      IList
       Init
       Lang
       Lens

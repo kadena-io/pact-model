@@ -81,7 +81,11 @@ Proof.
   - destruct a, c; simpl.
     repeat destruct (eq_dec _ _); subst.
     all: rewrite ?IHl //.
-    all: now simpl_eq.
+    all: unfold eq_rect_r, eq_rect, eq_sym in *.
+    all: dependent destruction e2.
+    + reflexivity.
+    + dependent destruction e1.
+      contradiction.
 Qed.
 
 Definition __in_defcap (env : PactEnv) : bool :=
@@ -104,7 +108,7 @@ Definition __in_module (name : string) (env : PactEnv) : bool :=
    Note that a capability can be installed either by the user calling
    [install-capability] directly, or by the chain calling this function if it
    sees a signed capability as part of a transaction. *)
-Definition install_capability `(c : Cap s) : PactM () :=
+Definition install_capability `(c : Cap s) : PactM unit :=
   env <- ask ;
   (* jww (2022-07-26): Can install happen inside module code? *)
   if __in_defcap env
@@ -115,13 +119,13 @@ Definition install_capability `(c : Cap s) : PactM () :=
 
 Definition __claim_resource `(c : Cap s)
            (manager : reflectTy (valueTy s) * reflectTy (valueTy s) →
-                      PactM (reflectTy (valueTy s))) : PactM () :=
+                      PactM (reflectTy (valueTy s))) : PactM unit :=
   (* Check the current amount of resource associated with this capability, and
      whether the requested amount is available. If so, update the available
      amount. Note: unit is used to represent unmanaged capabilities. *)
   if eq_dec (valueTy s) TUnit
   then
-    pure ()                     (* unit is always available *)
+    pure tt                     (* unit is always available *)
   else
     st <- get ;
     match get_cap c (st ^_ resources) with
@@ -156,7 +160,7 @@ Definition __claim_resource `(c : Cap s)
     exception. [install_capability] sets the initial amount of the
     resource. *)
 Definition with_capability (module : string) `(c : Cap s)
-           `(predicate : Cap s → PactM ())
+           `(predicate : Cap s → PactM unit)
            (manager : reflectTy (TPair (valueTy s) (valueTy s)) →
                       PactM (reflectTy (valueTy s)))
            `(f : PactM a) : PactM a :=
@@ -197,15 +201,15 @@ Definition with_capability (module : string) `(c : Cap s)
         throw (Err_Capability c CapErr_CannotWithOutsideDefcapModule).
 
 Definition compose_capability (module : string) `(c : Cap s)
-           `(predicate : Cap s → PactM ())
+           `(predicate : Cap s → PactM unit)
            (manager : reflectTy (TPair (valueTy s) (valueTy s)) →
-                      PactM (reflectTy (valueTy s))) : PactM () :=
+                      PactM (reflectTy (valueTy s))) : PactM unit :=
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
   env <- ask ;
   if get_cap c (env ^_ granted)
   then
-    pure ()
+    pure tt
   else
     if __in_defcap env
     then
@@ -222,7 +226,7 @@ Definition compose_capability (module : string) `(c : Cap s)
     else
       throw (Err_Capability c CapErr_CannotComposeOutsideDefcap).
 
-Definition require_capability `(c : Cap s) : PactM () :=
+Definition require_capability `(c : Cap s) : PactM unit :=
   (* Note that the request resource amount must match the original
      [with-capability] exactly.
 
@@ -231,6 +235,6 @@ Definition require_capability `(c : Cap s) : PactM () :=
   env <- ask ;
   if get_cap c (env ^_ granted)
   then
-    pure ()
+    pure tt
   else
     throw (Err_Capability c CapErr_CapabilityNotAvailable).

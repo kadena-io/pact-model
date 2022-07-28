@@ -61,7 +61,6 @@ Extract Inlined Constant max   =>
 (** Z, positive, Q *)
 
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.QArith.QArith.
 
 Extract Inductive positive => "Prelude.Int" [
   "(\x -> 2 Prelude.* x Prelude.+ 1)"
@@ -99,15 +98,6 @@ Extract Inlined Constant N.min       => "Prelude.min".
 Extract Inlined Constant N.ltb       => "(Prelude.<)".
 Extract Inlined Constant N.leb       => "(Prelude.<=)".
 Extract Inlined Constant N.of_nat    => "".
-
-Extract Inductive Q => "(GHC.Real.Ratio Prelude.Int)" [ "(GHC.Real.:%)" ].
-
-Extract Inlined Constant Qplus  => "(Prelude.+)".
-Extract Inlined Constant Qminus => "(Prelude.-)".
-Extract Inlined Constant Qmult  => "(Prelude.*)".
-
-Extract Constant Qdiv =>
-  "(\n m -> if m Prelude.== 0 then 0 else n Prelude./ m)".
 
 (** Bool *)
 
@@ -217,3 +207,12 @@ Separate Extraction
   Pact.Exp.Exp
   Pact.Eval.eval
   Pact.Eval.evalInModule.
+
+(*
+Require dpdgraph.dpdgraph.
+
+Print FileDependGraph
+  Pact.Ty
+  Pact.Exp
+  Pact.Eval.
+*)

@@ -4,8 +4,6 @@ Require Export
   Coq.Lists.List
   Coq.Logic.Classical
   Coq.Logic.ProofIrrelevance
-  Coq.Program.Equality
-  Coq.Program.Program
   Coq.Relations.Relation_Definitions
   Coq.Sets.Ensembles
   Coq.Sets.Finite_sets
@@ -19,6 +17,7 @@ Require Import
   Coq.ZArith.ZArith.
 
 From Coq Require Export ssreflect ssrfun ssrbool.
+Require Export Equations.Prop.DepElim.
 From Equations Require Export Equations.
 From Hammer Require Export Tactics Hammer.
 

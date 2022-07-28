@@ -53,7 +53,7 @@ Ltac unravel :=
 
 Theorem with_capability_idem
   (n : string) `(c : Cap s)
-  (p : Cap s → PactM ())
+  (p : Cap s → PactM unit)
   (m : reflectTy (TPair (valueTy s) (valueTy s)) →
        PactM (reflectTy (valueTy s)))
   `(f : PactM a) :
@@ -91,7 +91,7 @@ Qed.
 
 Theorem with_require_sometimes_noop
   (n : string) `(c : Cap s)
-  (p : Cap s → PactM ())
+  (p : Cap s → PactM unit)
   (m : reflectTy (TPair (valueTy s) (valueTy s)) →
        PactM (reflectTy (valueTy s))) :
 
@@ -102,7 +102,7 @@ Theorem with_require_sometimes_noop
   asks (__in_module n) = pure true →
 
   (* Assuming the predicate always succeeds and changes nothing... *)
-  p c = pure () →
+  p c = pure tt →
 
   (* Assuming composed predicates only occur within a defcap: This should be
      true of the system as a whole, but this theorem is quantified over all
@@ -113,7 +113,7 @@ Theorem with_require_sometimes_noop
   ∀ H, eq_dec (valueTy s) TUnit = left H ->
 
   (* Then just checking a capability is the same as doing nothing. *)
-  with_capability n c p m (require_capability c) = pure ().
+  with_capability n c p m (require_capability c) = pure tt.
 
 Proof.
   rewrite /with_capability /require_capability; intros.

@@ -49,7 +49,7 @@ Equations RenSem {Γ Γ'} (r : Ren Γ Γ') (se : SemEnv Γ) : SemEnv Γ' :=
   RenSem (Keep r) (e, se) := (e, RenSem r se).
 
 Lemma RenSem_inil (r : Ren [] []) :
-  RenSem r () = ().
+  RenSem r tt = tt.
 Proof.
   now dependent destruction r.
 Qed.
@@ -280,7 +280,7 @@ Equations SubSem {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : PactM (SemEnv Γ')
     pure (v, vs).
 
 Lemma SubSem_inil (s : Sub [] []) :
-  SubSem s () = pure ().
+  SubSem s tt = pure tt.
 Proof. now dependent elimination s. Qed.
 
 Lemma SubSem_ScR {Γ Γ' Γ''} (s : Sub Γ' Γ'') (r : Ren Γ Γ') (se : SemEnv Γ) :

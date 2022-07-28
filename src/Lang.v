@@ -128,7 +128,7 @@ Definition uncurryM `(f : a → PactM (b → PactM c)) : (a * b) → PactM c :=
 
 (* This is not a valid definition. *)
 Definition curryM `(f : (a * b) → PactM c) : a → PactM (b → PactM c) :=
-  pure ∘ curry f.
+  pure \o curry f.
 
 Lemma uncurryM_curryM `(f : (a * b) → PactM c) :
   uncurryM (curryM f) = f.

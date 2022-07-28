@@ -1,6 +1,7 @@
 Require Import
   Coq.Unicode.Utf8
-  Coq.Program.Program.
+  Coq.Program.Equality
+  Coq.Logic.Eqdep.
 
 Ltac reduce_jmeq :=
   repeat match goal with

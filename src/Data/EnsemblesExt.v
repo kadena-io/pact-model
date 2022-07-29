@@ -1,22 +1,29 @@
 Require Import
-  Coq.Classes.Morphisms
-  Coq.Relations.Relation_Definitions
+  Classical_Pred_Type
+  Coq.Lists.List
+  Coq.Logic.Classical
+  Coq.Logic.Classical_Prop
   Coq.Program.Program
-  Coq.Unicode.Utf8
-  Coq.Sets.Finite_sets
   Coq.Sets.Ensembles
-  Coq.Logic.Classical.
+  Coq.Sets.Finite_sets
+  Coq.Sets.Finite_sets_facts
+  Coq.Sets.Powerset_facts
+  Coq.Unicode.Utf8
+  Coq.Relations.Relation_Definitions
+  Coq.Classes.RelationClasses
+  Coq.Classes.Morphisms.
 
-Require Coq.Sets.Finite_sets_facts.
-Require Coq.Sets.Powerset_facts.
-Require Coq.Logic.Classical_Prop.
-Require Coq.Lists.List.
-Require Classical_Pred_Type.
+Require Export Equations.Prop.DepElim.
+From Equations Require Export Equations.
 
-From Equations Require Import Equations.
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
 Set Equations With UIP.
 
 Generalizable All Variables.
+Set Primitive Projections.
 
 Definition first {A B C} (f : A -> C) (p : A * B) : C * B :=
   (f (fst p), snd p).
@@ -1234,7 +1241,7 @@ Lemma Unique_Map_value_Update : forall A B (P : A -> B -> bool) a b r f,
   Functional r ->
   Lookup a b r ->
   P a b = true ->
-  Unique _ _ P a r ->
+  Unique P a r ->
   Same (Map_value (fun k e => if P k e then f k e else e) r) (Update a (f a b) r).
 Proof.
   intros.
@@ -1652,11 +1659,11 @@ Instance Map_MapMembership {k} : MapMembership Map k := {|
 #[global]
 Instance FinMap_MapMembership {k} : MapMembership FinMap k := {|
   has_elem := λ v i x (m : FinMap k v), @Lookup k v i x m;
-  insert_elem := λ v i x m, UpdateF _ _ i x m
+  insert_elem := λ v i x m, UpdateF i x m
 |}.
 
 #[global]
 Instance FunMap_MapMembership {k} `{EqDec k} : MapMembership FunMap k := {|
   has_elem := λ v i x (m : FunMap k v), @LookupU k v i m = Some x;
-  insert_elem := λ v i x m, UpdateU _ _ i x m
+  insert_elem := λ v i x m, UpdateU i x m
 |}.

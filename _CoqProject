@@ -1,4 +1,5 @@
 -R src Pact
+src/Data/EnsemblesExt.v
 src/Data/IList.v
 src/Data/Either.v
 src/Data/Semigroup.v

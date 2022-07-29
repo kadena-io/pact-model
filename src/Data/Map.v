@@ -9,6 +9,9 @@ Require Export
 
 Generalizable All Variables.
 
+(** General utility library providing partial maps, built
+    on a foundation isomorphic to association lists. *)
+
 Section Map.
 
 Import ListNotations.
@@ -79,8 +82,35 @@ Fixpoint fromList (l : list (k * v)) : Map k v :=
   | (i, x) :: xs => Add i x (fromList xs)
   end.
 
+Lemma toList_fromList (l : list (k * v)) : toList (fromList l) = l.
+Proof.
+  induction l; simpl; auto.
+  destruct a; simpl.
+  now rewrite IHl.
+Qed.
+
+Lemma fromList_toList (m : Map k v) : fromList (toList m) = m.
+Proof.
+  induction m; simpl; auto.
+  now rewrite IHm.
+Qed.
+
 Definition null (m : Map k v) : bool :=
   if m then false else true.
+
+#[export]
+Program Instance null_respects `{Eq k} : Proper (equiv ==> eq) null.
+Next Obligation.
+  repeat intro.
+  generalize dependent y.
+  induction x, y; simpl; intros; auto.
+  - specialize (H0 k0).
+    rewrite eqb_refl in H0.
+    discriminate.
+  - specialize (H0 k0).
+    rewrite eqb_refl in H0.
+    discriminate.
+Qed.
 
 Fixpoint size (m : Map k v) : nat :=
   match m with

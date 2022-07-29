@@ -13,9 +13,9 @@ Section Map.
 
 Import ListNotations.
 
-Context {k v : Type}.
+Context {k v : Set}.
 
-Inductive Map (k v : Type) : Type :=
+Inductive Map (k v : Set) : Set :=
   | Add : k → v → Map k v → Map k v
   | Empty : Map k v.
 
@@ -32,7 +32,7 @@ Fixpoint lookup `{Eq k} (i : k) (m : Map k v) : option v :=
   end.
 
 #[export]
-Program Instance Map_Typeoid `{Eq k} : Setoid (Map k v) := {|
+Program Instance Map_Setoid `{Eq k} : Setoid (Map k v) := {|
   equiv := λ m1 m2, ∀ k, lookup k m1 = lookup k m2
 |}.
 Next Obligation.
@@ -182,7 +182,7 @@ Fixpoint alter `{Eq k} (f : option v → option v) (i : k) (m : Map k v) : Map k
       else Add i' x' (alter f i m)
   end.
 
-Context {b : Type}.
+Context {b : Set}.
 
 Fixpoint map (f : v → b) (m : Map k v) : Map k b :=
   match m with

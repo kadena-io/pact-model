@@ -26,6 +26,7 @@ Qed.
 From Equations Require Import Equations.
 Set Equations With UIP.
 
+#[export]
 Program Instance Eq_EqDec `{Eq A} : EqDec A.
 Next Obligation.
   destruct (eqb x y) eqn:Heqe.

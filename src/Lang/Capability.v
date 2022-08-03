@@ -93,14 +93,10 @@ Proof.
 Qed.
 
 Definition __in_defcap (env : PactState) : bool :=
-  if in_dec EvalContext_EqDec InWithCapability (env ^_ context)
-  then true
-  else false.
+  in_dec EvalContext_EqDec InWithCapability (env ^_ context).
 
 Definition __in_module (name : string) (env : PactState) : bool :=
-  if in_dec EvalContext_EqDec (InModule name) (env ^_ context)
-  then true
-  else false.
+  in_dec EvalContext_EqDec (InModule name) (env ^_ context).
 
 (* The functions below all take [predicate] and [manager] functions because
    name resolution must happen in the parser, since capability predicates can

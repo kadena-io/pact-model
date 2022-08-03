@@ -2,7 +2,8 @@ Set Warnings "-notation-overridden".
 
 Require Import
   Hask.Control.Monad
-  Pact.Data.RWSE
+  Hask.Control.Monad.Trans.State
+  Pact.Data.Either
   Pact.Lib
   Pact.Ty
   Pact.Value
@@ -69,14 +70,6 @@ Definition curry {Γ a b c} (f : Exp Γ (a × b ⟶ c)) : Exp Γ (a ⟶ b ⟶ c)
 Definition uncurry {Γ a b c} (f : Exp Γ (a ⟶ b ⟶ c)) : Exp Γ (a × b ⟶ c) :=
   LAM (APP (APP (wk f) (Fst (VAR ZV))) (Snd (VAR ZV))).
 
-#[local] Hint Unfold Either.Either_map : core.
-#[local] Hint Unfold RWSE_ap : core.
-#[local] Hint Unfold RWSE_join : core.
-#[local] Hint Unfold Tuple.first : core.
-#[local] Hint Unfold id : core.
-#[local] Hint Unfold composition : core.
-#[local] Hint Unfold identity : core.
-
 Lemma SemExp_identity {Γ τ} (E : SemEnv Γ) :
   ⟦ E ⊨ identity Γ τ ⟧ = pure pure.
 Proof. now f_equal. Qed.
@@ -91,19 +84,19 @@ Proof.
   fold (SemTy (m:=PactM)).
   unfold composition.
   simp SemExp; simpl.
-  autounfold.
-  rwse.
+  unravel.
+  extensionality st.
   repeat f_equal.
   extensionality x.
   simp SemExp; simpl.
-  autounfold.
-  rwse.
+  unravel.
+  extensionality st0.
   rewrite SemExp_wk.
-  destruct (⟦ E ⊨ f ⟧ _ _); auto.
+  destruct (⟦ E ⊨ f ⟧ _); auto.
   destruct p, p; simpl.
   rewrite SemExp_wk.
-  destruct (⟦ E ⊨ g ⟧ _ _); auto.
-  destruct p1, p1; simpl.
+  destruct (⟦ E ⊨ g ⟧ _); auto.
+  destruct p, p; simpl.
   sauto.
 Qed.
 
@@ -118,11 +111,12 @@ Proof.
   fold (SemTy (m:=PactM)).
   f_equal.
   extensionality y.
-  rwse; simpl; autounfold.
+  extensionality st; simpl; unravel.
   rewrite H0 /=.
+  unfold identity.
   simp SemExp; simpl.
   simp SemExp; simpl.
-  sauto.
+  now destruct (x _ _).
 Qed.
 
 Lemma SemExp_composition_identity_left `(E : SemEnv Γ)
@@ -136,13 +130,14 @@ Proof.
   fold (SemTy (m:=PactM)).
   f_equal.
   extensionality y.
-  rwse; simpl; autounfold.
+  extensionality st; simpl; unravel.
   rewrite H0 /=.
   simp SemExp; simpl.
-  destruct (x _ _ _); auto.
-  destruct p, p; simpl.
+  unfold identity.
   simp SemExp; simpl.
-  sauto lq: on.
+  destruct (x _ _); auto.
+  destruct p, p; simpl.
+  now simp SemExp; simpl.
 Qed.
 
 Lemma SemExp_composition_assoc `(E : SemEnv Γ)
@@ -164,7 +159,7 @@ Proof.
   fold (SemTy (m:=PactM)).
   f_equal.
   extensionality y.
-  rwse; simpl; autounfold.
+  extensionality st; simpl; unravel.
   rewrite H2 H3 H4; simpl.
   sauto.
 Qed.
@@ -192,14 +187,15 @@ Program Instance composition_respects {Γ τ τ' τ''} :
   Proper (equiv ==> equiv ==> equiv) (@composition Γ τ τ' τ'').
 Next Obligation.
   repeat intro.
+  unfold composition.
   simp SemExp; f_equal.
-  extensionality x2.
+  extensionality x1.
   simp SemExp.
   f_equal; [|rewrite !SemExp_wk H //].
   extensionality f.
   fold (SemTy (m:=PactM)) in f.
-  rwse.
-  simpl; autounfold.
+  extensionality st.
+  simpl; unravel.
   rewrite !SemExp_wk H0 //.
 Qed.
 
@@ -247,13 +243,13 @@ Next Obligation.
   destruct (SemExp_ValueP se H0) as [f' H3].
   destruct (SemExp_ValueP se H)  as [g' H4].
   rewrite {}H3 {}H4.
-  rwse.
+  extensionality st.
   simpl.
   repeat f_equal.
   extensionality arg.
   fold (SemTy (m:=PactM)) in arg.
   simpl in *.
-  rwse.
+  extensionality st0.
   destruct (f' arg), (g' arg); try tauto.
   f_equal.
 Admitted.

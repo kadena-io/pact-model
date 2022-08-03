@@ -12,14 +12,15 @@ module Pact (
   module Lang,
   module Types,
   eval,
-  evalInModule
+  evalInModule,
+  Eval.PactLog(..)
 
 ) where
 
 import qualified Eval
 import Util.Types as Types
 import Lang
-import Value hiding (Any, __, reifyTy)
+import Value hiding (Any, __, reifyTy, unsafeCoerce)
 import Ty
 import qualified CapabilityType
 
@@ -29,7 +30,7 @@ deriving instance Show Value.ValueTy
 deriving instance Show CapabilityType.CapSig
 deriving instance Show CapabilityType.CapError
 deriving instance Show Lang.Err
-deriving instance Show Lang.PactLog
+deriving instance Show Eval.PactLog
 
 deriving instance Eq Ty.PrimType
 deriving instance Eq Ty.Ty
@@ -37,7 +38,7 @@ deriving instance Eq Value.ValueTy
 deriving instance Eq CapabilityType.CapSig
 deriving instance Eq CapabilityType.CapError
 deriving instance Eq Lang.Err
-deriving instance Eq Lang.PactLog
+deriving instance Eq Eval.PactLog
 
 instance Show CapabilityType.Cap where
   show (CapabilityType.Token name _x _y) =
@@ -50,13 +51,13 @@ instance Eq CapabilityType.Cap where
 eval
   :: forall t. ReifyTy t
   => Types.Exp '[] t
-  -> Either Lang.Err (SemTy t, Lang.PactLog)
+  -> Either Lang.Err (SemTy t, Eval.PactLog)
 eval e = unsafeCoerce $ Eval.eval (reifyTy @t) (forgetExp e)
 
 evalInModule
   :: forall t. ReifyTy t
   => String
   -> Types.Exp '[] t
-  -> Either Lang.Err (SemTy t, Lang.PactLog)
+  -> Either Lang.Err (SemTy t, Eval.PactLog)
 evalInModule name e =
   unsafeCoerce $ Eval.evalInModule name (reifyTy @t) (forgetExp e)

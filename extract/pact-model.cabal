@@ -54,6 +54,7 @@ library
       Monad
       Monoid
       Nat
+      Prelude0
       Ren
       RWSE
       SemBltn
@@ -62,6 +63,7 @@ library
       SemTy
       Specif
       Ssrbool
+      State
       String
       Tuple
       Ty

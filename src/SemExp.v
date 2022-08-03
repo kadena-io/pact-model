@@ -1,7 +1,8 @@
 Require Import
   Hask.Control.Monad
+  Hask.Control.Monad.Trans.State
+  Pact.Data.Either
   Pact.Data.IList
-  Pact.Data.RWSE
   Pact.Lib
   Pact.Ty
   Pact.Bltn
@@ -56,10 +57,10 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
 
   SemExp Error     _ := throw Err_Expr;
   SemExp (Catch e) _ :=
-    λ r s,
-      match SemExp e se r s with
-      | inl err           => pure (inl tt) r s
-      | inr (v, (s', w')) => inr (inr v, (s', w'))
+    λ s,
+      match SemExp e se s with
+      | inl err     => pure (inl tt) s
+      | inr (v, s') => inr (inr v, s')
       end;
 
   SemExp (Symbol n) _ := pure n;
@@ -169,7 +170,7 @@ Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
   ValueP e -> ∃ x, ⟦ se ⊨ e ⟧ = pure x.
 Proof.
   induction 1; reduce; simp SemExp;
-  eexists; rwse; sauto lq: on.
+  eexists; extensionality st; sauto lq: on.
 Qed.
 
 Definition expM τ := PactM (SemTy (m:=PactM) τ).
@@ -186,30 +187,27 @@ Arguments pureP {_} _ {_} _ _ /.
    error. *)
 Definition safeP `(se : SemEnv Γ)
   `(v : Exp Γ τ) (x : SemTy (m:=PactM) τ) : Prop :=
-  ∀ r s, ∃ s' w, ⟦ se ⊨ v ⟧ r s = inr (x, (s', w)).
+  ∀ s, ∃ s', ⟦ se ⊨ v ⟧ s = inr (x, s').
 
 Arguments safeP {_} _ {_} _ _ /.
 
 Definition eval `(e : Exp [] τ) s (v : ⟦τ⟧) s' :=
-  ∀ r, ∃ w, ⟦ e ⟧ r s = inr (v, (s', w)).
+  ⟦ e ⟧ s = inr (v, s').
 
-Notation "e ~[ s => v ]~> t" :=
-  (eval e s t v) (at level 40, v at next level, t at next level).
+Notation "e ~[ s => u ]~> t" :=
+  (eval e s t u) (at level 40, u at next level, t at next level).
 
-Lemma sem_app_lam `(e : Exp [dom] cod) (v : Exp [] dom) x r s s' :
+Lemma sem_app_lam `(e : Exp [dom] cod) (v : Exp [] dom) x s s' :
   v ~[ s => s' ]~> x →
-  ⟦ APP (LAM e) v ⟧ r s = ⟦ (x, tt) ⊨ e ⟧ r s'.
+  ⟦ APP (LAM e) v ⟧ s = ⟦ (x, tt) ⊨ e ⟧ s'.
 Proof.
   unfold eval.
   intros.
   simp SemExp; simpl.
   autounfold.
-  specialize (H r).
-  reduce.
-  unfold RWSE_join.
-  unfold Pact.Data.Either.Either_map.
-  unfold Tuple.first.
+  unfold StateT_join, Ltac.comp, Prelude.apply, Tuple.curry.
+  simpl.
+  unfold Either_map, Either_join, Tuple.first.
   rewrite H.
-  destruct (⟦ (x, tt) ⊨ e ⟧ r s'); auto.
-  sauto lq: on.
+  destruct (⟦ (x, tt) ⊨ e ⟧ s'); auto.
 Qed.

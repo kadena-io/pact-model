@@ -1,13 +1,14 @@
 Require Import
   Hask.Control.Monad
+  Hask.Control.Monad.Trans.State
+  Pact.Data.Either
   Pact.Data.Monoid
   Pact.Lib
   Pact.Value
   Pact.SemTy
   Pact.Lang
   Pact.Lang.CapabilityType
-  Hask.Control.Lens
-  Pact.Data.RWSE.
+  Hask.Control.Lens.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -91,12 +92,12 @@ Proof.
       contradiction.
 Qed.
 
-Definition __in_defcap (env : PactEnv) : bool :=
+Definition __in_defcap (env : PactState) : bool :=
   if in_dec EvalContext_EqDec InWithCapability (env ^_ context)
   then true
   else false.
 
-Definition __in_module (name : string) (env : PactEnv) : bool :=
+Definition __in_module (name : string) (env : PactState) : bool :=
   if in_dec EvalContext_EqDec (InModule name) (env ^_ context)
   then true
   else false.
@@ -112,17 +113,17 @@ Definition __in_module (name : string) (env : PactEnv) : bool :=
    [install-capability] directly, or by the chain calling this function if it
    sees a signed capability as part of a transaction. *)
 Definition install_capability `(c : Cap s) : PactM unit :=
-  env <- ask ;
+  env <- getT ;
   (* jww (2022-07-26): Can install happen inside module code? *)
   if __in_defcap env
   then
     throw (Err_Capability c CapErr_CannotInstallInDefcap)
   else
-    modify (over resources (set_cap c)).
+    modifyT (over resources (set_cap c)).
 
 Definition __claim_resource `(c : Cap s)
-           (manager : reflectTy (valueTy s) * reflectTy (valueTy s) →
-                      PactM (reflectTy (valueTy s))) : PactM unit :=
+  (manager : reflectTy (valueTy s) * reflectTy (valueTy s) →
+             PactM (reflectTy (valueTy s))) : PactM unit :=
   (* Check the current amount of resource associated with this capability, and
      whether the requested amount is available. If so, update the available
      amount. Note: unit is used to represent unmanaged capabilities. *)
@@ -130,14 +131,25 @@ Definition __claim_resource `(c : Cap s)
   then
     pure tt                     (* unit is always available *)
   else
-    st <- get ;
-    match get_cap c (st ^_ resources) with
-    | None => throw (Err_Capability c CapErr_NoResourceAvailable)
+    rs <- getsT (view resources) ;
+    match get_cap c rs with
+    | None =>
+        throw (Err_Capability c CapErr_NoResourceAvailable)
+
     | Some amt =>
-      let '(Token n p req) := c in
-      amt' <- manager (amt, req) ;
-      put (st &+ resources %~ set_cap (Token n p amt'))
+        let '(Token n p req) := c in
+        amt' <- manager (amt, req) ;
+        modifyT (over resources (set_cap (Token n p amt')))
     end.
+
+Definition __check_capability `(c : Cap s)
+  `(predicate : Cap s → PactM unit)
+  (manager : reflectTy (TPair (valueTy s) (valueTy s)) →
+             PactM (reflectTy (valueTy s))) : PactM unit :=
+  localize context (cons InWithCapability)
+    ( predicate c ;;
+      __claim_resource c manager
+    ).
 
 (** [with_capability] grants a capability [C] to the evaluation of [f].
 
@@ -163,13 +175,13 @@ Definition __claim_resource `(c : Cap s)
     exception. [install_capability] sets the initial amount of the
     resource. *)
 Definition with_capability (module : string) `(c : Cap s)
-           `(predicate : Cap s → PactM unit)
-           (manager : reflectTy (TPair (valueTy s) (valueTy s)) →
-                      PactM (reflectTy (valueTy s)))
-           `(f : PactM a) : PactM a :=
+  `(predicate : Cap s → PactM unit)
+  (manager : reflectTy (TPair (valueTy s) (valueTy s)) →
+             PactM (reflectTy (valueTy s)))
+  `(f : PactM a) : PactM a :=
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
-  env <- ask ;
+  env <- getT ;
   if get_cap c (env ^_ granted)
   then
     f
@@ -188,28 +200,24 @@ Definition with_capability (module : string) `(c : Cap s)
            could do is throw an exception. But since this is semantically
            equivalent to throwing the same exception at the end of the predicate,
            there is no reason to avoid this invocation in that case. *)
-        local (over context (cons InWithCapability))
-          ( predicate c ;;
-            __claim_resource c manager
-          ) ;;
+        __check_capability c predicate manager ;;
 
-        st <- get ;
-        put (st &+ to_compose .~ []) ;;
+        composed <- exchange to_compose [] ;
 
         (* The process of "granting" consists merely of making the capability
            visible in the reader environment to the provided expression. *)
-        local (over granted (app (AToken c :: st ^_ to_compose)))
+        localize granted (app (AToken c :: composed))
           f
       else
         throw (Err_Capability c CapErr_CannotWithOutsideDefcapModule).
 
 Definition compose_capability (module : string) `(c : Cap s)
-           `(predicate : Cap s → PactM unit)
-           (manager : reflectTy (TPair (valueTy s) (valueTy s)) →
-                      PactM (reflectTy (valueTy s))) : PactM unit :=
+  `(predicate : Cap s → PactM unit)
+  (manager : reflectTy (TPair (valueTy s) (valueTy s)) →
+             PactM (reflectTy (valueTy s))) : PactM unit :=
   (* Check whether the capability has already been granted. If so, this
      operation is a no-op. *)
-  env <- ask ;
+  env <- getT ;
   if get_cap c (env ^_ granted)
   then
     pure tt
@@ -218,12 +226,9 @@ Definition compose_capability (module : string) `(c : Cap s)
     then
       if __in_module module env
       then
-        local (over context (cons InWithCapability))
-          ( predicate c ;;
-            __claim_resource c manager
-          ) ;;
+        __check_capability c predicate manager ;;
 
-        modify (over to_compose (cons (AToken c)))
+        modifyT (over to_compose (cons (AToken c)))
       else
         throw (Err_Capability c CapErr_CannotComposeOutsideDefcapModule)
     else
@@ -235,7 +240,7 @@ Definition require_capability `(c : Cap s) : PactM unit :=
 
      Requiring a capability means checking whether it has been granted at any
      point within the current scope of evaluation. *)
-  env <- ask ;
+  env <- getT ;
   if get_cap c (env ^_ granted)
   then
     pure tt

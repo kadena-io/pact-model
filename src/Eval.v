@@ -23,15 +23,21 @@ Set Primitive Projections.
 
 Import ListNotations.
 
+Record PactLog : Set := MkLog {
+  entry : unit
+}.
+
+Definition newPactLog : PactLog :=
+  MkLog tt.
+
 Definition eval `(e : [] ⊢ τ) : Err + (⟦τ⟧ * PactLog) :=
-  match SemExp e tt newPactEnv newPactState with
+  match SemExp e tt newPactState with
   | inl err => inl err
-  | inr (result, (_finalState, log)) => inr (result, log)
+  | inr (result, _finalState) => inr (result, newPactLog)
   end.
 
 Definition evalInModule (nm : string) `(e : [] ⊢ τ) : Err + (⟦τ⟧ * PactLog) :=
-  match SemExp e tt (newPactEnv &+ context %~ cons (InModule nm))
-               newPactState with
+  match SemExp e tt (newPactState &+ context %~ cons (InModule nm)) with
   | inl err => inl err
-  | inr (result, (_finalState, log)) => inr (result, log)
+  | inr (result, _finalState) => inr (result, newPactLog)
   end.

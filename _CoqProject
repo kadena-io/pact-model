@@ -8,8 +8,6 @@ src/Data/Eq.v
 src/Data/Ord.v
 src/Data/Map.v
 src/Data/MapSet.v
-src/Data/RWSE.v
-src/Data/RWSET.v
 src/Data/Dijkstra.v
 src/Effects/Comp.v
 src/Effects/Eff.v
@@ -36,7 +34,6 @@ src/Lang/CapabilityFacts.v
 src/SemBltn.v
 src/SemExp.v
 src/SemRen.v
-src/SemSub.v
 src/Eval.v
 src/Cat.v
 extract/src/Extract.v

@@ -13,7 +13,7 @@ import qualified System.IO.Unsafe
 END_IMPORTS
 
 while (<>) {
-    s/import qualified Prelude/$imports/;
+    s/import qualified Prelude$/$imports/;
     s/unsafeCoerce :: a -> b/--unsafeCoerce :: a -> b/;
     s/'\\000'/0/g;
 

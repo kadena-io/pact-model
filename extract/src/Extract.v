@@ -201,6 +201,8 @@ Set Extraction Optimize.
 Set Extraction AccessOpaque.
 Set Extraction Conservative Types.
 
+Extraction Blacklist Prelude.
+
 Separate Extraction
   Pact.Ty.Ty
   Pact.Exp.Var

@@ -1,7 +1,8 @@
 Require Import
   Pact.Lib
   Pact.Value
-  Pact.Data.RWSE.
+  Hask.Control.Monad.Trans.State
+  Pact.Data.Either.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

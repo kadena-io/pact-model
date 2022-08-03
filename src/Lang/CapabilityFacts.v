@@ -1,7 +1,8 @@
 Require Import
   Hask.Control.Monad
+  Hask.Control.Monad.Trans.State
   Pact.Data.Monoid
-  Pact.Data.RWSE
+  Pact.Data.Either
   Pact.Lib
   Pact.Ty
   Pact.Value
@@ -36,24 +37,6 @@ Proof.
   rewrite /= !eq_dec_refl //.
 Qed.
 
-Ltac unravel :=
-  repeat rewrite
-    /Datatypes.id
-    /Either.Either_map
-    /Lens.over
-    /Lens.view
-    /Lens.set
-    /RWSE_join
-    /Tuple.first
-    /granted
-    /local
-    /ask
-    /asks
-    /get
-    /gets
-    /stepdownl'
-    /=.
-
 Theorem with_capability_idem
   (n : string) `(c : Cap s)
   (p : Cap s → PactM unit)
@@ -63,15 +46,18 @@ Theorem with_capability_idem
   with_capability n c p m (with_capability n c p m f) =
   with_capability n c p m f.
 Proof.
-  rewrite /with_capability.
-  unravel; rwse.
+  rewrite /with_capability /__check_capability.
+  unravel.
+  extensionality st.
   matches.
   - rewrite Heqe //.
     sauto.
   - do 2 matches.
-    destruct (p _ _ _) as [|[? [? ?]]]; auto.
-    destruct (__claim_resource _ _ _ _) as [|[? [? ?]]]; auto.
-    rewrite get_cap_head //.
+    destruct (p _ _) as [|[? [? ?]]]; auto.
+    simpl.
+    destruct (__claim_resource _ _ _) as [|[? [? ?]]]; auto.
+    simpl.
+    rewrite get_cap_head //=.
     sauto.
 Qed.
 
@@ -80,7 +66,7 @@ Theorem require_capability_idem (n : string) `(c : Cap s) :
    require_capability c.
 Proof.
   rewrite /require_capability.
-  unravel; rwse.
+  unravel; extensionality st.
   now repeat matches.
 Qed.
 
@@ -99,54 +85,51 @@ Theorem with_require_sometimes_noop
        PactM (reflectTy (valueTy s))) :
 
   (* Assuming we are NOT within a defcap predicate... *)
-  asks __in_defcap = pure false →
+  getsT __in_defcap = pure[PactM] false →
 
   (* Assuming we ARE within the defining module... *)
-  asks (__in_module n) = pure true →
+  getsT (__in_module n) = pure[PactM] true →
 
   (* Assuming the predicate always succeeds and changes nothing... *)
-  p c = pure tt →
+  p c = pure[PactM] tt →
 
   (* Assuming composed predicates only occur within a defcap: This should be
      true of the system as a whole, but this theorem is quantified over all
      possible states. *)
-  (asks __in_defcap = pure false → gets _to_compose = pure []) →
+  (getsT __in_defcap = pure[PactM] false → getsT _to_compose = pure[PactM] []) →
 
   (* Assuming that the resource type is unit...  *)
   ∀ H, eq_dec (valueTy s) TUnit = left H ->
 
   (* Then just checking a capability is the same as doing nothing. *)
-  with_capability n c p m (require_capability c) = pure tt.
+  with_capability n c p m (require_capability c) = pure[PactM] tt.
 
 Proof.
-  rewrite /with_capability /require_capability; intros.
-  unravel; rwse.
+  rewrite /with_capability /require_capability /__check_capability; intros.
+  unravel; extensionality st.
   matches.
   - rewrite Heqe //.
   - matches.
     + exfalso.
-      apply extend_f with (x:=r) in H.
-      apply extend_f with (x:=s0) in H.
+      apply extend_f with (x:=st) in H.
       inv H.
       congruence.
     + matches.
-      * destruct (p _ _ _) as [|[? [? ?]]] eqn:Heqe2; auto.
+      * destruct (p _ _) as [|[? [? ?]]] eqn:Heqe2; auto.
         ** rewrite H1 in Heqe2.
            discriminate.
         ** unfold __claim_resource.
            rewrite H4 /= get_cap_head /=.
            pose proof (H2 H).
-           unfold gets in H5.
-           apply extend_f with (x:=r) in H5.
-           apply extend_f with (x:=s0) in H5.
+           unfold getsT in H5.
+           apply extend_f with (x:=st) in H5.
            inv H5.
            rewrite H1 in Heqe2.
            inv Heqe2.
            reflexivity.
       * exfalso.
-        unfold asks in H0.
-        apply extend_f with (x:=r) in H0.
-        apply extend_f with (x:=s0) in H0.
+        unfold getsT in H0.
+        apply extend_f with (x:=st) in H0.
         inv H0.
         congruence.
 Qed.

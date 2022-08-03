@@ -1,6 +1,7 @@
 Require Import
   Hask.Control.Monad
-  Pact.Data.RWSE
+  Hask.Control.Monad.Trans.State
+  Pact.Data.Either
   Pact.Lib
   Pact.Ty
   Pact.Exp
@@ -21,11 +22,6 @@ Generalizable All Variables.
 Set Primitive Projections.
 
 Import ListNotations.
-
-#[local] Hint Unfold RWSE_join : core.
-#[local] Hint Unfold RWSE_ap : core.
-#[local] Hint Unfold Pact.Data.Either.Either_map : core.
-#[local] Hint Unfold Tuple.first : core.
 
 Equations SemSub {Γ Γ'} (s : Sub Γ Γ') (se : SemEnv Γ) : PactM (SemEnv Γ') :=
   SemSub NoSub      se := pure tt;

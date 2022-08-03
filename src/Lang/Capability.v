@@ -110,12 +110,15 @@ Definition __in_module (name : string) (env : PactState) : bool :=
    sees a signed capability as part of a transaction. *)
 Definition install_capability `(c : Cap s) : PactM unit :=
   env <- getT ;
-  (* jww (2022-07-26): Can install happen inside module code? *)
   if __in_defcap env
   then
     throw (Err_Capability c CapErr_CannotInstallInDefcap)
   else
-    modifyT (over resources (set_cap c)).
+    rs <- getsT (view resources) ;
+    match get_cap c rs with
+    | None   => modifyT (over resources (set_cap c))
+    | Some _ => pure tt
+    end.
 
 Definition __claim_resource `(c : Cap s)
   (manager : reflectTy (valueTy s) * reflectTy (valueTy s) →

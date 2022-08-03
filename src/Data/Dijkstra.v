@@ -1,5 +1,5 @@
 Require Import Coq.Arith.Arith.
-Require Import Pact.Lib.
+Require Import Coq.Unicode.Utf8.
 Require Import Hask.Control.Monad.
 Require Import Hask.Control.Monad.Cont.
 Require Import Hask.Control.Monad.State.
@@ -9,6 +9,15 @@ Require Import Hask.Control.Monad.Trans.Either.
 Require Import Hask.Data.Functor.Identity.
 Require Import Pact.Data.Either.
 Require Import Coq.Classes.RelationClasses.
+Require Import FunctionalExtensionality.
+
+From Hammer Require Export Tactics Hammer.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
+Set Equations With UIP.
 
 Generalizable All Variables.
 Set Primitive Projections.
@@ -31,6 +40,7 @@ Class Order W `{Monad W} := {
   trans :> ∀ A, Transitive (@wle A)
 }.
 
+Arguments Order W {_}.
 Arguments wle {_ _ _} {_}.
 
 Notation "x ≤ᵂ y" := (wle x y) (at level 80).
@@ -97,18 +107,18 @@ Ltac calculate :=
     EitherT_Monad
     EitherT_MonadTrans
     EitherT_join
-    EitherT_pure
     EitherT_map
+    EitherT_pure
     Either_Applicative
     Either_Functor
     Either_Monad
     Either_join
     Either_map
-    Hask.Data.Either.Either_Functor
     Hask.Data.Either.Either_Applicative
+    Hask.Data.Either.Either_Functor
     Hask.Data.Either.Either_Monad
-    Hask.Data.Either.Either_map
     Hask.Data.Either.Either_join
+    Hask.Data.Either.Either_map
     Identity_Applicative
     Identity_Functor
     Identity_Monad
@@ -128,7 +138,6 @@ Ltac calculate :=
     State_Monad
     Tuple.curry
     Tuple.first
-    lift
     bind
     comp
     fmap
@@ -136,6 +145,7 @@ Ltac calculate :=
     is_applicative
     is_functor
     join
+    lift
     modifyT
     pure
     putT
@@ -178,23 +188,29 @@ Definition θ : observation M W := λ _ c s p, p (c s).
 
 #[export]
 Program Instance θ_LaxMorphism : LaxMorphism θ.
-Next Obligation. sauto. Qed.
-
-#[export]
-Program Instance θ_Morphism : Morphism θ.
 Next Obligation.
   unfold θ in *.
   calculate; sauto.
 Qed.
 
-Definition ST (A : Type) (w : W A) := ∑ c : M A, θ _ c ≤ᵂ w.
+#[export]
+Program Instance θ_Morphism : Morphism θ.
+Next Obligation.
+  unfold θ in *.
+  calculate.
+  extensionality s0.
+  extensionality p.
+  sauto.
+Qed.
+
+Definition ST (A : Type) (w : W A) := ∑ c : M A, θ c ≤ᵂ w.
 
 #[export]
 Program Instance ST_Dijkstra : DijkstraMonad ST := {|
   retᴰ := λ _ x, (pure[M] x; _);
-  bindᴰ := λ A B w wf (c : ST A w) (f : ∀ x, ST B (wf x)),
+  bindᴰ := λ A B w wf (c : ST w) (f : ∀ x, ST (wf x)),
     (bind (m:=M) (λ x, projT1 (f x)) (projT1 c); _);
-  subcompᴰ := λ A w w' (c : ST A w) (h : w ≤ᵂ w'), _
+  subcompᴰ := λ A w w' (c : ST w) (h : w ≤ᵂ w'), _
 |}.
 Next Obligation.
   unfold θ in *.
@@ -209,16 +225,9 @@ Defined.
 Next Obligation.
   sauto.
 Defined.
-Next Obligation.
-  unfold θ in *.
-  calculate.
-  extensionality s0;
-  sauto.
-Defined.
 
-Program Definition liftST0 `(f : M a) : ST a (θ _ f) := (f; _).
-Program Definition liftST1 `(f : a → M b) (x : a) :
-  ST b (θ _ (f x)) := (f x; _).
+Program Definition liftST0 `(f : M a) : ST (θ f) := (f; _).
+Program Definition liftST1 `(f : a → M b) (x : a) : ST (θ (f x)) := (f x; _).
 
 Definition getST := liftST0 State.get.
 Definition putST := liftST1 State.put.
@@ -248,7 +257,7 @@ Definition algorithm : M nat nat :=
     pure (n + 100)
   else pure 0.
 
-Definition algorithmST := liftST0 _ algorithm.
+Definition algorithmST := liftST0 algorithm.
 
 Goal True.
   pose algorithmST.
@@ -302,7 +311,6 @@ Definition θbot : observation M W := λ _ c s p,
 
 #[export]
 Program Instance θbot_LaxMorphism : LaxMorphism θbot.
-Next Obligation. sauto. Qed.
 Next Obligation.
   unfold θbot in *.
   calculate; sauto.
@@ -341,15 +349,15 @@ Next Obligation.
   sauto.
 Qed.
 
-Definition STbot (A : Type) (w : W A) := ∑ c : M A, θbot _ c ≤ᵂ w.
-Definition STtop (A : Type) (w : W A) := ∑ c : M A, θtop _ c ≤ᵂ w.
+Definition STbot (A : Type) (w : W A) := ∑ c : M A, θbot c ≤ᵂ w.
+Definition STtop (A : Type) (w : W A) := ∑ c : M A, θtop c ≤ᵂ w.
 
 #[export]
 Program Instance STbot_Dijkstra : DijkstraMonad STbot := {|
   retᴰ := λ _ x, (pure[M] x; _);
-  bindᴰ := λ A B w wf (c : STbot A w) (f : ∀ x, STbot B (wf x)),
+  bindᴰ := λ A B w wf (c : STbot w) (f : ∀ x, STbot (wf x)),
     (bind (m:=M) (λ x, projT1 (f x)) (projT1 c); _);
-  subcompᴰ := λ A w w' (c : STbot A w) (h : w ≤ᵂ w'), _
+  subcompᴰ := λ A w w' (c : STbot w) (h : w ≤ᵂ w'), _
 |}.
 Next Obligation.
   unfold θbot in *.
@@ -373,9 +381,9 @@ Defined.
 #[export]
 Program Instance STtop_Dijkstra : DijkstraMonad STtop := {|
   retᴰ := λ _ x, (pure[M] x; _);
-  bindᴰ := λ A B w wf (c : STtop A w) (f : ∀ x, STtop B (wf x)),
+  bindᴰ := λ A B w wf (c : STtop w) (f : ∀ x, STtop (wf x)),
     (bind (m:=M) (λ x, projT1 (f x)) (projT1 c); _);
-  subcompᴰ := λ A w w' (c : STtop A w) (h : w ≤ᵂ w'), _
+  subcompᴰ := λ A w w' (c : STtop w) (h : w ≤ᵂ w'), _
 |}.
 Next Obligation.
   unfold θtop in *.
@@ -396,13 +404,13 @@ Next Obligation.
   sauto.
 Defined.
 
-Program Definition liftSTbot0 `(f : M a) : STbot a (θbot _ f) := (f; _).
+Program Definition liftSTbot0 `(f : M a) : STbot (θbot f) := (f; _).
 Program Definition liftSTbot1 `(f : a → M b) (x : a) :
-  STbot b (θbot _ (f x)) := (f x; _).
+  STbot (θbot (f x)) := (f x; _).
 
-Program Definition liftSTtop0 `(f : M a) : STtop a (θtop _ f) := (f; _).
+Program Definition liftSTtop0 `(f : M a) : STtop (θtop f) := (f; _).
 Program Definition liftSTtop1 `(f : a → M b) (x : a) :
-  STtop b (θtop _ (f x)) := (f x; _).
+  STtop (θtop (f x)) := (f x; _).
 
 Definition getSTbot    := liftSTbot0 State.getT.
 Definition putSTbot    := liftSTbot1 State.putT.
@@ -445,13 +453,13 @@ Definition algorithm (x : nat) : M nat unit nat :=
   assert (Nat.even r) tt ;;
   pure (n + 100).
 
-Definition algorithmST := liftSTbot1 _ _ algorithm.
+Definition algorithmST := liftSTbot1 algorithm.
 
-Lemma if_fun {A B : Type} b (P Q : A → B) (x : A) :
+Lemma if_fun {A B : Type} (b : bool) (P Q : A → B) (x : A) :
   (if b then λ x, P x else λ x, Q x) x = if b then P x else Q x.
 Proof. sauto. Qed.
 
-Lemma match_if {A B C : Type} b (P Q : A + B) (F : A → C) (G : B → C) :
+Lemma match_if {A B C : Type} (b : bool) (P Q : A + B) (F : A → C) (G : B → C) :
   match (if b then P else Q) with
   | inl x => F x
   | inr x => G x
@@ -469,14 +477,12 @@ Lemma match_if {A B C : Type} b (P Q : A + B) (F : A → C) (G : B → C) :
     end.
 Proof. sauto. Qed.
 
-Lemma in_ST {A B C : Type} {P Q : W A B C} :
-  forall H : P = Q,
-  STbot A B C P = STbot A B C Q.
+Lemma in_ST {A B C : Type} {P Q : W A B C} : forall H : P = Q,
+  STbot P = STbot Q.
 Proof. sauto. Qed.
 
-Lemma in_STx {A B C D : Type} {P Q : D → W A B C} :
-  forall H : P = Q,
-  (∀ x : D, STbot A B C (P x)) = (∀ x : D, STbot A B C (Q x)).
+Lemma in_STx {A B C D : Type} {P Q : D → W A B C} : forall H : P = Q,
+  (∀ x : D, STbot (P x)) = (∀ x : D, STbot (Q x)).
 Proof. sauto. Qed.
 
 Ltac calc :=
@@ -492,7 +498,7 @@ Goal True.
     extensionality s0.
     extensionality p.
     extensionality x.
-    repeat rewrite !if_fun !match_if.
+    repeat rewrite !if_fun, !match_if.
     reflexivity.
   }
   simpl in s.

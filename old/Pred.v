@@ -321,6 +321,28 @@ Lemma wp_app_fun `(v : Exp [] dom) x `(e : Exp [dom] cod) :
   ⟦ (x, tt) ⊨ e ⟧ =====> ⟦APP (LAM e) v⟧.
 Proof. wp r quadruple_app_fun. Qed.
 
+(* This encodes a boolean predicate in positive normal form. *)
+Inductive Pred : Ty → Set :=
+  | P_True : Pred 𝔹
+  | P_False : Pred 𝔹
+  | P_Eq {τ} : Pred τ → Pred τ → Pred 𝔹
+  | P_Or : Pred 𝔹 → Pred 𝔹 → Pred 𝔹
+  | P_And : Pred 𝔹 → Pred 𝔹 → Pred 𝔹.
+
+#[local] Hint Constructors Pred : core.
+
+(*
+Equations wpc `(e : Exp [] τ) {τ'}
+  (Q : SemTy (m:=PactM) τ → state → Pred τ') Z :
+  state → Pred τ' :=
+  wpc (Lit l) Q Z := Q (SemLit l);
+  (* wpc (APP f v) Q Z := wp ⟦APP f v⟧ Q Z; *)
+  wpc (Seq e1 e2) Q Z := wpc e1 (λ _, wpc e2 Q Z) Z;
+  wpc (If b t e) Q Z :=
+    wpc b (λ b', if b' then wpc t Q Z else wpc e Q Z) Z;
+  wpc _ Q Z := _.
+*)
+
 (*
 Equations wpc `(e : Exp [] τ) (Q : vprop τ) Z : hprop :=
   wpc (Lit l) Q Z := Q (SemLit l);
@@ -330,25 +352,5 @@ Equations wpc `(e : Exp [] τ) (Q : vprop τ) Z : hprop :=
     wpc b (λ b', if b' then wpc t Q Z else wpc e Q Z) Z;
   wpc _ Q Z := _.
 *)
-
-(* This encodes a boolean predicate in positive normal form. *)
-Inductive Pred Γ : ∀ {τ}, Γ ⊢ τ → Set :=
-  | P_True : Pred (Γ:=Γ) (Lit (LitBool true))
-  | P_Or {τ} {x y : Γ ⊢ τ} : Pred x → Pred y → Pred (Pair x y)
-  | P_And {τ} {x y : Γ ⊢ τ} : Pred x → Pred y → Pred (Pair x y)
-
-  | P_APP {dom cod} {e1 : Γ ⊢ (dom ⟶ cod)} {e2 : Γ ⊢ dom} :
-    Pred e1 → Pred e2 → Pred (APP e1 e2)
-
-  | P_Car {τ} {xs : Γ ⊢ (TyList τ)} :
-    Pred xs → Pred (Car xs).
-
-#[local] Hint Constructors Pred : core.
-
-Inductive EnvPred : ∀ {Γ}, SemEnv Γ → Type :=
-  | Empty : EnvPred (Γ:=[]) tt
-  | Add {Γ τ} {e : Γ ⊢ τ} v se :
-    Pred e → ⟦ se ⊨ e⟧ = pure v → EnvPred se →
-    EnvPred (Γ:=τ :: Γ) (v, se).
 
 End Pred.

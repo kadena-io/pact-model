@@ -117,11 +117,11 @@ Definition runState {s r a} (st : s) : Eff (State s :: r) a -> Eff r (a * s) :=
 
 Require Import Hask.Control.Lens.
 
-Definition readonly `(l : Lens' s r) {effs} :
-  Eff (Reader r :: effs) ~> Eff (State s :: effs) :=
+Definition readonly {s effs} :
+  Eff (Reader s :: effs) ~> Eff (State s :: effs) :=
   reinterpret (fun _ f =>
     s <- get ;
-    pure (readerAlg (view l s) f)).
+    pure (readerAlg s f)).
 
 Definition focus `(l : Lens' s s') {effs} :
   Eff (State s' :: effs) ~> Eff (State s :: effs) :=
@@ -131,12 +131,11 @@ Definition focus `(l : Lens' s s') {effs} :
     put (set l t s') ;;
     pure a).
 
-Definition appendonly `(l : Lens' s w) `{Monoid w} {effs} :
-  Eff (Writer w :: effs) ~> Eff (State s :: effs) :=
+Definition appendonly `{Monoid s} {effs} :
+  Eff (Writer s :: effs) ~> Eff (State s :: effs) :=
   reinterpret (fun _ f =>
     let '(a, w) := writerAlg f in
-    modify (over l (mappend w)) ;;
-    pure a).
+    a <$ modify (mappend w)).
 
 Definition overM `(l : Lens s t a b) `{Functor f} : (a -> f b) -> s -> f t := l f _.
 Notation "l %%~ f" := (overM l f) (at level 40).
@@ -182,9 +181,9 @@ Definition sample {effs} :
 Definition example : Eff [State SomeState] unit :=
   subsume _
     (focus baz _
-        (appendonly (fun _ _ => id) _
+        (appendonly _
            (subsume _
               (focus bar _
                  (subsume _
                     (focus foo _
-                       (readonly (fun _ _ => id) _ sample))))))).
+                       (readonly _ sample))))))).

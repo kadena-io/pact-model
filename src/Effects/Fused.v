@@ -261,8 +261,8 @@ Equations stateTAlg {s sig m} `{Monad m} `{Algebra sig m} `{Functor ctx} {n a}
 
 #[export]
 Instance StateT_Algebra {s sig m} `{Monad m} :
-  Algebra sig m -> Algebra (State s :+: sig) (StateT s m) := fun H => {|
-  alg := @stateTAlg s _ _ _ _ H
+  Algebra sig m -> Algebra (State s :+: sig) (StateT s m) := fun _ => {|
+  alg _ _ _ _ := stateTAlg
 |}.
 
 Section State.
@@ -317,6 +317,44 @@ Definition example2 : unit * nat :=
 Require Import Hask.Control.Lens.
 Require Import Pact.Data.Monoid.
 
+Equations readOnlyStateTAlg {s sig m}
+  `{Monad m} `{Algebra sig m} `{Functor ctx} {n a}
+  (hdl : Handler ctx n (StateT s m))
+  (sg : (Reader s :+: sig) n a)
+  (u : ctx unit) : StateT s m (ctx a) :=
+  readOnlyStateTAlg hdl (L Ask) u := getsT (fun x => x <$ u);
+  readOnlyStateTAlg hdl (L (Local f x)) u :=
+    s <- getT ;
+    putT (f s) ;;
+    r <- hdl _ (x <$ u) ;
+    putT s ;;
+    pure r;
+  readOnlyStateTAlg hdl (R other) u :=
+    fun st => thread (ctx1:=fun a => a * s)
+                ((fun _ '(f, s') => f s') ~<~ hdl) other (u, st).
+
+Instance ReadOnly_State {s sg m} `{Monad m} :
+  Algebra sg m ->
+  Algebra (Reader s :+: sg) (StateT s m) := fun _ => {|
+  alg _ _ _ _ := readOnlyStateTAlg
+|}.
+
+(*
+Program Definition readonly
+  `{Member (State s) sg} `{A : Algebra sg m}
+  `(f : forall `{Member (Reader s) sg}, m a) : m a :=
+  @f _.
+Next Obligation.
+  constructor; intros.
+  apply inj.
+  inversion X; subst.
+  - exact (Get (m:=m0)).
+  - pose (st <- get ;
+           modify X0 ;;
+           res <- X1 ;
+           put st ;;
+           pure res).
+
 Program Definition focus `(l : Lens' s s')
   `{Member (State s) sg} `{A : Algebra sg m}
   `(f : forall `{Member (State s') sg}, m a) : m a :=
@@ -330,23 +368,6 @@ Next Obligation.
            res <- X1 ;
            put st ;;
            pure res).
-
-Program Definition readonly `(l : Lens' s r)
-  `{Member (State Foo) sg} `{A : Algebra sg m}
-  `(f : forall `{Member (Reader Foo) sg}, m a) : m a :=
-  @f _.
-Next Obligation.
-  constructor; intros.
-  apply inj.
-  inversion X; subst.
-  - exact (Get (m:=m0)).
-  - pose (st <- get ;
-           modify X0 ;;
-           res <- X1 ;
-           put st ;;
-           pure res).
-
-(*
 
 Definition appendonly `(l : Lens' s w) `{Monoid w} {effs} :
   Eff (Writer w :: effs) ~> Eff (State s :: effs) :=
@@ -395,6 +416,7 @@ Declare Instance Baz_Monoid : Monoid Baz.
 Definition sample3 `{Member (Reader Foo) sg} `{Algebra sg m} : m unit :=
   pure tt.
 
+(*
 Definition sample4 `{Member (State Foo) sg} `{A : Algebra sg m} : m unit :=
   @sample3 sg _ m _ A.
 
@@ -407,3 +429,4 @@ Definition example3 : Eff [State SomeState] unit :=
                  (subsume _
                     (focus foo _
                        (readonly (fun _ _ => id) _ sample))))))).
+*)

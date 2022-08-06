@@ -36,10 +36,13 @@ lemma Sum_SumSet(s: set<(string,real)>)
   decreases s
   ensures Sum(s) == SumSet(s)
 {
-  if s == {} {} else {
+  if s == {} {
+    assert Sum({}) == SumSet({});
+  } else {
     var item := Pick(s);
     assert Sum({item}) == SumSet({item});
     Sum_SumSet(s - { item });
+    assert Sum(s - { item }) == SumSet(s - { item });
   }
 }
 

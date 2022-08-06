@@ -1,8 +1,6 @@
-class guard {
-}
+include "sym.dfy"
 
-class coin_table {
-  var coin_balances : map<string, real>;
+class guard {
 }
 
 class coin {
@@ -62,54 +60,16 @@ class coin {
 
 //   (deftable coin-table:{coin-schema})
 
-// method len <K, V>(arr:[K]V) returns (int);
-// axiom (forall <K, V> A:[K]V :: len(A) >= 0);
+var coin_table_balance : map<string, real>;
 
-// method is_in <V>(i:int, arr:[int]V) returns (bool);
-// axiom (forall <V> i:int, arr:[int]V ::
-//   is_in(i, arr) ==> 0 <= i && i < len(arr));
-
-// method not_in <V>(i:int, arr:[int]V) returns (bool);
-// axiom (forall <V> i:int, arr:[int]V ::
-//   not_in(i, arr) ==> i < 0 || i >= len(arr));
-
-// method create_table();
-//   modifies coin_table#balance;
-//   ensures (forall k:TyString :: coin_table#balance[k] == 0.0);
-//   ensures len(coin_table#keys) == 0;
-// {
-//   assume len(coin_table#keys) == 0;
-//   coin_table#balance := (lambda k:TyString :: 0.0);
-// }
-
-var coins : coin_table;
-
-constructor(db:coin_table)
+constructor(pre_coin_table_balance:map<string, real>)
 {
-  coins := db;
+  coin_table_balance := pre_coin_table_balance;
 }
 
-// conserves-mass
-method map_sum(reals: set<real>) returns (r:real)
-{
-  r := 0.0;
-
-  var items := reals;
-  while items != {} decreases |items|
-  {
-    var item :| item in items;
-    items := items - { item };
-
-    r := r + item;
-  }
-}
-
-function SumSeq(s: seq<(string, real)>): real
-{
-  if s == [] then
-    0.0
-  else
-    s[0].1 + SumSeq(s[1..])
+// valid-account
+predicate valid_account(account:string) {
+  |account| >= 3 && |account| <= 256
 }
 
 function Pick<K>(s: set<K>): K
@@ -118,14 +78,27 @@ function Pick<K>(s: set<K>): K
   var x :| x in s; x
 }
 
-function Sum(s: set<(string, real)>): real
-{
-  if s == {} then
-    0.0
-  else
-    var item := Pick(s);
-    item.1 + Sum(s - { item })
-}
+// lemma drop_cardinality<K,V>(s1: map<K,V>, s2: map<K,V>)
+//   decreases s1, s2
+//   requires |s1| == |s2|
+//   requires forall k :: k in s1 <==> k in s2
+//   ensures forall k :: k in s1 ==> |s1 - {k}| == |s2 - {k}|
+// {
+//   if |s1| == 0 {} else {
+//     var k := Pick(s1.Keys);
+//     drop_cardinality(s1 - {k}, s2 - {k});
+//   }
+// }
+
+// lemma bijection_cardinality<K,V>(s1: map<K,V>, s2: map<K,V>)
+//   decreases s1, s2
+//   ensures |s1| == |s2| <==> forall k :: k in s1 <==> k in s2
+// {
+//   if |s1| == 0 {} else {
+//     var k := Pick(s1.Keys);
+//     bijection_cardinality(s1 - {k}, s2 - {k});
+//   }
+// }
 
 function Delta(s1: map<string, real>, s2: map<string, real>): real
   decreases s1, s2
@@ -138,98 +111,29 @@ function Delta(s1: map<string, real>, s2: map<string, real>): real
     (s1[k] - s2[k]) + Delta(s1 - { k }, s2 - { k })
 }
 
-// jww (2022-08-06): How do I prove that it doesn't matter what order you pick
-// elements in, the answer from Delta is always the same?
-
-// lemma DeltaLemma(s1: map<string, real>, s2: map<string, real>)
-//   requires forall k:string :: k in s1 <==> k in s2
-//   ensures forall k:string :: k in s1 ==>
-//     Delta(s1, s2) == (s1[k] - s2[k]) + Delta(s1 - { k }, s2 - { k })
+// function method DeltaSet(s1: map<string, real>, s2: map<string, real>) : (sum: real)
+//   ensures sum == Seq.Fold(Set.SeqOfSet(s), add, 0.0)
 // {
+//   Set.Fold(s, add, 0.0)
 // }
 
-lemma SumMyWay(s: set<(string, real)>, y: (string, real))
-  requires y in s
-  ensures Sum(s) == y.1 + Sum(s - {y})
-{
-  var x : (string, real) := Pick(s);
-  if y == x {
-  } else {
-    calc {
-      Sum(s);
-    ==  // def. Sum
-      x.1 + Sum(s - {x});
-    ==  { SumMyWay(s - {x}, y); }
-      x.1 + y.1 + Sum(s - {x} - {y});
-    ==  { assert s - {x} - {y} == s - {y} - {x}; }
-      y.1 + x.1 + Sum(s - {y} - {x});
-    ==  { SumMyWay(s - {y}, x); }
-      y.1 + Sum(s - {y});
-    }
-  }
-}
-
-lemma AddToSum(s: set<(string, real)>, y: (string, real))
-  requires y !in s
-  ensures Sum(s + {y}) == Sum(s) + y.1
-{
-  SumMyWay(s + {y}, y);
-}
-
-predicate IsTotalOrder<A(!new)>(R: (A, A) -> bool) {
-  // connexity
-  && (forall a, b :: R(a, b) || R(b, a))
-  // antisymmetry
-  && (forall a, b :: R(a, b) && R(b, a) ==> a == b)
-  // transitivity
-  && (forall a, b, c :: R(a, b) && R(b, c) ==> R(a, c))
-}
-
-function method MapToSequence<A(!new),B>(m: map<A,B>, R: (A, A) -> bool): seq<(A,B)>
-  requires IsTotalOrder(R)
-{
-  var keys := SetToSequence(m.Keys, (a,a') => R(a, a'));
-  seq(|keys|, i requires 0 <= i < |keys| => (keys[i], m[keys[i]]))
-}
-
-function method SetToSequence<A(!new)>(s: set<A>, R: (A, A) -> bool): seq<A>
-  requires IsTotalOrder(R)
-  ensures var q := SetToSequence(s, R);
-    forall i :: 0 <= i < |q| ==> q[i] in s
-{
-  if s == {} then [] else
-    ThereIsAMinimum(s, R);
-    var x :| x in s && forall y :: y in s ==> R(x, y);
-    [x] + SetToSequence(s - {x}, R)
-}
-
-lemma ThereIsAMinimum<A(!new)>(s: set<A>, R: (A, A) -> bool)
-  requires s != {} && IsTotalOrder(R)
-  ensures exists x :: x in s && forall y :: y in s ==> R(x, y)
-
-// valid-account
-predicate valid_account(account:string) {
-  |account| >= 3 && |account| <= 256
-}
-
 twostate function column_delta(): real
-  reads this, coins
-  requires forall k:string :: k in old(coins.coin_balances) <==> k in coins.coin_balances
+  reads this
+  requires forall k:string :: k in old(coin_table_balance) <==> k in coin_table_balance
 {
-  // Sum(old(coins.coin_balances.Items)) - Sum(coins.coin_balances.Items)
-  Delta(old(coins.coin_balances), coins.coin_balances)
+  Delta(old(coin_table_balance), coin_table_balance)
 }
 
 twostate predicate conserves_mass()
-  reads this, coins
-  requires forall k:string :: k in old(coins.coin_balances) <==> k in coins.coin_balances
+  reads this
+  requires forall k:string :: k in old(coin_table_balance) <==> k in coin_table_balance
 {
   column_delta() == 0.0
 }
 
 method sample_transfer(sender:string, receiver:string, amount:real)
   // this table is updated
-  modifies coins;
+  modifies this;
 
   // inputs arguments are valid
   requires amount >= 0.0;
@@ -238,33 +142,36 @@ method sample_transfer(sender:string, receiver:string, amount:real)
   requires sender != receiver
 
   // no accounts with negative balance before or after
-  requires forall k:string :: k in coins.coin_balances ==> coins.coin_balances[k] >= 0.0
-  ensures forall k:string :: k in coins.coin_balances ==> coins.coin_balances[k] >= 0.0
+  requires forall k:string :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+  ensures forall k:string :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
 
   // sender and receiver are present before and after
-  requires sender in coins.coin_balances
-  ensures sender in coins.coin_balances
-  requires receiver in coins.coin_balances
-  ensures receiver in coins.coin_balances
+  requires sender in coin_table_balance
+  ensures sender in coin_table_balance
+  requires receiver in coin_table_balance
+  ensures receiver in coin_table_balance
 
   // a simple implication of the transfer
-  requires coins.coin_balances[sender] >= amount
-  ensures coins.coin_balances[receiver] >= amount
+  requires coin_table_balance[sender] >= amount
+  ensures coin_table_balance[receiver] >= amount
 
   // no accounts created or destroyed
-  ensures forall k:string :: k in old(coins.coin_balances) <==> k in coins.coin_balances
+  ensures forall k:string :: k in old(coin_table_balance) <==> k in coin_table_balance
 
   // conserves mass: all other account balances are unchanged
-  ensures forall k:string :: k in coins.coin_balances && k != sender && k != receiver ==>
-    old(coins.coin_balances[k]) == coins.coin_balances[k]
+  ensures forall k:string :: k in coin_table_balance && k != sender && k != receiver ==>
+    old(coin_table_balance[k]) == coin_table_balance[k]
   // conserves mass: delta of sender + receiver is zero
-  ensures old(coins.coin_balances[sender]) + old(coins.coin_balances[receiver]) ==
-    coins.coin_balances[sender] + coins.coin_balances[receiver]
+  ensures old(coin_table_balance[sender]) + old(coin_table_balance[receiver]) ==
+    coin_table_balance[sender] + coin_table_balance[receiver]
+
+  ensures |old(coin_table_balance)| == |coin_table_balance|
+  ensures conserves_mass()
 {
-  coins.coin_balances :=
-    coins.coin_balances[sender   := coins.coin_balances[sender] - amount];
-  coins.coin_balances :=
-    coins.coin_balances[receiver := coins.coin_balances[receiver] + amount];
+  coin_table_balance :=
+    coin_table_balance[sender   := coin_table_balance[sender] - amount];
+  coin_table_balance :=
+    coin_table_balance[receiver := coin_table_balance[receiver] + amount];
 }
 
 //   ; --------------------------------------------------------------------------

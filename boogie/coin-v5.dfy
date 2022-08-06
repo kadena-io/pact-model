@@ -1,13 +1,8 @@
 class guard {
 }
 
-class coin_table_row {
-  var balance : real;
-  // var guard   : guard;
-}
-
 class coin_table {
-  var rows : map<string, coin_table_row>;
+  var coin_balances : map<string, real>;
 }
 
 class coin {
@@ -95,11 +90,11 @@ constructor(db:coin_table)
 }
 
 // conserves-mass
-method map_sum(changes: map<string,real>) returns (r:real)
+method map_sum(reals: set<real>) returns (r:real)
 {
   r := 0.0;
 
-  var items := changes.Values;
+  var items := reals;
   while items != {} decreases |items|
   {
     var item :| item in items;
@@ -109,47 +104,156 @@ method map_sum(changes: map<string,real>) returns (r:real)
   }
 }
 
+function SumSeq(s: seq<(string, real)>): real
+{
+  if s == [] then
+    0.0
+  else
+    s[0].1 + SumSeq(s[1..])
+}
+
+function Pick<K>(s: set<K>): K
+  requires s != {}
+{
+  var x :| x in s; x
+}
+
+function Sum(s: set<(string, real)>): real
+{
+  if s == {} then
+    0.0
+  else
+    var item := Pick(s);
+    item.1 + Sum(s - { item })
+}
+
+function Delta(s1: map<string, real>, s2: map<string, real>): real
+  decreases s1, s2
+  requires forall k:string :: k in s1 <==> k in s2
+{
+  if |s1| == 0 then
+    0.0
+  else
+    var k := Pick(s1.Keys);
+    (s1[k] - s2[k]) + Delta(s1 - { k }, s2 - { k })
+}
+
+// jww (2022-08-06): How do I prove that it doesn't matter what order you pick
+// elements in, the answer from Delta is always the same?
+
+// lemma DeltaLemma(s1: map<string, real>, s2: map<string, real>)
+//   requires forall k:string :: k in s1 <==> k in s2
+//   ensures forall k:string :: k in s1 ==>
+//     Delta(s1, s2) == (s1[k] - s2[k]) + Delta(s1 - { k }, s2 - { k })
+// {
+// }
+
+lemma SumMyWay(s: set<(string, real)>, y: (string, real))
+  requires y in s
+  ensures Sum(s) == y.1 + Sum(s - {y})
+{
+  var x : (string, real) := Pick(s);
+  if y == x {
+  } else {
+    calc {
+      Sum(s);
+    ==  // def. Sum
+      x.1 + Sum(s - {x});
+    ==  { SumMyWay(s - {x}, y); }
+      x.1 + y.1 + Sum(s - {x} - {y});
+    ==  { assert s - {x} - {y} == s - {y} - {x}; }
+      y.1 + x.1 + Sum(s - {y} - {x});
+    ==  { SumMyWay(s - {y}, x); }
+      y.1 + Sum(s - {y});
+    }
+  }
+}
+
+lemma AddToSum(s: set<(string, real)>, y: (string, real))
+  requires y !in s
+  ensures Sum(s + {y}) == Sum(s) + y.1
+{
+  SumMyWay(s + {y}, y);
+}
+
+predicate IsTotalOrder<A(!new)>(R: (A, A) -> bool) {
+  // connexity
+  && (forall a, b :: R(a, b) || R(b, a))
+  // antisymmetry
+  && (forall a, b :: R(a, b) && R(b, a) ==> a == b)
+  // transitivity
+  && (forall a, b, c :: R(a, b) && R(b, c) ==> R(a, c))
+}
+
+function method MapToSequence<A(!new),B>(m: map<A,B>, R: (A, A) -> bool): seq<(A,B)>
+  requires IsTotalOrder(R)
+{
+  var keys := SetToSequence(m.Keys, (a,a') => R(a, a'));
+  seq(|keys|, i requires 0 <= i < |keys| => (keys[i], m[keys[i]]))
+}
+
+function method SetToSequence<A(!new)>(s: set<A>, R: (A, A) -> bool): seq<A>
+  requires IsTotalOrder(R)
+  ensures var q := SetToSequence(s, R);
+    forall i :: 0 <= i < |q| ==> q[i] in s
+{
+  if s == {} then [] else
+    ThereIsAMinimum(s, R);
+    var x :| x in s && forall y :: y in s ==> R(x, y);
+    [x] + SetToSequence(s - {x}, R)
+}
+
+lemma ThereIsAMinimum<A(!new)>(s: set<A>, R: (A, A) -> bool)
+  requires s != {} && IsTotalOrder(R)
+  ensures exists x :: x in s && forall y :: y in s ==> R(x, y)
+
 // valid-account
 predicate valid_account(account:string) {
   |account| >= 3 && |account| <= 256
 }
 
+twostate function column_delta(): real
+  reads this, coins
+  requires forall k:string :: k in old(coins.coin_balances) <==> k in coins.coin_balances
+{
+  // Sum(old(coins.coin_balances.Items)) - Sum(coins.coin_balances.Items)
+  Delta(old(coins.coin_balances), coins.coin_balances)
+}
+
+twostate predicate conserves_mass()
+  reads this, coins
+  requires forall k:string :: k in old(coins.coin_balances) <==> k in coins.coin_balances
+{
+  column_delta() == 0.0
+}
+
 method sample_transfer(sender:string, receiver:string, amount:real)
-  modifies coins;
-  requires (forall account:string :: account in coins.rows ==>
-    coins.rows[account].balance >= 0.0);
-  ensures (forall account:string :: account in coins.rows ==>
-    coins.rows[account].balance >= 0.0);
+  modifies this, coins;
+
+  requires forall k:string :: k in coins.coin_balances ==> coins.coin_balances[k] >= 0.0
+  ensures forall k:string :: k in coins.coin_balances ==> coins.coin_balances[k] >= 0.0
 
   requires amount >= 0.0;
-  requires valid_account(sender);
-  requires valid_account(receiver);
-  requires sender != receiver;
+  requires valid_account(sender)
+  requires valid_account(receiver)
+  requires sender != receiver
 
-  requires sender in coins.rows;
-  requires receiver in coins.rows;
+  requires sender in coins.coin_balances
+  ensures sender in coins.coin_balances
+  requires receiver in coins.coin_balances
+  ensures receiver in coins.coin_balances
 
-  requires coins.rows[sender].balance >= amount;
-  ensures coins.rows[receiver].balance >= amount;
+  requires coins.coin_balances[sender] >= amount
+  ensures coins.coin_balances[receiver] >= amount
+
+  ensures forall k:string :: k in old(coins.coin_balances) <==> k in coins.coin_balances
+  ensures conserves_mass()
 {
-  var changes : map<string,real> :=
-    map[ sender   := - amount
-       , receiver := amount];
-  var delta : real;
-  var i : int;
-
-  delta := map_sum(changes);
-  assert delta == 0.0;
-
-  i := 0;
-  var items := changes.Items;
-  while items != {} decreases |items|
-  {
-    var item :| item in items;
-    items := items - { item };
-
-    coins.rows[item.0].balance := coins.rows[item.0].balance + item.1;
-  }
+  coins.coin_balances :=
+    coins.coin_balances[sender   := coins.coin_balances[sender] - amount];
+  coins.coin_balances :=
+    coins.coin_balances[receiver := coins.coin_balances[receiver] + amount];
+  // DeltaLemma(old(coins.coin_balances), coins.coin_balances);
 }
 
 //   ; --------------------------------------------------------------------------

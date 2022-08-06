@@ -228,32 +228,43 @@ twostate predicate conserves_mass()
 }
 
 method sample_transfer(sender:string, receiver:string, amount:real)
-  modifies this, coins;
+  // this table is updated
+  modifies coins;
 
-  requires forall k:string :: k in coins.coin_balances ==> coins.coin_balances[k] >= 0.0
-  ensures forall k:string :: k in coins.coin_balances ==> coins.coin_balances[k] >= 0.0
-
+  // inputs arguments are valid
   requires amount >= 0.0;
   requires valid_account(sender)
   requires valid_account(receiver)
   requires sender != receiver
 
+  // no accounts with negative balance before or after
+  requires forall k:string :: k in coins.coin_balances ==> coins.coin_balances[k] >= 0.0
+  ensures forall k:string :: k in coins.coin_balances ==> coins.coin_balances[k] >= 0.0
+
+  // sender and receiver are present before and after
   requires sender in coins.coin_balances
   ensures sender in coins.coin_balances
   requires receiver in coins.coin_balances
   ensures receiver in coins.coin_balances
 
+  // a simple implication of the transfer
   requires coins.coin_balances[sender] >= amount
   ensures coins.coin_balances[receiver] >= amount
 
+  // no accounts created or destroyed
   ensures forall k:string :: k in old(coins.coin_balances) <==> k in coins.coin_balances
-  ensures conserves_mass()
+
+  // conserves mass: all other account balances are unchanged
+  ensures forall k:string :: k in coins.coin_balances && k != sender && k != receiver ==>
+    old(coins.coin_balances[k]) == coins.coin_balances[k]
+  // conserves mass: delta of sender + receiver is zero
+  ensures old(coins.coin_balances[sender]) + old(coins.coin_balances[receiver]) ==
+    coins.coin_balances[sender] + coins.coin_balances[receiver]
 {
   coins.coin_balances :=
     coins.coin_balances[sender   := coins.coin_balances[sender] - amount];
   coins.coin_balances :=
     coins.coin_balances[receiver := coins.coin_balances[receiver] + amount];
-  // DeltaLemma(old(coins.coin_balances), coins.coin_balances);
 }
 
 //   ; --------------------------------------------------------------------------

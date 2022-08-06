@@ -41,11 +41,6 @@ Boogie = pkgs.buildDotnetModule rec {
     sha256 = "16kdvkbx2zwj7m43cra12vhczbpj23wyrdnj0ygxf7np7c2aassp";
   };
 
-  buildInputs = [
-    pkgs.dotnetPackages.NUnit
-    pkgs.dotnetPackages.NUnitRunners
-  ];
-
   projectFile = [ "Source/Boogie.sln" ];
   nugetDeps = ./nix/boogie-deps.nix;
 
@@ -62,6 +57,9 @@ Boogie = pkgs.buildDotnetModule rec {
 
   postFixup = ''
       ln -s "$out/bin/BoogieDriver" "$out/bin/boogie"
+      rm -f "$out/bin"/System.* "$out/bin"/Microsoft.*
+      rm -f "$out/bin"/NUnit3.*
+      rm -f "$out/bin"/*Tests
   '';
 
   meta = with pkgs.lib; {
@@ -75,6 +73,49 @@ Boogie = pkgs.buildDotnetModule rec {
     '';
     license = licenses.mspl;
     maintainers = [ maintainers.taktoa ];
+    platforms = with platforms; (linux ++ darwin);
+  };
+};
+
+dafny = pkgs.buildDotnetModule rec {
+  pname = "Dafny";
+  version = "3.7.3";
+
+  src = pkgs.fetchurl {
+    url = "https://github.com/Microsoft/dafny/archive/v${version}.tar.gz";
+    sha256 = "0w9g8smx54pvg1y5zs90awv9plgyz5nkrnqbzi9m6dymhybblvx5";
+  };
+
+  preBuild = ''
+    ln -s ${pkgs.z3} Binaries/z3
+  '';
+
+  buildInputs = [ Boogie pkgs.jdk11 ];
+  nugetDeps = ./nix/dafny-deps.nix;
+
+  projectFile = [ "Source/Dafny.sln" ];
+
+  # Boogie as an input is not enough. Boogie libraries need to be at the same
+  # place as Dafny ones. Same for "*.dll.mdb". No idea why or how to fix.
+  postFixup = ''
+    for lib in ${Boogie}/lib/dotnet/${Boogie.pname}/*.dll{,.mdb}; do
+      ln -s $lib $out/lib/dotnet/${pname}/
+    done
+    # We generate our own executable scripts
+    rm -f $out/lib/dotnet/${pname}/dafny{,-server}
+
+    mv "$out/bin/Dafny" "$out/bin/dafny"
+
+    rm -f "$out/bin"/System.* "$out/bin"/Microsoft.*
+    rm -f "$out/bin"/NUnit3.* "$out/bin"/coverlet.*
+    rm -f "$out/bin"/*.Test
+  '';
+
+  meta = with pkgs.lib; {
+    description = "A programming language with built-in specification constructs";
+    homepage = "https://research.microsoft.com/dafny";
+    maintainers = with maintainers; [ layus ];
+    license = licenses.mit;
     platforms = with platforms; (linux ++ darwin);
   };
 };
@@ -96,6 +137,7 @@ pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec
     dpdgraph
     QuickChick
     Boogie
+    dafny
     pkgs.z3
     pkgs.perl
   ];
@@ -114,7 +156,7 @@ pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec
 };
 
 in {
-  inherit pact-model Boogie;
+  inherit pact-model Boogie dafny;
   pact-model_8_14 = pact-model "coqPackages_8_14";
   pact-model_8_15 = pact-model "coqPackages_8_15";
 }

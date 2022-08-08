@@ -1,24 +1,53 @@
-include "sym.dfy"
+datatype Status =
+  | Success
+  | Failure(error: string)
+{
+  predicate method IsFailure() {
+    this.Failure?
+  }
 
-class guard {
+  function method PropagateFailure(): Status
+    requires IsFailure()
+  {
+    Failure(this.error) // this is Status.Failure(...)
+  }
 }
 
-class coin {
+datatype Result<T> =
+  | Ok(value: T)
+  | Err(error: string)
+{
+  predicate method IsFailure() {
+    this.Err?
+  }
 
-// type TyGuard;
-// type TyString;
-// type TyObject;
-// type TyTime;
+  function method PropagateFailure<U>(): Result<U>
+    requires IsFailure()
+  {
+    Err(this.error) // this is Result<U>.Failure(...)
+  }
 
-// function length(str:TyString): int;
+  function method Extract(): T
+    requires !IsFailure()
+  {
+    this.value
+  }
+}
 
-// const unique emptyString : TyString;
-// axiom (length(emptyString) == 0);
-// axiom (forall s:TyString :: s != emptyString ==> length(s) > 0);
+method enforce(b:bool, msg:string) returns (r: Status)
+{
+  if b {
+    return Success;
+  } else {
+    return Failure(msg);
+  }
+}
 
 //////////////////////////////////////////////////////////////////////////////
 
 // (module coin GOVERNANCE
+
+class coin {
 
 //   @doc "'coin' represents the Kadena Coin Contract. This contract provides both the \
 //   \buy/redeem gas support in the form of 'fund-tx', as well as transfer,       \
@@ -30,11 +59,54 @@ class coin {
 //     [ (defproperty conserves-mass
 //         (= (column-delta coin-table 'balance) 0.0))
 
+function account_balances(m: map<string, real>, keys: seq<string>): real
+  decreases keys
+{
+  if keys == []
+  then
+    0.0
+  else
+    var k := keys[0];
+    var bal := if k in m then m[k] else 0.0;
+    bal + account_balances(m, keys[1..])
+}
+
+// An induction principal about account_balances that is needed whenever
+// conserves_mass is used, both before and after any modifications.
+lemma account_balances_n(m: map<string, real>)
+  ensures forall keys: seq<string> :: |keys| > 0 ==>
+    (forall k :: k in keys ==> k in m) ==>
+      account_balances(m, keys) == m[keys[0]] + account_balances(m, keys[1..])
+{
+}
+
+// conserves-mass says that given a set of account keys, the net balance of
+// those accounts before and after must be zero. All other accounts must
+// remain unchanged.
+twostate predicate conserves_mass(keys: seq<string>)
+  reads this
+{
+  && (forall k ::
+      k !in keys && k in old(coin_table_balance) ==>
+      k in coin_table_balance &&
+      old(coin_table_balance[k]) == coin_table_balance[k])
+  && (forall k ::
+      k !in keys && k in coin_table_balance ==>
+      k in old(coin_table_balance) &&
+      old(coin_table_balance[k]) == coin_table_balance[k])
+  && account_balances(old(coin_table_balance), keys)
+      == account_balances(coin_table_balance, keys)
+}
+
 //       (defproperty valid-account (account:string)
 //         (and
 //           (>= (length account) 3)
 //           (<= (length account) 256)))
 //     ]
+
+predicate method valid_account(account:string) {
+  |account| >= 3 && |account| <= 256
+}
 
 //   (implements fungible-v2)
 //   (implements fungible-xchain-v1)
@@ -65,113 +137,6 @@ var coin_table_balance : map<string, real>;
 constructor(pre_coin_table_balance:map<string, real>)
 {
   coin_table_balance := pre_coin_table_balance;
-}
-
-// valid-account
-predicate valid_account(account:string) {
-  |account| >= 3 && |account| <= 256
-}
-
-function Pick<K>(s: set<K>): K
-  requires s != {}
-{
-  var x :| x in s; x
-}
-
-// lemma drop_cardinality<K,V>(s1: map<K,V>, s2: map<K,V>)
-//   decreases s1, s2
-//   requires |s1| == |s2|
-//   requires forall k :: k in s1 <==> k in s2
-//   ensures forall k :: k in s1 ==> |s1 - {k}| == |s2 - {k}|
-// {
-//   if |s1| == 0 {} else {
-//     var k := Pick(s1.Keys);
-//     drop_cardinality(s1 - {k}, s2 - {k});
-//   }
-// }
-
-// lemma bijection_cardinality<K,V>(s1: map<K,V>, s2: map<K,V>)
-//   decreases s1, s2
-//   ensures |s1| == |s2| <==> forall k :: k in s1 <==> k in s2
-// {
-//   if |s1| == 0 {} else {
-//     var k := Pick(s1.Keys);
-//     bijection_cardinality(s1 - {k}, s2 - {k});
-//   }
-// }
-
-function Delta(s1: map<string, real>, s2: map<string, real>): real
-  decreases s1, s2
-  requires forall k:string :: k in s1 <==> k in s2
-{
-  if |s1| == 0 then
-    0.0
-  else
-    var k := Pick(s1.Keys);
-    (s1[k] - s2[k]) + Delta(s1 - { k }, s2 - { k })
-}
-
-// function method DeltaSet(s1: map<string, real>, s2: map<string, real>) : (sum: real)
-//   ensures sum == Seq.Fold(Set.SeqOfSet(s), add, 0.0)
-// {
-//   Set.Fold(s, add, 0.0)
-// }
-
-twostate function column_delta(): real
-  reads this
-  requires forall k:string :: k in old(coin_table_balance) <==> k in coin_table_balance
-{
-  Delta(old(coin_table_balance), coin_table_balance)
-}
-
-twostate predicate conserves_mass()
-  reads this
-  requires forall k:string :: k in old(coin_table_balance) <==> k in coin_table_balance
-{
-  column_delta() == 0.0
-}
-
-method sample_transfer(sender:string, receiver:string, amount:real)
-  // this table is updated
-  modifies this;
-
-  // inputs arguments are valid
-  requires amount >= 0.0;
-  requires valid_account(sender)
-  requires valid_account(receiver)
-  requires sender != receiver
-
-  // no accounts with negative balance before or after
-  requires forall k:string :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
-  ensures forall k:string :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
-
-  // sender and receiver are present before and after
-  requires sender in coin_table_balance
-  ensures sender in coin_table_balance
-  requires receiver in coin_table_balance
-  ensures receiver in coin_table_balance
-
-  // a simple implication of the transfer
-  requires coin_table_balance[sender] >= amount
-  ensures coin_table_balance[receiver] >= amount
-
-  // no accounts created or destroyed
-  ensures forall k:string :: k in old(coin_table_balance) <==> k in coin_table_balance
-
-  // conserves mass: all other account balances are unchanged
-  ensures forall k:string :: k in coin_table_balance && k != sender && k != receiver ==>
-    old(coin_table_balance[k]) == coin_table_balance[k]
-  // conserves mass: delta of sender + receiver is zero
-  ensures old(coin_table_balance[sender]) + old(coin_table_balance[receiver]) ==
-    coin_table_balance[sender] + coin_table_balance[receiver]
-
-  ensures |old(coin_table_balance)| == |coin_table_balance|
-  ensures conserves_mass()
-{
-  coin_table_balance :=
-    coin_table_balance[sender   := coin_table_balance[sender] - amount];
-  coin_table_balance :=
-    coin_table_balance[receiver := coin_table_balance[receiver] + amount];
 }
 
 //   ; --------------------------------------------------------------------------
@@ -314,7 +279,7 @@ const COIN_CHARSET : string;
 //   (defconst MINIMUM_PRECISION 12
 //     "Minimum allowed precision for coin transactions")
 
-const MINIMUM_PRECISION : int;
+const MINIMUM_PRECISION : int := 12;
 // axiom (MINIMUM_PRECISION == 12);
 
 //   (defconst MINIMUM_ACCOUNT_LENGTH 3
@@ -346,7 +311,13 @@ const MAXIMUM_ACCOUNT_LENGTH : int;
 //       (format "Amount violates minimum precision: {}" [amount]))
 //     )
 
-//procedure enforce_unit(amount:real) returns (r:bool);
+method enforce_unit(amount:real) returns (r: Status)
+{
+  :- enforce(
+       (amount * MINIMUM_PRECISION as real).Floor as real
+         / (MINIMUM_PRECISION as real) == amount,
+       "Amount violates minimum precision");
+}
 
 //   (defun validate-account (account:string)
 //     @doc "Enforce that an account name conforms to the coin contract \
@@ -375,7 +346,14 @@ const MAXIMUM_ACCOUNT_LENGTH : int;
 //       )
 //   )
 
-//procedure validate_account(account:TyString);
+method validate_account(account:string) returns (r: Status)
+{
+  if valid_account(account) {
+    return Success;
+  } else {
+    return Failure("invalid account name");
+  }
+}
 
 //   ; --------------------------------------------------------------------------
 //   ; Coin Contract
@@ -550,39 +528,54 @@ const MAXIMUM_ACCOUNT_LENGTH : int;
 //       )
 //     )
 
-// method transfer(sender:TyString, receiver:TyString, amount:real) returns (r:TyString);
-//   modifies coin_table#balance;
+method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
+  // this table is updated
+  modifies this;
 
-//   requires amount >= 0.0;
-//   requires valid_account(sender);
-//   requires valid_account(receiver);
-//   requires sender != receiver;
-// {
-//   call validate_account(sender);
-//   call validate_account(receiver);
+  // inputs arguments are valid
+  requires amount >= 0.0;
+  requires valid_account(sender)
+  requires valid_account(receiver)
+  requires sender != receiver
 
-  // var keys : [int]TyString;
-  // var changes : [TyString]real;
-  // var delta : real;
-  // var i : int;
+  // no accounts with negative balance before or after
+  requires forall k:string :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+  ensures forall k:string :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
 
-  // keys[0] := sender;
-  // keys[1] := receiver;
-  // assume len(keys) == 2;
+  // sender and receiver are present before and after
+  requires sender in coin_table_balance
+  ensures sender in coin_table_balance
+  requires receiver in coin_table_balance
+  ensures receiver in coin_table_balance
 
-  // changes[sender]   := - amount;
-  // changes[receiver] := amount;
+  // a simple implication of the transfer
+  requires coin_table_balance[sender] >= amount
+  ensures r == Success ==> coin_table_balance[receiver] >= amount
 
-  // call delta := map_sum(keys, changes);
-  // assert delta == 0.0;
+  ensures conserves_mass([sender, receiver])
+{
+  // These checks are all redundant given the preconditions above, but they
+  // are here to mirror what the Pact contract does.
+  :- enforce(sender != receiver, "sender cannot be the receiver of a transfer");
 
-  // i := 0;
-  // while (i < len(keys))
-  //   invariant 0 <= i && i <= len(keys);
-  // {
-  //   coin_table#balance[keys[i]] := coin_table#balance[keys[i]] + changes[keys[i]];
-  // }
-// }
+  :- validate_account(sender);
+  :- validate_account(receiver);
+
+  :- enforce(amount > 0.0, "transfer amount must be positive");
+
+  :- enforce_unit(amount);
+
+  account_balances_n(coin_table_balance);
+
+  coin_table_balance :=
+    coin_table_balance[sender   := coin_table_balance[sender] - amount];
+  coin_table_balance :=
+    coin_table_balance[receiver := coin_table_balance[receiver] + amount];
+
+  account_balances_n(coin_table_balance);
+
+  return Success;
+}
 
 //   (defun transfer-create:string
 //     ( sender:string
@@ -746,7 +739,13 @@ const MAXIMUM_ACCOUNT_LENGTH : int;
 //     (let ((pfx (take 2 account)))
 //       (if (= ":" (take -1 pfx)) (take 1 pfx) "")))
 
-//procedure check_reserved(account:string) returns (r:TyString);
+function method check_reserved(account:string): string
+{
+  if |account| >= 2 && account[1] == ':' then
+    [account[0]]
+  else
+    ""
+}
 
 //   (defun enforce-reserved:bool (account:string guard:guard)
 //     @doc "Enforce reserved account name protocols."

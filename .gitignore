@@ -1,7 +1,7 @@
+/*.hs
 /.Makefile.coq.d
 /Makefile.coq
 /Makefile.coq.conf
-/*.hs
 /extract/src/Applicative.hs
 /extract/src/Ascii.hs
 /extract/src/BinInt.hs
@@ -45,3 +45,4 @@
 /extract/src/Tuple.hs
 /extract/src/Ty.hs
 /extract/src/Value.hs
+flycheck_*.*

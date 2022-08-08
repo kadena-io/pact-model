@@ -106,9 +106,8 @@ dafny = pkgs.buildDotnetModule rec {
 
     mv "$out/bin/Dafny" "$out/bin/dafny"
 
-    rm -f "$out/bin"/System.* "$out/bin"/Microsoft.*
-    rm -f "$out/bin"/NUnit3.* "$out/bin"/coverlet.*
-    rm -f "$out/bin"/*.Test
+    rm -f $out/bin/{coverlet,Microsoft,NUnit3,System}.*
+    rm -f $out/bin/{ThirdPartyNotices.txt,XUnitExtensions}
   '';
 
   meta = with pkgs.lib; {

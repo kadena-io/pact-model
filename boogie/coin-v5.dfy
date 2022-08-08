@@ -9,7 +9,7 @@ datatype Status =
   function method PropagateFailure(): Status
     requires IsFailure()
   {
-    Failure(this.error) // this is Status.Failure(...)
+    this
   }
 }
 
@@ -34,20 +34,72 @@ datatype Result<T> =
   }
 }
 
-method enforce(b:bool, msg:string) returns (r: Status)
+type time
+type guard = string
+type Object = string
+
+datatype Value =
+  | Unit
+  | Integer(n: int)
+  | Decimal(d: real)
+  | String(s: string)
+
+datatype Capability = Token(name:string, params:seq<Value>, value:Value)
+
+function method enforce(b:bool, msg:string): (r: Status)
+  ensures r == Success ==> b
 {
-  if b {
-    return Success;
-  } else {
-    return Failure(msg);
-  }
+  if b
+    then Success
+    else Failure(msg)
 }
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// SUGAR
+
+// (with-read coin-table account
+//   { "balance" := balance }
+//   ... balance ...)
+//
+// ==
+//
+// var balance := coin_table_balance[account];
+// ... balance ...;
+
+// (update coin-table account
+//   { "balance" : (- balance amount) })
+//
+// ==
+//
+// coin_table_balance[account] =
+//   coin_table_balance[account := balance - amount];
 
 //////////////////////////////////////////////////////////////////////////////
 
 // (module coin GOVERNANCE
 
 class coin {
+
+var capabilities : set<Capability>;
+// var resources : map<(string,seq<Value>),Value>;
+
+function method require_capability(cap: Capability): (r: Status)
+  reads this
+  ensures r == Success ==> cap in capabilities
+{
+  if cap in capabilities
+    then Success
+    else Failure("capability has not been granted")
+}
+
+// method install_capability(cap: Capability) returns (r: Status)
+//   modifies this
+//   ensures (cap.name, cap.params) in resources
+// {
+//   var Token(name, params, value) := cap;
+//   resources := resources[ (name, params) := value ];
+// }
 
 //   @doc "'coin' represents the Kadena Coin Contract. This contract provides both the \
 //   \buy/redeem gas support in the form of 'fund-tx', as well as transfer,       \
@@ -73,7 +125,7 @@ function account_balances(m: map<string, real>, keys: seq<string>): real
 
 // An induction principal about account_balances that is needed whenever
 // conserves_mass is used, both before and after any modifications.
-lemma account_balances_n(m: map<string, real>)
+lemma {:induction m} account_balances_n(m: map<string, real>)
   ensures forall keys: seq<string> :: |keys| > 0 ==>
     (forall k :: k in keys ==> k in m) ==>
       account_balances(m, keys) == m[keys[0]] + account_balances(m, keys[1..])
@@ -86,14 +138,8 @@ lemma account_balances_n(m: map<string, real>)
 twostate predicate conserves_mass(keys: seq<string>)
   reads this
 {
-  && (forall k ::
-      k !in keys && k in old(coin_table_balance) ==>
-      k in coin_table_balance &&
-      old(coin_table_balance[k]) == coin_table_balance[k])
-  && (forall k ::
-      k !in keys && k in coin_table_balance ==>
-      k in old(coin_table_balance) &&
-      old(coin_table_balance[k]) == coin_table_balance[k])
+  && (forall k :: k !in keys && k in old(coin_table_balance) && k in coin_table_balance ==>
+       old(coin_table_balance[k]) == coin_table_balance[k])
   && account_balances(old(coin_table_balance), keys)
       == account_balances(coin_table_balance, keys)
 }
@@ -145,51 +191,85 @@ constructor(pre_coin_table_balance:map<string, real>)
 //   (defcap GOVERNANCE ()
 //     (enforce false "Enforce non-upgradeability"))
 
-//procedure GOVERNANCE();
+// method GOVERNANCE() returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defcap GAS ()
 //     "Magic capability to protect gas buy and redeem"
 //     true)
 
-//procedure GAS();
+// method GAS() returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defcap COINBASE ()
 //     "Magic capability to protect miner reward"
 //     true)
 
-//procedure COINBASE();
+// method COINBASE() returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defcap GENESIS ()
 //     "Magic capability constraining genesis transactions"
 //     true)
 
-//procedure GENESIS();
+// method GENESIS() returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defcap REMEDIATE ()
 //     "Magic capability for remediation transactions"
 //     true)
 
-//procedure REMEDIATE();
+// method REMEDIATE() returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defcap DEBIT (sender:string)
 //     "Capability for managing debiting operations"
 //     (enforce-guard (at 'guard (read coin-table sender)))
 //     (enforce (!= sender "") "valid sender"))
 
-//procedure DEBIT(sender:TyString);
+function method DEBIT(sender:string): Capability
+{
+  Token("DEBIT", [String(sender)], Unit)
+}
+
+// method DEBIT__predicate(sender:string) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defcap CREDIT (receiver:string)
 //     "Capability for managing crediting operations"
 //     (enforce (!= receiver "") "valid receiver"))
 
-//procedure CREDIT(receiver:TyString);
+function method CREDIT(receiver:string): Capability
+{
+  Token("CREDIT", [String(receiver)], Unit)
+}
+
+// method CREDIT__predicate(receiver:string) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defcap ROTATE (account:string)
 //     @doc "Autonomously managed capability for guard rotation"
 //     @managed
 //     true)
 
-//procedure ROTATE(account:TyString);
+// method ROTATE(account:string) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defcap TRANSFER:bool
 //     ( sender:string
@@ -204,7 +284,10 @@ constructor(pre_coin_table_balance:map<string, real>)
 //     (compose-capability (CREDIT receiver))
 //   )
 
-//procedure TRANSFER(sender:TyString, receiver:TyString, amount:real) returns (r:bool);
+// method TRANSFER(sender:string, receiver:string, amount:real) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun TRANSFER-mgr:decimal
 //     ( managed:decimal
@@ -217,7 +300,10 @@ constructor(pre_coin_table_balance:map<string, real>)
 //       newbal)
 //   )
 
-//procedure TRANSFER_mgr(managed:real, requested:real) returns (r:real);
+// method TRANSFER_mgr(managed:real, requested:real) returns (r:real)
+// {
+//   r := 0.0;
+// }
 
 //   (defcap TRANSFER_XCHAIN:bool
 //     ( sender:string
@@ -232,7 +318,10 @@ constructor(pre_coin_table_balance:map<string, real>)
 //     (compose-capability (DEBIT sender))
 //   )
 
-//procedure TRANSFER_XCHAIN(sender:TyString, receiver:TyString, amount:real, target_chain:string) returns (r:bool);
+// method TRANSFER_XCHAIN(sender:string, receiver:string, amount:real, target_chain:string) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun TRANSFER_XCHAIN-mgr:decimal
 //     ( managed:decimal
@@ -244,7 +333,10 @@ constructor(pre_coin_table_balance:map<string, real>)
 //     0.0
 //   )
 
-//procedure TRANSFER_XCHAIN_mgr(managed:real, requested:real) returns (r:real);
+// method TRANSFER_XCHAIN_mgr(managed:real, requested:real) returns (r:real)
+// {
+//   r := 0.0;
+// }
 
 //   (defcap TRANSFER_XCHAIN_RECD:bool
 //     ( sender:string
@@ -255,7 +347,10 @@ constructor(pre_coin_table_balance:map<string, real>)
 //     @event true
 //   )
 
-//procedure TRANSFER_XCHAIN_RECD(sender:TyString, receiver:TyString, amount:real, source_chain:string) returns (r:bool);
+// method TRANSFER_XCHAIN_RECD(sender:string, receiver:string, amount:real, source_chain:string) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   ; v3 capabilities
 //   (defcap RELEASE_ALLOCATION
@@ -266,7 +361,10 @@ constructor(pre_coin_table_balance:map<string, real>)
 //     @event true
 //   )
 
-//procedure RELEASE_ALLOCATION(account:TyString, amount:real);
+// method RELEASE_ALLOCATION(account:string, amount:real) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   ; --------------------------------------------------------------------------
 //   ; Constants
@@ -274,25 +372,22 @@ constructor(pre_coin_table_balance:map<string, real>)
 //   (defconst COIN_CHARSET CHARSET_LATIN1
 //     "The default coin contract character set")
 
-const COIN_CHARSET : string;
+// const COIN_CHARSET : string;
 
 //   (defconst MINIMUM_PRECISION 12
 //     "Minimum allowed precision for coin transactions")
 
 const MINIMUM_PRECISION : int := 12;
-// axiom (MINIMUM_PRECISION == 12);
 
 //   (defconst MINIMUM_ACCOUNT_LENGTH 3
 //     "Minimum account length admissible for coin accounts")
 
-const MINIMUM_ACCOUNT_LENGTH : int;
-// axiom (MINIMUM_ACCOUNT_LENGTH == 3);
+const MINIMUM_ACCOUNT_LENGTH : int := 3;
 
 //   (defconst MAXIMUM_ACCOUNT_LENGTH 256
 //     "Maximum account name length admissible for coin accounts")
 
-const MAXIMUM_ACCOUNT_LENGTH : int;
-// axiom (MAXIMUM_ACCOUNT_LENGTH == 256);
+const MAXIMUM_ACCOUNT_LENGTH : int := 256;
 
 //   (defconst VALID_CHAIN_IDS (map (int-to-str 10) (enumerate 0 19))
 //     "List of all valid Chainweb chain ids")
@@ -311,12 +406,17 @@ const MAXIMUM_ACCOUNT_LENGTH : int;
 //       (format "Amount violates minimum precision: {}" [amount]))
 //     )
 
-method enforce_unit(amount:real) returns (r: Status)
+function method floored(amount: real): real
 {
-  :- enforce(
-       (amount * MINIMUM_PRECISION as real).Floor as real
-         / (MINIMUM_PRECISION as real) == amount,
-       "Amount violates minimum precision");
+  (amount * MINIMUM_PRECISION as real).Floor as real
+    / (MINIMUM_PRECISION as real)
+}
+
+function method enforce_unit(amount:real): (r: Status)
+  ensures r == Success ==> floored(amount) == amount
+{
+  enforce(floored(amount) == amount,
+    "Amount violates minimum precision")
 }
 
 //   (defun validate-account (account:string)
@@ -346,13 +446,12 @@ method enforce_unit(amount:real) returns (r: Status)
 //       )
 //   )
 
-method validate_account(account:string) returns (r: Status)
+function method validate_account(account:string): (r: Status)
+  ensures r == Success ==> valid_account(account)
 {
-  if valid_account(account) {
-    return Success;
-  } else {
-    return Failure("invalid account name");
-  }
+  if valid_account(account)
+    then Success
+    else Failure("invalid account name")
 }
 
 //   ; --------------------------------------------------------------------------
@@ -362,7 +461,10 @@ method validate_account(account:string) returns (r: Status)
 //     "Predicate for gas-only user guards."
 //     (require-capability (GAS)))
 
-//procedure gas_only();
+// method gas_only() returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun gas-guard (guard:guard)
 //     "Predicate for gas + single key user guards"
@@ -372,7 +474,10 @@ method validate_account(account:string) returns (r: Status)
 //         (enforce-guard guard)
 //       ]))
 
-//procedure gas_guard(guard:TyGuard);
+// method gas_guard(guard:guard) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun buy-gas:string (sender:string total:decimal)
 //     @doc "This function describes the main 'gas buy' operation. At this point \
@@ -395,7 +500,10 @@ method validate_account(account:string) returns (r: Status)
 //       (debit sender total))
 //     )
 
-//procedure buy_gas(sender:TyString, total:real) returns (r:TyString);
+// method buy_gas(sender:string, total:real) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun redeem-gas:string (miner:string miner-guard:guard sender:string total:decimal)
 //     @doc "This function describes the main 'redeem gas' operation. At this    \
@@ -444,7 +552,10 @@ method validate_account(account:string) returns (r: Status)
 
 //     )
 
-//procedure redeem_gas(miner:TyString, miner_guard:TyGuard, sender:string, total:real) returns (r:TyString);
+// method redeem_gas(miner:string, miner_guard:guard, sender:string, total:real) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun create-account:string (account:string guard:guard)
 //     @model [ (property (valid-account account)) ]
@@ -458,7 +569,10 @@ method validate_account(account:string) returns (r: Status)
 //       })
 //     )
 
-//procedure create_account(account:string, guard:TyGuard) returns (r:TyString);
+// method create_account(account:string, guard:guard) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun get-balance:decimal (account:string)
 //     (with-read coin-table account
@@ -467,7 +581,10 @@ method validate_account(account:string) returns (r: Status)
 //       )
 //     )
 
-//procedure get_balance(account:string) returns (r:real);
+// method get_balance(account:string) returns (r:real)
+// {
+//   r := 0.0;
+// }
 
 //   (defun details:object{fungible-v2.account-details}
 //     ( account:string )
@@ -479,7 +596,10 @@ method validate_account(account:string) returns (r: Status)
 //       , "guard": g })
 //     )
 
-//procedure details(account:string) returns (r:TyObject);
+// method details(account:string) returns (r:Object)
+// {
+//   r := "";
+// }
 
 //   (defun rotate:string (account:string new-guard:guard)
 //     (with-capability (ROTATE account)
@@ -493,13 +613,19 @@ method validate_account(account:string) returns (r: Status)
 //           )))
 //     )
 
-//procedure rotate(account:string, new_guard:TyGuard) returns (r:TyString);
+// method rotate(account:string, new_guard:guard) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun precision:integer
 //     ()
 //     MINIMUM_PRECISION)
 
-//procedure precision() returns (r:int);
+// method precision() returns (r:int)
+// {
+//   return MINIMUM_PRECISION;
+// }
 
 //   (defun transfer:string (sender:string receiver:string amount:decimal)
 //     @model [ (property conserves-mass)
@@ -532,45 +658,56 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
   // this table is updated
   modifies this;
 
-  // inputs arguments are valid
-  requires amount >= 0.0;
-  requires valid_account(sender)
-  requires valid_account(receiver)
-  requires sender != receiver
-
   // no accounts with negative balance before or after
-  requires forall k:string :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
-  ensures forall k:string :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+  requires forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+  ensures r == Success ==>
+    forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
 
-  // sender and receiver are present before and after
+  // // sender and receiver are present before and after
   requires sender in coin_table_balance
-  ensures sender in coin_table_balance
   requires receiver in coin_table_balance
-  ensures receiver in coin_table_balance
+  ensures forall k :: k in old(coin_table_balance) <==> k in coin_table_balance
 
-  // a simple implication of the transfer
+  // // a simple implication of the transfer
   requires coin_table_balance[sender] >= amount
   ensures r == Success ==> coin_table_balance[receiver] >= amount
 
-  ensures conserves_mass([sender, receiver])
+  ensures r == Success ==> conserves_mass([sender, receiver])
 {
-  // These checks are all redundant given the preconditions above, but they
-  // are here to mirror what the Pact contract does.
   :- enforce(sender != receiver, "sender cannot be the receiver of a transfer");
-
   :- validate_account(sender);
   :- validate_account(receiver);
-
   :- enforce(amount > 0.0, "transfer amount must be positive");
-
   :- enforce_unit(amount);
 
   account_balances_n(coin_table_balance);
 
-  coin_table_balance :=
-    coin_table_balance[sender   := coin_table_balance[sender] - amount];
+  var balance := coin_table_balance[sender];
+  coin_table_balance := coin_table_balance[sender := balance - amount];
+
+  // var caps1 := capabilities;
+  // capabilities := capabilities + { DEBIT(sender) };
+  // var res1 := debit(sender, amount);
+  // if res1.IsFailure() {
+  //   capabilities := caps1;
+  //   return res1;
+  // } else {
+  //   capabilities := caps1;
+  // }
+
   coin_table_balance :=
     coin_table_balance[receiver := coin_table_balance[receiver] + amount];
+
+  // var caps2 := capabilities;
+  // capabilities := capabilities + { CREDIT(receiver) };
+  // var g : guard := "";
+  // var res2 := credit(receiver, g, amount);
+  // if res2.IsFailure() {
+  //   capabilities := caps2;
+  //   return res2;
+  // } else {
+  //   capabilities := caps2;
+  // }
 
   account_balances_n(coin_table_balance);
 
@@ -601,7 +738,10 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 //       (credit receiver receiver-guard amount))
 //     )
 
-//procedure transfer_create(sender:string, receiver:string, receiver_guard:TyGuard, amount:real) returns (r:TyString);
+// method transfer_create(sender:string, receiver:string, receiver_guard:guard, amount:real) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun coinbase:string (account:string account-guard:guard amount:decimal)
 //     @doc "Internal function for the initial creation of coins.  This function \
@@ -620,7 +760,10 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 //       (credit account account-guard amount))
 //     )
 
-//procedure coinbase(account:string, account_guard:TyGuard, amount:real) returns (r:TyString);
+// method coinbase(account:string, account_guard:guard, amount:real) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun remediate:string (account:string amount:decimal)
 //     @doc "Allows for remediation transactions. This function \
@@ -648,7 +791,10 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 //         ))
 //     )
 
-//procedure remediate(account:string, amount:real) returns (r:TyString);
+// method remediate(account:string, amount:real) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defpact fund-tx (sender:string miner:string miner-guard:guard total:decimal)
 //     @doc "'fund-tx' is a special pact to fund a transaction in two steps,     \
@@ -670,7 +816,10 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 //     (step (redeem-gas miner miner-guard sender total))
 //     )
 
-//procedure fund_tx(sender:string, miner:string, miner_guard:TyGuard, total:real);
+// method fund_tx(sender:string, miner:string, miner_guard:guard, total:real) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun debit:string (account:string amount:decimal)
 //     @doc "Debit AMOUNT from ACCOUNT balance"
@@ -697,7 +846,29 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 //         ))
 //     )
 
-//procedure debit(account:string, amount:real) returns (r:TyString);
+method debit(account:string, amount:real) returns (r: Status)
+  modifies this
+
+  requires account in coin_table_balance
+  ensures forall k :: k in old(coin_table_balance) <==> k in coin_table_balance
+
+  requires forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+  ensures forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+
+  ensures r == Success ==>
+    coin_table_balance[account] == old(coin_table_balance[account]) - amount
+{
+  :- validate_account(account);
+  :- enforce(amount > 0.0, "debit amount must be positive");
+  :- enforce_unit(amount);
+  :- require_capability(DEBIT(account));
+  :- enforce(amount <= coin_table_balance[account], "Insufficient funds");
+
+  var balance := coin_table_balance[account];
+  coin_table_balance := coin_table_balance[account := balance - amount];
+
+  return Success;
+}
 
 //   (defun credit:string (account:string guard:guard amount:decimal)
 //     @doc "Credit AMOUNT to ACCOUNT balance"
@@ -730,7 +901,29 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 //           }))
 //       ))
 
-//procedure credit(account:string, guard:TyGuard, amount:real) returns (r:TyString);
+method credit(account:string, guard:guard, amount:real) returns (r: Status)
+  modifies this
+
+  requires account in coin_table_balance
+  ensures forall k :: k in old(coin_table_balance) <==> k in coin_table_balance
+
+  requires forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+  ensures forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+  ensures r == Success ==> coin_table_balance[account] >= amount
+
+  ensures r == Success ==>
+    coin_table_balance[account] == old(coin_table_balance[account]) + amount
+{
+  :- validate_account(account);
+  :- enforce(amount > 0.0, "credit amount must be positive");
+  :- enforce_unit(amount);
+  :- require_capability(CREDIT(account));
+
+  coin_table_balance :=
+    coin_table_balance[account := coin_table_balance[account] + amount];
+
+  return Success;
+}
 
 //   (defun check-reserved:string (account:string)
 //     " Checks ACCOUNT for reserved name and returns type if \
@@ -739,13 +932,13 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 //     (let ((pfx (take 2 account)))
 //       (if (= ":" (take -1 pfx)) (take 1 pfx) "")))
 
-function method check_reserved(account:string): string
-{
-  if |account| >= 2 && account[1] == ':' then
-    [account[0]]
-  else
-    ""
-}
+// function method check_reserved(account:string): string
+// {
+//   if |account| >= 2 && account[1] == ':' then
+//     [account[0]]
+//   else
+//     ""
+// }
 
 //   (defun enforce-reserved:bool (account:string guard:guard)
 //     @doc "Enforce reserved account name protocols."
@@ -760,7 +953,10 @@ function method check_reserved(account:string): string
 //               (format "Reserved protocol guard violation: {}" [r]))
 //             )))))
 
-//procedure enforce_reserved(account:string, guard:TyGuard) returns (r:bool);
+// method enforce_reserved(account:string, guard:guard) returns (r:bool)
+// {
+//   r := true;
+// }
 
 //   (defschema crosschain-schema
 //     @doc "Schema for yielded value in cross-chain transfers"
@@ -879,7 +1075,10 @@ function method check_reserved(account:string): string
 //         , "redeemed" : false
 //         })))
 
-//procedure create_allocated_account(account:string, date:TyTime, keyset_ref:TyString, amount:real);
+// method create_allocated_account(account:string, date:time, keyset_ref:string, amount:real) returns (r:Status)
+// {
+//   return Success;
+// }
 
 //   (defun release-allocation
 //     ( account:string )
@@ -923,7 +1122,10 @@ function method check_reserved(account:string): string
 //           "Allocation successfully released to main ledger"))
 //     )))
 
-//procedure release_allocation(account:string);
+// method release_allocation(account:string) returns (r:Status)
+// {
+//   return Success;
+// }
 
 // )
 

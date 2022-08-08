@@ -81,9 +81,11 @@ dafny = pkgs.buildDotnetModule rec {
   pname = "Dafny";
   version = "3.7.3";
 
-  src = pkgs.fetchurl {
-    url = "https://github.com/Microsoft/dafny/archive/v${version}.tar.gz";
-    sha256 = "0w9g8smx54pvg1y5zs90awv9plgyz5nkrnqbzi9m6dymhybblvx5";
+  src = pkgs.fetchFromGitHub {
+    owner = "Microsoft";
+    repo = "dafny";
+    rev = "v${version}";
+    sha256 = "1knv6zvpq0bnngmlwkcqgjpdkqsgbiihs6a0cycb8ssn18s4ippr";
   };
 
   preBuild = ''

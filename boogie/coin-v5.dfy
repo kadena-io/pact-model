@@ -54,6 +54,19 @@ function method enforce(b:bool, msg:string): (r: Status)
     else Failure(msg)
 }
 
+function method enforce_one(msg:string, b:seq<Status>): (r: Status)
+  decreases b
+  ensures r == Success ==>
+    |b| > 0 && (b[0] == Success || enforce_one(msg, b[1..]) == Success)
+{
+  if b == []
+  then Failure(msg)
+  else
+    if b[0] == Success
+    then Success
+    else enforce_one(msg, b[1..])
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // SUGAR
@@ -82,7 +95,7 @@ function method enforce(b:bool, msg:string): (r: Status)
 class coin {
 
 var capabilities : set<Capability>;
-// var resources : map<(string,seq<Value>),Value>;
+var resources : map<(string,seq<Value>),Value>;
 
 function method require_capability(cap: Capability): (r: Status)
   reads this
@@ -93,13 +106,13 @@ function method require_capability(cap: Capability): (r: Status)
     else Failure("capability has not been granted")
 }
 
-// method install_capability(cap: Capability) returns (r: Status)
-//   modifies this
-//   ensures (cap.name, cap.params) in resources
-// {
-//   var Token(name, params, value) := cap;
-//   resources := resources[ (name, params) := value ];
-// }
+method install_capability(cap: Capability) returns (r: Status)
+  modifies this
+  ensures (cap.name, cap.params) in resources
+{
+  var Token(name, params, value) := cap;
+  resources := resources[ (name, params) := value ];
+}
 
 //   @doc "'coin' represents the Kadena Coin Contract. This contract provides both the \
 //   \buy/redeem gas support in the form of 'fund-tx', as well as transfer,       \
@@ -181,6 +194,8 @@ predicate method valid_account(account:string) {
 var coin_table_balance : map<string, real>;
 
 constructor(pre_coin_table_balance:map<string, real>)
+  requires forall k :: k in pre_coin_table_balance ==> pre_coin_table_balance[k] >= 0.0
+  ensures coin_table_balance == pre_coin_table_balance
 {
   coin_table_balance := pre_coin_table_balance;
 }
@@ -191,46 +206,52 @@ constructor(pre_coin_table_balance:map<string, real>)
 //   (defcap GOVERNANCE ()
 //     (enforce false "Enforce non-upgradeability"))
 
-// method GOVERNANCE() returns (r:Status)
-// {
-//   return Success;
-// }
+function method GOVERNANCE(): Capability
+{
+  Token("GOVERNANCE", [], Unit)
+}
+
+method GOVERNANCE__predicate() returns (r: Status)
+{
+  :-enforce(false, "Enforce non-upgradeability");
+  return Success;
+}
 
 //   (defcap GAS ()
 //     "Magic capability to protect gas buy and redeem"
 //     true)
 
-// method GAS() returns (r:Status)
-// {
-//   return Success;
-// }
+function method GAS(): Capability
+{
+  Token("GAS", [], Unit)
+}
 
 //   (defcap COINBASE ()
 //     "Magic capability to protect miner reward"
 //     true)
 
-// method COINBASE() returns (r:Status)
-// {
-//   return Success;
-// }
+function method COINBASE(): Capability
+{
+  Token("COINBASE", [], Unit)
+}
 
 //   (defcap GENESIS ()
 //     "Magic capability constraining genesis transactions"
 //     true)
 
-// method GENESIS() returns (r:Status)
-// {
-//   return Success;
-// }
+function method GENESIS(): Capability
+{
+  Token("GENESIS", [], Unit)
+}
 
 //   (defcap REMEDIATE ()
 //     "Magic capability for remediation transactions"
 //     true)
 
-// method REMEDIATE() returns (r:Status)
-// {
-//   return Success;
-// }
+function method REMEDIATE(): Capability
+{
+  Token("REMEDIATE", [], Unit)
+}
 
 //   (defcap DEBIT (sender:string)
 //     "Capability for managing debiting operations"
@@ -244,7 +265,7 @@ function method DEBIT(sender:string): Capability
 
 // method DEBIT__predicate(sender:string) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defcap CREDIT (receiver:string)
@@ -256,10 +277,10 @@ function method CREDIT(receiver:string): Capability
   Token("CREDIT", [String(receiver)], Unit)
 }
 
-// method CREDIT__predicate(receiver:string) returns (r:Status)
-// {
-//   return Success;
-// }
+method CREDIT__predicate(receiver:string) returns (r:Status)
+{
+  return Success;
+}
 
 //   (defcap ROTATE (account:string)
 //     @doc "Autonomously managed capability for guard rotation"
@@ -268,7 +289,7 @@ function method CREDIT(receiver:string): Capability
 
 // method ROTATE(account:string) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defcap TRANSFER:bool
@@ -286,7 +307,7 @@ function method CREDIT(receiver:string): Capability
 
 // method TRANSFER(sender:string, receiver:string, amount:real) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defun TRANSFER-mgr:decimal
@@ -302,7 +323,7 @@ function method CREDIT(receiver:string): Capability
 
 // method TRANSFER_mgr(managed:real, requested:real) returns (r:real)
 // {
-//   r := 0.0;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defcap TRANSFER_XCHAIN:bool
@@ -320,7 +341,7 @@ function method CREDIT(receiver:string): Capability
 
 // method TRANSFER_XCHAIN(sender:string, receiver:string, amount:real, target_chain:string) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defun TRANSFER_XCHAIN-mgr:decimal
@@ -335,7 +356,7 @@ function method CREDIT(receiver:string): Capability
 
 // method TRANSFER_XCHAIN_mgr(managed:real, requested:real) returns (r:real)
 // {
-//   r := 0.0;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defcap TRANSFER_XCHAIN_RECD:bool
@@ -349,7 +370,7 @@ function method CREDIT(receiver:string): Capability
 
 // method TRANSFER_XCHAIN_RECD(sender:string, receiver:string, amount:real, source_chain:string) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   ; v3 capabilities
@@ -361,10 +382,10 @@ function method CREDIT(receiver:string): Capability
 //     @event true
 //   )
 
-// method RELEASE_ALLOCATION(account:string, amount:real) returns (r:Status)
-// {
-//   return Success;
-// }
+function method RELEASE_ALLOCATION(account:string, amount:real): Capability
+{
+  Token("RELEASE_ALLOCATION", [String(account), Decimal(amount)], Unit)
+}
 
 //   ; --------------------------------------------------------------------------
 //   ; Constants
@@ -392,7 +413,28 @@ const MAXIMUM_ACCOUNT_LENGTH : int := 256;
 //   (defconst VALID_CHAIN_IDS (map (int-to-str 10) (enumerate 0 19))
 //     "List of all valid Chainweb chain ids")
 
-// const VALID_CHAIN_IDS : [int]int; //jww (2022-08-05): ?
+const VALID_CHAIN_IDS : seq<string> := [
+  "0000000000",
+  "0000000001",
+  "0000000002",
+  "0000000003",
+  "0000000004",
+  "0000000005",
+  "0000000006",
+  "0000000007",
+  "0000000008",
+  "0000000009",
+  "0000000010",
+  "0000000011",
+  "0000000012",
+  "0000000013",
+  "0000000014",
+  "0000000015",
+  "0000000016",
+  "0000000017",
+  "0000000018",
+  "0000000019"
+  ];
 
 //   ; --------------------------------------------------------------------------
 //   ; Utilities
@@ -406,16 +448,17 @@ const MAXIMUM_ACCOUNT_LENGTH : int := 256;
 //       (format "Amount violates minimum precision: {}" [amount]))
 //     )
 
-function method floored(amount: real): real
+function method floored(amount: real, prec: real): real
+  requires prec > 0.0
 {
-  (amount * MINIMUM_PRECISION as real).Floor as real
-    / (MINIMUM_PRECISION as real)
+  (amount * prec).Floor as real / prec
 }
 
 function method enforce_unit(amount:real): (r: Status)
-  ensures r == Success ==> floored(amount) == amount
+  ensures r == Success ==>
+    floored(amount, MINIMUM_PRECISION as real) == amount
 {
-  enforce(floored(amount) == amount,
+  enforce(floored(amount, MINIMUM_PRECISION as real) == amount,
     "Amount violates minimum precision")
 }
 
@@ -446,12 +489,17 @@ function method enforce_unit(amount:real): (r: Status)
 //       )
 //   )
 
-function method validate_account(account:string): (r: Status)
+method validate_account(account:string) returns (r: Status)
   ensures r == Success ==> valid_account(account)
 {
-  if valid_account(account)
-    then Success
-    else Failure("invalid account name")
+  var account_length := |account|;
+  :- enforce(
+       account_length >= MINIMUM_ACCOUNT_LENGTH,
+       "Account name does not conform to the min length requirement");
+  :- enforce(
+       account_length <= MAXIMUM_ACCOUNT_LENGTH,
+       "Account name does not conform to the max length requirement");
+  return Success;
 }
 
 //   ; --------------------------------------------------------------------------
@@ -461,10 +509,11 @@ function method validate_account(account:string): (r: Status)
 //     "Predicate for gas-only user guards."
 //     (require-capability (GAS)))
 
-// method gas_only() returns (r:Status)
-// {
-//   return Success;
-// }
+function method gas_only(): Status
+  reads this
+{
+  require_capability(GAS())
+}
 
 //   (defun gas-guard (guard:guard)
 //     "Predicate for gas + single key user guards"
@@ -474,10 +523,15 @@ function method validate_account(account:string): (r: Status)
 //         (enforce-guard guard)
 //       ]))
 
-// method gas_guard(guard:guard) returns (r:Status)
-// {
-//   return Success;
-// }
+function method gas_guard(guard:guard): Status
+  reads this
+{
+  enforce_one(
+    "Enforce either the presence of a GAS cap or keyset",
+    [ gas_only()// ,
+      // enforce_guard(guard)
+    ])
+}
 
 //   (defun buy-gas:string (sender:string total:decimal)
 //     @doc "This function describes the main 'gas buy' operation. At this point \
@@ -500,10 +554,29 @@ function method validate_account(account:string): (r: Status)
 //       (debit sender total))
 //     )
 
-// method buy_gas(sender:string, total:real) returns (r:Status)
-// {
-//   return Success;
-// }
+method buy_gas(sender:string, total:real) returns (r: Status)
+  modifies this
+
+  requires sender in coin_table_balance
+  requires forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+{
+  :- validate_account(sender);
+  :- enforce_unit(total);
+  :- enforce(total > 0.0, "gas supply must be a positive quantity");
+  :- require_capability(GAS());
+
+  var caps := capabilities;
+  capabilities := capabilities + { DEBIT(sender) };
+  var res1 := debit(sender, total);
+  if res1.IsFailure() {
+    capabilities := caps;
+    return res1;
+  } else {
+    capabilities := caps;
+  }
+
+  return Success;
+}
 
 //   (defun redeem-gas:string (miner:string miner-guard:guard sender:string total:decimal)
 //     @doc "This function describes the main 'redeem gas' operation. At this    \
@@ -554,7 +627,7 @@ function method validate_account(account:string): (r: Status)
 
 // method redeem_gas(miner:string, miner_guard:guard, sender:string, total:real) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defun create-account:string (account:string guard:guard)
@@ -571,7 +644,7 @@ function method validate_account(account:string): (r: Status)
 
 // method create_account(account:string, guard:guard) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defun get-balance:decimal (account:string)
@@ -581,10 +654,13 @@ function method validate_account(account:string): (r: Status)
 //       )
 //     )
 
-// method get_balance(account:string) returns (r:real)
-// {
-//   r := 0.0;
-// }
+function method get_balance(account:string): real
+  reads this
+  requires account in coin_table_balance
+{
+  var balance := coin_table_balance[account];
+  balance
+}
 
 //   (defun details:object{fungible-v2.account-details}
 //     ( account:string )
@@ -598,7 +674,7 @@ function method validate_account(account:string): (r: Status)
 
 // method details(account:string) returns (r:Object)
 // {
-//   r := "";
+//   jww (2022-08-08): TODO
 // }
 
 //   (defun rotate:string (account:string new-guard:guard)
@@ -615,17 +691,17 @@ function method validate_account(account:string): (r: Status)
 
 // method rotate(account:string, new_guard:guard) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defun precision:integer
 //     ()
 //     MINIMUM_PRECISION)
 
-// method precision() returns (r:int)
-// {
-//   return MINIMUM_PRECISION;
-// }
+function method precision(): int
+{
+  MINIMUM_PRECISION
+}
 
 //   (defun transfer:string (sender:string receiver:string amount:decimal)
 //     @model [ (property conserves-mass)
@@ -655,7 +731,6 @@ function method validate_account(account:string): (r: Status)
 //     )
 
 method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
-  // this table is updated
   modifies this;
 
   // no accounts with negative balance before or after
@@ -685,28 +760,28 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
   var balance := coin_table_balance[sender];
   coin_table_balance := coin_table_balance[sender := balance - amount];
 
-  // var caps1 := capabilities;
+  // var caps := capabilities;
+
   // capabilities := capabilities + { DEBIT(sender) };
   // var res1 := debit(sender, amount);
   // if res1.IsFailure() {
-  //   capabilities := caps1;
+  //   capabilities := caps;
   //   return res1;
   // } else {
-  //   capabilities := caps1;
+  //   capabilities := caps;
   // }
 
   coin_table_balance :=
     coin_table_balance[receiver := coin_table_balance[receiver] + amount];
 
-  // var caps2 := capabilities;
   // capabilities := capabilities + { CREDIT(receiver) };
   // var g : guard := "";
   // var res2 := credit(receiver, g, amount);
   // if res2.IsFailure() {
-  //   capabilities := caps2;
+  //   capabilities := caps;
   //   return res2;
   // } else {
-  //   capabilities := caps2;
+  //   capabilities := caps;
   // }
 
   account_balances_n(coin_table_balance);
@@ -740,7 +815,7 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 
 // method transfer_create(sender:string, receiver:string, receiver_guard:guard, amount:real) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defun coinbase:string (account:string account-guard:guard amount:decimal)
@@ -762,7 +837,7 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 
 // method coinbase(account:string, account_guard:guard, amount:real) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defun remediate:string (account:string amount:decimal)
@@ -793,7 +868,7 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 
 // method remediate(account:string, amount:real) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defpact fund-tx (sender:string miner:string miner-guard:guard total:decimal)
@@ -818,7 +893,7 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 
 // method fund_tx(sender:string, miner:string, miner_guard:guard, total:real) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defun debit:string (account:string amount:decimal)
@@ -909,8 +984,8 @@ method credit(account:string, guard:guard, amount:real) returns (r: Status)
 
   requires forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
   ensures forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
-  ensures r == Success ==> coin_table_balance[account] >= amount
 
+  ensures r == Success ==> coin_table_balance[account] >= amount
   ensures r == Success ==>
     coin_table_balance[account] == old(coin_table_balance[account]) + amount
 {
@@ -932,13 +1007,13 @@ method credit(account:string, guard:guard, amount:real) returns (r: Status)
 //     (let ((pfx (take 2 account)))
 //       (if (= ":" (take -1 pfx)) (take 1 pfx) "")))
 
-// function method check_reserved(account:string): string
-// {
-//   if |account| >= 2 && account[1] == ':' then
-//     [account[0]]
-//   else
-//     ""
-// }
+function method check_reserved(account:string): string
+{
+  if |account| >= 2 && account[1] == ':' then
+    account[0..1]
+  else
+    ""
+}
 
 //   (defun enforce-reserved:bool (account:string guard:guard)
 //     @doc "Enforce reserved account name protocols."
@@ -953,10 +1028,24 @@ method credit(account:string, guard:guard, amount:real) returns (r: Status)
 //               (format "Reserved protocol guard violation: {}" [r]))
 //             )))))
 
-// method enforce_reserved(account:string, guard:guard) returns (r:bool)
-// {
-//   r := true;
-// }
+function method validate_principal(g:guard, acct:string): bool
+{
+  true
+}
+
+function method enforce_reserved(account:string, guard:guard): Status
+{
+  if validate_principal(guard, account)
+  then Success
+  else
+    var r := check_reserved(account);
+    if r == ""
+    then Success
+    else
+      if r == "k"
+      then enforce(false, "Single-key account protocol violation")
+      else enforce(false, "Reserved protocol guard violation")
+}
 
 //   (defschema crosschain-schema
 //     @doc "Schema for yielded value in cross-chain transfers"
@@ -1077,7 +1166,7 @@ method credit(account:string, guard:guard, amount:real) returns (r: Status)
 
 // method create_allocated_account(account:string, date:time, keyset_ref:string, amount:real) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 //   (defun release-allocation
@@ -1124,7 +1213,7 @@ method credit(account:string, guard:guard, amount:real) returns (r: Status)
 
 // method release_allocation(account:string) returns (r:Status)
 // {
-//   return Success;
+//   jww (2022-08-08): TODO
 // }
 
 // )

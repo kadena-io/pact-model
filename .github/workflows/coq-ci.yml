@@ -19,6 +19,19 @@ jobs:
           opam_file: 'coq-pact-model.opam'
           coq_version: ${{ matrix.coq_version }}
           ocaml_version: ${{ matrix.ocaml_version }}
+  nix-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        coq_version:
+          - '8.15'
+      fail-fast: false
+    steps:
+      - uses: nixbuild/nix-quick-install-action@v14
+      - run: nix-build . -A pact-model_8_15.out
+      - run: nix-build . -A pact-model_8_15.env
+      - run: nix store sign -k ~/.config/gnupg/nix-signing-key.sec --all
+      - run: AWS_ACCESS_KEY_ID=001d7f59d16a7a40000000006 AWS_SECRET_ACCESS_KEY=001d7f59d16a7a40000000006 nix copy --to "s3://jw-nix-cache?region=us-west-001&endpoint=s3.us-west-001.backblazeb2.com" $(nix-build . -A pact-model_8_15.out) $(nix-build . -A pact-model_8_15.env)
 
 # See also:
 # https://github.com/coq-community/docker-coq-action#readme

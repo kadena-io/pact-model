@@ -17,8 +17,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Set Equations With UIP.
-
 Generalizable All Variables.
 Set Primitive Projections.
 

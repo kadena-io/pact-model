@@ -97,6 +97,14 @@ dafny = pkgs.buildDotnetModule rec {
 
   projectFile = [ "Source/Dafny.sln" ];
 
+  postPatch = ''
+    cp ${pkgs.writeScript "fake-gradlew-for-dafny" ''
+      mkdir -p build/libs/
+      javac $(find -name "*.java" | grep "^./src/main") -d classes
+      jar cf build/libs/DafnyRuntime.jar -C classes dafny
+    ''} Source/DafnyRuntime/DafnyRuntimeJava/gradlew
+  '';
+
   # Boogie as an input is not enough. Boogie libraries need to be at the same
   # place as Dafny ones. Same for "*.dll.mdb". No idea why or how to fix.
   postFixup = ''

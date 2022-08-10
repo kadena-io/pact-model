@@ -57,6 +57,9 @@ Class HoareLogic (heap : Type) := {
       composition is just their union. *)
   heap_compat : heap → heap → Prop;
 
+  heap_compat_irr {h} :
+    h <> heap_empty →
+    ¬ heap_compat h h;
   heap_compat_sym {h1 h2} :
     heap_compat h1 h2 →
     heap_compat h2 h1;
@@ -68,7 +71,7 @@ Class HoareLogic (heap : Type) := {
 
   heap_compat_union_l_eq {h1 h2 h3} :
     heap_compat h1 h2 →
-    heap_compat (h1 \u h2) h3 = (heap_compat h1 h3 /\ heap_compat h2 h3);
+    heap_compat (h1 \u h2) h3 = (heap_compat h1 h3 ∧ heap_compat h2 h3);
 
   heap_union_empty_l {h} :
     heap_empty \u h = h;
@@ -254,7 +257,7 @@ Proof. Admitted.
 
 Lemma heap_compat_union_r_eq {h1 h2 h3} :
   heap_compat h2 h3 →
-  heap_compat h1 (h2 \u h3) = (heap_compat h1 h2 /\ heap_compat h1 h3).
+  heap_compat h1 (h2 \u h3) = (heap_compat h1 h2 ∧ heap_compat h1 h3).
 Proof. Admitted.
 
 Lemma heap_compat_union_l {h1 h2 h3} :
@@ -306,7 +309,7 @@ Proof. Admitted.
 
 Lemma hstar_inv {H1 H2 h} :
   (H1 \* H2) h →
-  exists h1 h2, H1 h1 /\ H2 h2 /\ heap_compat h1 h2 /\ h = h1 \u h2.
+  exists h1 h2, H1 h1 ∧ H2 h2 ∧ heap_compat h1 h2 ∧ h = h1 \u h2.
 Proof. Admitted.
 
 Lemma hexists_intro {A} {J : A → hprop} {x h} :
@@ -338,7 +341,7 @@ Proof. Admitted.
 
 Lemma hpure_inv {P h} :
   \[P] h →
-  P /\ h = heap_empty.
+  P ∧ h = heap_empty.
 Proof. Admitted.
 
 (* ---------------------------------------------------------------------- *)
@@ -405,7 +408,7 @@ Proof. Admitted.
 (** Properties of [hpure] *)
 
 Lemma hstar_hpure_l {P H h} :
-  (\[P] \* H) h = (P /\ H h).
+  (\[P] \* H) h = (P ∧ H h).
 Proof. Admitted.
 
 End CoreProperties.
@@ -456,7 +459,7 @@ Proof. Admitted.
 (** Properties of [hpure] *)
 
 Lemma hstar_hpure_r {P H h} :
-  (H \* \[P]) h = (H h /\ P).
+  (H \* \[P]) h = (H h ∧ P).
 Proof. Admitted.
 
 (* backward compatibility *)
@@ -464,7 +467,7 @@ Definition hstar_hpure {P H h} := @hstar_hpure_l P H h.
 
   (* corollary only used for the SL course *)
 Lemma hstar_hpure_iff {P H h} :
-  (\[P] \* H) h ↔ (P /\ H h).
+  (\[P] \* H) h ↔ (P ∧ H h).
 Proof. Admitted.
 
 Lemma himpl_hstar_hpure_r {P H H'} :
@@ -475,7 +478,7 @@ Proof. Admitted.
 
 Lemma hpure_inv_hempty {P h} :
   \[P] h →
-  P /\ \[] h.
+  P ∧ \[] h.
 Proof. Admitted.
 
 Lemma hpure_intro_hempty {P h} :
@@ -865,7 +868,7 @@ Notation "'~~' B + E" := (hprop → (B → hprop) → (E → Prop) → Prop)
 Definition local {B E} (F : ~~B+E) : Prop :=
   ∀ H Q Z,
     (H ==> \exists H1 H2 Q1, H1 \* H2 \*
-             \[F H1 Q1 Z /\ Q1 \*+ H2 ===> Q]) →
+             \[F H1 Q1 Z ∧ Q1 \*+ H2 ===> Q]) →
     F H Q Z.
 
 (** [local_pred S] asserts that [local (S x)] holds for any [x].
@@ -890,7 +893,7 @@ Implicit Types (F : ~~B+E).
 Lemma local_intro {F} :
   (∀ H Q Z,
     (H ==> \exists H1 H2 Q1, H1 \* H2 \*
-             \[F H1 Q1 Z /\ Q1 \*+ H2 ===> Q]) →
+             \[F H1 Q1 Z ∧ Q1 \*+ H2 ===> Q]) →
     F H Q Z) →
   local F.
 Proof. auto. Qed.
@@ -899,7 +902,7 @@ Proof. auto. Qed.
 
 Lemma local_elim {F H Q Z} :
   local F →
-  (H ==> \exists H1 H2 Q1, H1 \* H2 \* \[F H1 Q1 Z /\ Q1 \*+ H2 ===> Q]) →
+  (H ==> \exists H1 H2 Q1, H1 \* H2 \* \[F H1 Q1 Z ∧ Q1 \*+ H2 ===> Q]) →
   F H Q Z.
 Proof. auto. Qed.
 
@@ -907,7 +910,7 @@ Proof. auto. Qed.
 
 Lemma local_elim_frame {F H Q Z} :
   local F →
-  (H ==> \exists H1 H2 Q1, H1 \* H2 \* \[F H1 Q1 Z /\ Q1 \*+ H2 ===> Q]) →
+  (H ==> \exists H1 H2 Q1, H1 \* H2 \* \[F H1 Q1 Z ∧ Q1 \*+ H2 ===> Q]) →
   F H Q Z.
 Proof. Admitted.
 

@@ -29,6 +29,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: nixbuild/nix-quick-install-action@v14
-      - run: nix-build -Q . -A pact-model_8_15.out
+      - run: nix-build -Q . -A pact-model_8_15.out --option build-use-substitutes true --extra-trusted-substituters "s3://jw-nix-cache?region=us-west-001&endpoint=s3.us-west-001.backblazeb2.com"
       - run: nix-build -Q . -A pact-model_8_15.env
       - run: nix-store -qR --include-outputs $(nix-instantiate shell.nix) | AWS_ACCESS_KEY_ID="001d7f59d16a7a40000000007" AWS_SECRET_ACCESS_KEY="K001bnk1qAEnhBv7WX7NIQEutjqvFQc" xargs nix --extra-experimental-features nix-command copy --to "s3://jw-nix-cache?region=us-west-001&endpoint=s3.us-west-001.backblazeb2.com" --no-check-sigs

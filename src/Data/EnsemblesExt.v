@@ -69,13 +69,13 @@ Ltac breakdown :=
   | [ H1 : ?X = true, H2 : ?X = false |- _ ] => rewrite H1 in H2; discriminate
   end.
 
-Infix    "∪"      := (Union _)        (at level 75, right associativity).
+Infix    "∪"      := (Union _)        (at level 45, right associativity).
 Notation "∅"      := (Empty_set _)    (at level 0, no associativity).
 Notation "p ⊆ q"  := (Included _ p q) (at level 69, no associativity).
 Infix    "∩"      := (Intersection _) (at level 70, right associativity).
 Notation "x ∷ xs" := (Add _ xs x)     (at level 60, right associativity, only parsing).
 
-Notation "{ e } ∪ s" := (Add _ s e) (at level 75, right associativity, only parsing).
+Notation "{ e } ∪ s" := (Add _ s e) (at level 45, right associativity, only parsing).
 
 (* Notation "p ∈ q"  := (In _ q p)       (at level 68, no associativity). *)
 (* Notation "p ∉ q"  := (~ In _ q p)     (at level 68, no associativity). *)

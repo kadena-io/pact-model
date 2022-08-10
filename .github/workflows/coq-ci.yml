@@ -31,4 +31,4 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v14
       - run: nix-build -Q . -A pact-model_8_15.out
       - run: nix-build -Q . -A pact-model_8_15.env
-      - run: AWS_ACCESS_KEY_ID="001d7f59d16a7a40000000007" AWS_SECRET_ACCESS_KEY="K001bnk1qAEnhBv7WX7NIQEutjqvFQc" nix copy --to "s3://jw-nix-cache?region=us-west-001&endpoint=s3.us-west-001.backblazeb2.com" $(nix-build -Q . -A pact-model_8_15.out | tail -1) $(nix-build -Q . -A pact-model_8_15.env | tail -1) --no-check-sigs
+      - run: AWS_ACCESS_KEY_ID="001d7f59d16a7a40000000007" AWS_SECRET_ACCESS_KEY="K001bnk1qAEnhBv7WX7NIQEutjqvFQc" nix --extra-experimental-features nix-command copy --to "s3://jw-nix-cache?region=us-west-001&endpoint=s3.us-west-001.backblazeb2.com" $(nix-build -Q . -A pact-model_8_15.out | tail -1) $(nix-build -Q . -A pact-model_8_15.env | tail -1) --no-check-sigs

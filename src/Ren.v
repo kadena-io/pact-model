@@ -94,6 +94,12 @@ Proof. reflexivity. Qed.
 
 Definition skip1 {Γ τ} : Ren (τ :: Γ) Γ := Drop idRen.
 
+Fixpoint lifted {Γ Γ'} : Ren (Γ' ++ Γ) Γ :=
+  match Γ' with
+  | [] => idRen
+  | x :: xs => Drop lifted
+  end.
+
 Equations RcR {Γ Γ' Γ''} (r : Ren Γ' Γ'') (r' : Ren Γ Γ') : Ren Γ Γ'' :=
   RcR σ        NoRen    := σ;
   RcR σ        (Drop δ) := Drop (RcR σ δ);

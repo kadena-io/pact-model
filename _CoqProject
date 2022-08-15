@@ -24,6 +24,7 @@ src/Exp.v
 src/Pat.v
 src/Log.v
 src/Value.v
+src/Walk.v
 src/Ren.v
 src/Sub.v
 src/Lang/CapabilityType.v

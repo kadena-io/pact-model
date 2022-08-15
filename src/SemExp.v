@@ -55,6 +55,10 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
     x <- SemExp e2 se ;
     f x;
 
+  SemExp (Let x body) se :=
+    x' <- SemExp x se ;
+    SemExp body (x', se);
+
   SemExp Error     _ := throw Err_Expr;
   SemExp (Catch e) _ :=
     λ s,

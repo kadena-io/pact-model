@@ -76,6 +76,11 @@ Proof.
     extensionality z.
     sauto lq: on.
   }
+  2: {
+    f_equal; auto.
+    extensionality z.
+    sauto lq: on.
+  }
   all: sauto lq: on.
 Qed.
 

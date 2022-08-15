@@ -3,6 +3,7 @@ Require Import
   Pact.Ty
   Pact.Exp
   Pact.Value
+  Pact.Walk
   Pact.Ren.
 
 Set Implicit Arguments.
@@ -160,12 +161,12 @@ Proof.
   1: now rewrite SubVar_RcS.
   1: {
     specialize (IHe _ _ (Keep σ) (Keepₛ δ)).
-    rewrite <- IHe.
-    unfold Keepₛ.
-    simp RcS.
-    repeat f_equal.
-    unfold Dropₛ.
-    now apply ScR_RcS.
+    rewrite -IHe /Keepₛ /Dropₛ ScR_RcS.
+    now simp RcS.
+  }
+  2: {
+    rewrite -IHe1 -IHe2 /Keepₛ /Dropₛ ScR_RcS.
+    now simp RcS.
   }
   all: sauto.
 Qed.
@@ -178,16 +179,20 @@ Proof.
   induction e; simpl; intros; auto.
   1: now rewrite SubVar_ScR.
   1: {
-    rewrite <- IHe.
-    unfold Keepₛ.
-    simp ScR.
-    simpl.
-    repeat f_equal.
-    unfold Dropₛ.
-    rewrite !ScR_ScR.
-    unfold skip1; simp RcR.
-    rewrite RcR_idRen_left.
-    now rewrite RcR_idRen_right.
+    rewrite -IHe /Keepₛ /Dropₛ /= ScR_ScR.
+    simp ScR; simpl.
+    simp RenVar.
+    rewrite ScR_ScR /skip1.
+    simp RcR.
+    rewrite RcR_idRen_left RcR_idRen_right //.
+  }
+  2: {
+    rewrite -IHe1 -IHe2 /Keepₛ /Dropₛ /= ScR_ScR.
+    simp ScR; simpl.
+    simp RenVar.
+    rewrite ScR_ScR /skip1.
+    simp RcR.
+    rewrite RcR_idRen_left RcR_idRen_right //.
   }
   all: sauto.
 Qed.
@@ -234,21 +239,32 @@ Proof.
   induction e; simpl; intros; auto.
   1: now rewrite SubVar_ScS.
   1: {
-    rewrite <- IHe; clear.
-    unfold Keepₛ.
-    unfold Dropₛ.
-    simpl; simp SubVar.
-    rewrite ScR_ScS.
-    remember (ScR δ skip1) as g; clear.
+    rewrite -IHe /Keepₛ /Dropₛ /= ScR_ScS.
+    simp SubVar.
+    remember (ScR δ skip1) as g.
     unfold skip1.
     generalize dependent g.
     generalize dependent Γ0.
-    induction σ; simpl; simp ScR;
+    destruct σ; simpl; simp ScR;
     simpl; intros; auto.
-    rewrite <- SubExp_RcS.
+    rewrite -SubExp_RcS.
     simp RcS.
-    rewrite RcS_idRen.
-    rewrite ScS_ScR.
+    rewrite RcS_idRen ScS_ScR.
+    simp RcS.
+    now rewrite RcS_idRen.
+  }
+  2: {
+    rewrite -IHe1 -IHe2 /Keepₛ /Dropₛ /= ScR_ScS.
+    simp SubVar.
+    remember (ScR δ skip1) as g.
+    unfold skip1.
+    generalize dependent g.
+    generalize dependent Γ0.
+    destruct σ; simpl; simp ScR;
+    simpl; intros; auto.
+    rewrite -SubExp_RcS.
+    simp RcS.
+    rewrite RcS_idRen ScS_ScR.
     simp RcS.
     now rewrite RcS_idRen.
   }

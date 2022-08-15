@@ -40,6 +40,8 @@ Inductive Exp Γ : Ty → Set :=
   | LAM {dom cod}  : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
   | APP {dom cod}  : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod
 
+  | Let {τ' τ}     : Exp Γ τ' → Exp (τ' :: Γ) τ → Exp Γ τ
+
   (* The following terms represent Pact beyond lambda calculus. *)
   | Error {τ}      : Exp Γ τ
   | Catch {τ}      : Exp Γ τ → Exp Γ (TySum 𝕌 τ)
@@ -102,6 +104,8 @@ Fixpoint Exp_size `(e : Exp Γ τ) : nat :=
   | VAR v      => 1
   | LAM e      => 1 + Exp_size e
   | APP e1 e2  => 1 + Exp_size e1 + Exp_size e2
+
+  | Let x body => 1 + Exp_size x + Exp_size body
 
   | Error _    => 1
   | Catch e    => 1 + Exp_size e

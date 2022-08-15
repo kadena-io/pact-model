@@ -99,23 +99,20 @@ Equations transform `(e : Exp Γ τ)
   ⟦VAR v⟧ k := k [] _ (AVAR v);
   ⟦LAM e⟧ k := k [] _ (ALAM e);
   ⟦Lit x⟧ k := k [] _ (ALit x);
-  ⟦APP (VAR f) (VAR x)⟧ k :=
-    k [] _ (AApp (AVAR f) (AVAR x));
+  ⟦APP (VAR f) (VAR x)⟧ k := k [] _ (AApp (AVAR f) (AVAR x));
   ⟦APP (VAR f) x⟧ k :=
     ⟦x⟧ (λ l _ x',
         ALet x'
           (k (_ :: l) _
              (AApp (AVAR (RenVar lifted f)) (AVAR (Γ:=(_ :: l) ++ Γ) ZV))));
-  ⟦APP f x⟧ k :=
-    ⟦f⟧ (λ fl _ f',
-        (⟦x⟧ (λ xl _ x',
-             ALet f'
-               (ALet x'
-                  (k (_ :: _ :: fl ++ xl) _
-                     (AApp
-                        (AVAR (Γ:=(_ :: _ :: fl ++ xl) ++ Γ) (SV ZV))
-                        (AVAR (Γ:=(_ :: _ :: fl ++ xl) ++ Γ) ZV)))))));
-  ⟦Error⟧ _ := λ _, AError;
+  ⟦APP f x⟧ k := _;
+        (* (⟦x⟧ (λ xl _ x', *)
+        (*    (ALet x' *)
+        (*       (k (_ :: _ :: fl ++ xl) _ *)
+        (*          (AApp *)
+        (*             (AVAR (Γ:=(_ :: _ :: fl ++ xl) ++ Γ) (SV ZV)) *)
+        (*             (AVAR (Γ:=(_ :: _ :: fl ++ xl) ++ Γ) ZV))))))); *)
+  ⟦Error⟧ _ := AError;
   ⟦Catch x⟧ k := _;
   ⟦Bltn x⟧ k := _;
   ⟦Symbol x⟧ k := _;

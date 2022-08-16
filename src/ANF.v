@@ -20,55 +20,56 @@ Import ListNotations.
 
 Open Scope Ty_scope.
 
-Inductive Simp Γ : Ty → Set :=
-  | SVAR {τ}       : Var Γ τ → Simp Γ τ
-  | SLAM {dom cod} : ANF (dom :: Γ) cod → Simp Γ (dom ⟶ cod)
+Inductive Simp Γ Γ' : Ty → Set :=
+  | EVAR {τ}        : Var Γ τ → Simp Γ Γ' τ
+  | SVAR {τ}        : Var Γ' τ → Simp Γ Γ' τ
+  | SLAM {dom cod}  : ANF (dom :: Γ) Γ' cod → Simp Γ Γ' (dom ⟶ cod)
 
-  | SLit {ty}       : Literal ty → Simp Γ (TyPrim ty)
-  | SBltn {τ}       : Builtin τ → Simp Γ τ
+  | SLit {ty}       : Literal ty → Simp Γ Γ' (TyPrim ty)
+  | SBltn {τ}       : Builtin τ → Simp Γ Γ' τ
 
-  | SSymbol         : string → Simp Γ TySym
+  | SSymbol         : string → Simp Γ Γ' TySym
 
-  | SPair {τ1 τ2}   : Simp Γ τ1 → Simp Γ τ2 → Simp Γ (TyPair τ1 τ2)
-  | SFst {τ1 τ2}    : Simp Γ (TyPair τ1 τ2) → Simp Γ τ1
-  | SSnd {τ1 τ2}    : Simp Γ (TyPair τ1 τ2) → Simp Γ τ2
+  | SPair {τ1 τ2}   : Simp Γ Γ' τ1 → Simp Γ Γ' τ2 → Simp Γ Γ' (TyPair τ1 τ2)
+  | SFst {τ1 τ2}    : Simp Γ Γ' (TyPair τ1 τ2) → Simp Γ Γ' τ1
+  | SSnd {τ1 τ2}    : Simp Γ Γ' (TyPair τ1 τ2) → Simp Γ Γ' τ2
 
-  | SInl {τ1 τ2}    : Simp Γ τ1 → Simp Γ (TySum τ1 τ2)
-  | SInr {τ1 τ2}    : Simp Γ τ2 → Simp Γ (TySum τ1 τ2)
-  | SCase {τ1 τ2 τ} : Simp Γ (TySum τ1 τ2) →
-                      Simp Γ (τ1 ⟶ τ) → Simp Γ (τ2 ⟶ τ) → Simp Γ τ
+  | SInl {τ1 τ2}    : Simp Γ Γ' τ1 → Simp Γ Γ' (TySum τ1 τ2)
+  | SInr {τ1 τ2}    : Simp Γ Γ' τ2 → Simp Γ Γ' (TySum τ1 τ2)
+  | SCase {τ1 τ2 τ} : Simp Γ Γ' (TySum τ1 τ2) →
+                      Simp Γ Γ' (τ1 ⟶ τ) → Simp Γ Γ' (τ2 ⟶ τ) → Simp Γ Γ' τ
 
-  | SNil {τ}        : Simp Γ (TyList τ)
-  | SCons {τ}       : Simp Γ τ → Simp Γ (TyList τ) → Simp Γ (TyList τ)
-  | SCar {τ}        : Simp Γ (TyList τ) → Simp Γ τ
-  | SCdr {τ}        : Simp Γ (TyList τ) → Simp Γ (TyList τ)
-  | SIsNil {τ}      : Simp Γ (TyList τ) → Simp Γ 𝔹
+  | SNil {τ}        : Simp Γ Γ' (TyList τ)
+  | SCons {τ}       : Simp Γ Γ' τ → Simp Γ Γ' (TyList τ) → Simp Γ Γ' (TyList τ)
+  | SCar {τ}        : Simp Γ Γ' (TyList τ) → Simp Γ Γ' τ
+  | SCdr {τ}        : Simp Γ Γ' (TyList τ) → Simp Γ Γ' (TyList τ)
+  | SIsNil {τ}      : Simp Γ Γ' (TyList τ) → Simp Γ Γ' 𝔹
 
-with ANF Γ : Ty → Set :=
-  | AReturn {τ} : Simp Γ τ → ANF Γ τ
+with ANF Γ Γ' : Ty → Set :=
+  | AReturn {τ} : Simp Γ Γ' τ → ANF Γ Γ' τ
   | ALetApp {τ dom cod} :
-      Simp Γ (dom ⟶ cod) →
-      Simp Γ dom →
-      ANF (cod :: Γ) τ →
-      ANF Γ τ
+      Simp Γ Γ' (dom ⟶ cod) →
+      Simp Γ Γ' dom →
+      ANF Γ (cod :: Γ') τ →
+      ANF Γ Γ' τ
   | ATailApp {dom cod} :
-      Simp Γ (dom ⟶ cod) →
-      Simp Γ dom →
-      ANF Γ cod
-(*
+      Simp Γ Γ' (dom ⟶ cod) →
+      Simp Γ Γ' dom →
+      ANF Γ Γ' cod
   | ALet {τ τ'} :
-      ANF (𝕌 :: Γ) τ' →
-      ANF (𝕌 ⟶ τ' :: Γ) τ →
-      ANF Γ τ
+      ANF Γ (𝕌 :: Γ') τ' →
+      ANF Γ (𝕌 ⟶ τ' :: Γ') τ →
+      ANF Γ Γ' τ
 
-  | AError {τ} : ANF Γ τ
-  | ACatch {τ} : ANF Γ τ → ANF Γ (TySum 𝕌 τ)
+  | AError {τ} : ANF Γ Γ' τ
+(*
+  | ACatch {τ} : ANF Γ Γ' τ → ANF Γ Γ' (TySum 𝕌 τ)
 
   | AIf {τ} :
-      Simp Γ 𝔹 →
-      ANF Γ τ →
-      ANF Γ τ →
-      ANF Γ τ.
+      Simp Γ Γ' 𝔹 →
+      ANF Γ Γ' τ →
+      ANF Γ Γ' τ →
+      ANF Γ Γ' τ.
 
   (** Capabilities *)
 
@@ -108,86 +109,118 @@ with ANF Γ : Ty → Set :=
 Derive Signature NoConfusionHom Subterm for Simp ANF.
 
 Notation "( x ';T' y )" := (@existT _ _ x y).
+Notation "( x ';T' y ';T' z )" := (@existT _ _ x (@existT _ _ y z)).
 Notation "( x ; y )" := (@exist _ _ x y).
+Notation "( x ; y ; z )" := (@exist _ _ x (@exist _ _ y z)).
 
-Arguments SLit {Γ ty} _.
-Arguments SBltn {Γ τ} _.
-Arguments SSymbol {Γ} _.
-Arguments SNil {Γ τ}.
+Arguments EVAR {Γ Γ' τ} _.
+Arguments SVAR {Γ Γ' τ} _.
+Arguments SLit {Γ Γ' ty} _.
+Arguments SBltn {Γ Γ' τ} _.
+Arguments SSymbol {Γ Γ'} _.
+Arguments SNil {Γ Γ' τ}.
 
 Definition WalkSimp
   (R : Env → Env → Set)
-  `(r : R Γ Γ')
-  (l : ∀ {τ Γ Γ'}, R Γ Γ' → R (τ :: Γ) (τ :: Γ'))
-  (f : ∀ {Γ Γ' : Env} {τ : Ty}, R Γ Γ' → Var Γ' τ → Simp Γ τ)
-  (k : ∀ {Γ Γ' : Env} {τ : Ty}, R Γ Γ' → ANF Γ' τ → ANF Γ τ)
-  {τ} : Simp Γ' τ → Simp Γ τ :=
-  let fix go {Γ Γ' τ} (r : R Γ Γ') (e : Simp Γ' τ) : Simp Γ τ :=
+  `(r1 : R Γ Γ') `(r2 : R Δ Δ')
+  (l : ∀ {Γ Γ' τ}, R Γ Γ' → R (τ :: Γ) (τ :: Γ'))
+  (f : ∀ {Γ Γ' Δ : Env} {τ : Ty}, R Γ Γ' → Var Γ' τ → Simp Γ Δ τ)
+  (g : ∀ {Γ Δ Δ' : Env} {τ : Ty}, R Δ Δ' → Var Δ' τ → Simp Γ Δ τ)
+  (k : ∀ {Γ Γ' Δ Δ' : Env} {τ : Ty}, R Γ Γ' → R Δ Δ' → ANF Γ' Δ' τ → ANF Γ Δ τ)
+  {τ} : Simp Γ' Δ' τ → Simp Γ Δ τ :=
+  let fix go {Γ Γ' Δ Δ' τ} (r1 : R Γ Γ') (r2 : R Δ Δ')
+        (e : Simp Γ' Δ' τ) : Simp Γ Δ τ :=
     match e with
-    | SVAR v      => f r v
-    | SLAM e      => SLAM (k (l r) e)
+    | EVAR v      => f r1 v
+    | SVAR v      => g r2 v
+    | SLAM e      => SLAM (k (l r1) r2 e)
 
     | SLit v      => SLit v
     | SBltn b     => SBltn b
     | SSymbol s   => SSymbol s
 
-    | SPair x y   => SPair (go r x) (go r y)
-    | SFst p      => SFst (go r p)
-    | SSnd p      => SSnd (go r p)
+    | SPair x y   => SPair (go r1 r2 x) (go r1 r2 y)
+    | SFst p      => SFst (go r1 r2 p)
+    | SSnd p      => SSnd (go r1 r2 p)
 
-    | SInl x      => SInl (go r x)
-    | SInr y      => SInr (go r y)
-    | SCase e g h => SCase (go r e) (go r g) (go r h)
+    | SInl x      => SInl (go r1 r2 x)
+    | SInr y      => SInr (go r1 r2 y)
+    | SCase e x y => SCase (go r1 r2 e) (go r1 r2 x) (go r1 r2 y)
 
     | SNil        => SNil
-    | SCons x xs  => SCons (go r x) (go r xs)
-    | SCar xs     => SCar (go r xs)
-    | SCdr xs     => SCdr (go r xs)
-    | SIsNil xs   => SIsNil (go r xs)
-    end in go r.
+    | SCons x xs  => SCons (go r1 r2 x) (go r1 r2 xs)
+    | SCar xs     => SCar (go r1 r2 xs)
+    | SCdr xs     => SCdr (go r1 r2 xs)
+    | SIsNil xs   => SIsNil (go r1 r2 xs)
+    end in go r1 r2.
 
 Definition WalkANF
   (R : Env → Env → Set)
-  `(r : R Γ Γ')
-  (l : ∀ {τ Γ Γ'}, R Γ Γ' → R (τ :: Γ) (τ :: Γ'))
-  (f : ∀ {Γ Γ' : Env} {τ : Ty}, R Γ Γ' → Var Γ' τ → Simp Γ τ)
-  {τ} : ANF Γ' τ → ANF Γ τ :=
-  let fix go {Γ Γ' τ} (r : R Γ Γ') (e : ANF Γ' τ) : ANF Γ τ :=
+  `(r1 : R Γ Γ') `(r2 : R Δ Δ')
+  (l : ∀ {Γ Γ' τ}, R Γ Γ' → R (τ :: Γ) (τ :: Γ'))
+  (f : ∀ {Γ Γ' Δ : Env} {τ : Ty}, R Γ Γ' → Var Γ' τ → Simp Γ Δ τ)
+  (g : ∀ {Γ Δ Δ' : Env} {τ : Ty}, R Δ Δ' → Var Δ' τ → Simp Γ Δ τ)
+  {τ} : ANF Γ' Δ' τ → ANF Γ Δ τ :=
+  let fix go {Γ Γ' Δ Δ' τ} (r1 : R Γ Γ') (r2 : R Δ Δ')
+        (e : ANF Γ' Δ' τ) : ANF Γ Δ τ :=
+    let go' {Γ Γ' Δ Δ' τ} (r1 : R Γ Γ') (r2 : R Δ Δ') :=
+      WalkSimp r1 r2 (@l) (@f) (@g) (@go) in
     match e with
-    | AReturn s       => AReturn (WalkSimp r (@l) (@f) (@go) s)
-    | ALetApp f' x' e => ALetApp (WalkSimp r (@l) (@f) (@go) f')
-                           (WalkSimp r (@l) (@f) (@go) x') (go (l r) e)
-    | ATailApp f' x'  => ATailApp (WalkSimp r (@l) (@f) (@go) f')
-                           (WalkSimp r (@l) (@f) (@go) x')
-    end in go r.
+    | AReturn s       => AReturn (go' r1 r2 s)
+    | ALetApp f' x' e => ALetApp (go' r1 r2 f') (go' r1 r2 x') (go r1 (l r2) e)
+    | ATailApp f' x'  => ATailApp (go' r1 r2 f') (go' r1 r2 x')
+    | ALet x' e       => ALet (go r1 (l r2) x') (go r1 (l r2) e)
+    | AError _ _      => AError _ _
+    end in go r1 r2.
 
-Definition RenSimp {Γ Γ' τ} (r : Ren Γ Γ') (e : Simp Γ' τ) : Simp Γ τ :=
-  WalkSimp r (@Keep) (λ _ _ _ r v, SVAR (RenVar r v))
-    (λ _ _ _ r, WalkANF r (@Keep) (λ _ _ _ r v, SVAR (RenVar r v))) e.
+Definition RenEVar {Γ Γ' Δ : Env} {τ : Ty} (r : Ren Γ Γ') (v : Var Γ' τ) :
+  Simp Γ Δ τ := EVAR (RenVar r v).
 
-Definition RenANF {Γ Γ' τ} (r : Ren Γ Γ') (e : ANF Γ' τ) : ANF Γ τ :=
-  WalkANF r (@Keep) (λ _ _ _ r v, SVAR (RenVar r v)) e.
+Definition RenSVar {Γ Δ Δ' : Env} {τ : Ty} (r : Ren Δ Δ') (v : Var Δ' τ) :
+  Simp Γ Δ τ := SVAR (RenVar r v).
 
-Equations anf `(e : Exp Γ τ) : ANF Γ τ := {
-  anf (VAR v) := AReturn (SVAR v);
-  anf (LAM e) := AReturn (SLAM (anf e));
+Definition RenSimp {Γ Γ' Δ Δ' τ} (r1 : Ren Γ Γ') (r2 : Ren Δ Δ')
+  (e : Simp Γ' Δ' τ) : Simp Γ Δ τ :=
+  WalkSimp r1 r2 (@Keep) (@RenEVar) (@RenSVar)
+    (λ _ _ _ _ _ r1 r2,
+      WalkANF r1 r2 (@Keep) (@RenEVar) (@RenSVar)) e.
+
+Definition RenANF {Γ Γ' Δ Δ' τ} (r1 : Ren Γ Γ') (r2 : Ren Δ Δ')
+  (e : ANF Γ' Δ' τ) : ANF Γ Δ τ :=
+  WalkANF r1 r2 (@Keep) (@RenEVar) (@RenSVar) e.
+
+Equations anf `(e : Exp Γ τ) : { Γ'' & ANF Γ Γ'' τ } := {
+  anf (VAR v) := ([] ;T AReturn (EVAR v));
+  anf (LAM e) :=
+    let '(Γ' ;T e') := anf e in
+    (Γ' ;T AReturn (SLAM e'));
   anf (APP f x) :=
-    anfk f (λ _ f',
-      anfk (RenExp lifted x) (λ _ x',
-        ATailApp (RenSimp lifted f') x'));
+    anfk f (λ e f',
+      anfk x (λ e0 x',
+        (e0 ++ e ;T
+         ATailApp (RenSimp idRen liftedL f')
+                  (RenSimp idRen liftedR x'))));
 
   anf _ := _
 }
-with anfk `(e : Exp Γ τ) {r} (k : ∀ Γ', Simp (Γ' ++ Γ) τ → r) : r := {
-  anfk (VAR v) k := k (SVAR v);
-  anfk (LAM e) k := k (SLAM (anf e));
+with anfk `(e : Exp Γ τ)
+     {τ'} (k : ∀ Γ', Simp Γ Γ' τ → { Γ'' & ANF Γ Γ'' τ' }) :
+  { Γ'' & ANF Γ Γ'' τ' } := {
+  anfk (VAR v) k := k [] (EVAR v);
+  anfk (LAM e) k :=
+    let '(Γ' ;T e') := anf e in
+    k Γ' (SLAM e');
   anfk (APP f x) k :=
-    anfk f (λ f',
-      anfk x (λ x',
-        ALetApp f' x' (k (SVAR ZV))));
+    anfk f (λ e f',
+      anfk x (λ e0 x',
+        (e0 ++ e ;T
+         ALetApp (RenSimp idRen liftedL f')
+                 (RenSimp idRen liftedR x')
+                 (k (_ :: e0 ++ e) (SVAR ZV)))));
 
-  anfk _ _ := _
+  anfk _ k := (_ ;T AError _ _)
 }.
+Next Obligation.
 
 Equations anf `(e : Exp Γ τ) : { e' : Exp Γ τ | ANF e' } := {
   anf (VAR v) := (VAR v; AReturn (AVAR v));

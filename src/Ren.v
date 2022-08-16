@@ -18,8 +18,8 @@ Import ListNotations.
 
 Inductive Ren : Env → Env → Set :=
   | NoRen : Ren [] []
-  | Drop {τ Γ Γ'} : Ren Γ Γ' → Ren (τ :: Γ) Γ'
-  | Keep {τ Γ Γ'} : Ren Γ Γ' → Ren (τ :: Γ) (τ :: Γ').
+  | Drop {Γ Γ' τ} : Ren Γ Γ' → Ren (τ :: Γ) Γ'
+  | Keep {Γ Γ' τ} : Ren Γ Γ' → Ren (τ :: Γ) (τ :: Γ').
 
 Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Ren.
 
@@ -44,10 +44,16 @@ Proof. reflexivity. Qed.
 
 Definition skip1 {Γ τ} : Ren (τ :: Γ) Γ := Drop idRen.
 
-Fixpoint lifted {Γ Γ'} : Ren (Γ' ++ Γ) Γ :=
+Fixpoint liftedL {Γ Γ'} : Ren (Γ' ++ Γ) Γ :=
   match Γ' with
   | [] => idRen
-  | x :: xs => Drop lifted
+  | x :: xs => Drop liftedL
+  end.
+
+Fixpoint liftedR {Γ Γ'} : Ren (Γ ++ Γ') Γ :=
+  match Γ with
+  | [] => DropAll
+  | x :: xs => Keep liftedR
   end.
 
 Equations RcR {Γ Γ' Γ''} (r : Ren Γ' Γ'') (r' : Ren Γ Γ') : Ren Γ Γ'' :=

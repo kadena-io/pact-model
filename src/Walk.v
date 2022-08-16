@@ -18,8 +18,8 @@ Import ListNotations.
 Definition WalkExp
   (R : Env → Env → Set)
   `(r : R Γ Γ')
-  (l : ∀ {τ Γ Γ'}, R Γ Γ' → R (τ :: Γ) (τ :: Γ'))
-  (f : ∀ {τ : Ty} {Γ Γ' : Env}, R Γ Γ' → Var Γ' τ → Exp Γ τ)
+  (l : ∀ {Γ Γ' τ}, R Γ Γ' → R (τ :: Γ) (τ :: Γ'))
+  (f : ∀ {Γ Γ' : Env} {τ : Ty}, R Γ Γ' → Var Γ' τ → Exp Γ τ)
   {τ} : Exp Γ' τ → Exp Γ τ :=
   let fix go {Γ Γ' τ} (r : R Γ Γ') (e : Exp Γ' τ) : Exp Γ τ :=
     match e with

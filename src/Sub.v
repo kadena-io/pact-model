@@ -58,7 +58,7 @@ Equations RcS {Γ Γ' Γ''} (r : Ren Γ' Γ'') (s : Sub Γ Γ') : Sub Γ Γ'' :=
 Definition Dropₛ {Γ Γ' τ} (s : Sub Γ Γ') : Sub (τ :: Γ) Γ' :=
   ScR s skip1.
 
-Definition Keepₛ {τ Γ Γ'} (s : Sub Γ Γ') : Sub (τ :: Γ) (τ :: Γ') :=
+Definition Keepₛ {Γ Γ' τ} (s : Sub Γ Γ') : Sub (τ :: Γ) (τ :: Γ') :=
   Push (VAR ZV) (Dropₛ s).
 
 Corollary Keepₛ_idSub {Γ τ} :

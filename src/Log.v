@@ -3,8 +3,7 @@ Set Warnings "-cannot-remove-as-expected".
 Require Import
   Pact.Lib
   Pact.Ty
-  Pact.Exp
-  Pact.Sub.
+  Pact.Exp.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -17,7 +16,7 @@ Set Primitive Projections.
 
 Section Log.
 
-Context {Γ : Env}.
+Context {Γ : Ty → Type}.
 Variable P : ∀ {τ}, Exp Γ τ → Prop.
 
 (** [ExpP] is a logical predicate that permits type-directed induction on
@@ -30,17 +29,19 @@ where ExpP' `(e : Exp Γ τ) : Prop := {
   ExpP' e := True
 }.
 
-Lemma ExpP_P {τ} {e : Γ ⊢ τ} : ExpP e → P e.
+Lemma ExpP_P {τ} {e : Exp Γ τ} : ExpP e → P e.
 Proof.
   induction τ; sauto.
 Qed.
 
+(*
 Inductive SubP : ∀ {Γ'}, Sub Γ Γ' → Prop :=
   | NoSubP : SubP (NoSub (Γ:=Γ))
   | PushP {Γ' τ} (e : Exp Γ τ) (s : Sub Γ Γ') :
     ExpP e → SubP s → SubP (Push e s).
 
 Derive Signature for SubP.
+*)
 
 Variable R : ∀ {τ}, Exp Γ τ → Exp Γ τ → Prop.
 
@@ -55,16 +56,18 @@ where ExpR' {τ} (e1 e2 : Exp Γ τ) : Prop := {
   ExpR' e1 e2 := True
 }.
 
-Lemma ExpR_R {τ} {e1 e2 : Γ ⊢ τ} : ExpR e1 e2 → R e1 e2.
+Lemma ExpR_R {τ} {e1 e2 : Exp Γ τ} : ExpR e1 e2 → R e1 e2.
 Proof.
   induction τ; sauto.
 Qed.
 
+(*
 Inductive SubR : ∀ {Γ'}, Sub Γ Γ' → Prop :=
   | NoSubR : SubR (NoSub (Γ:=Γ))
   | PushR {Γ' τ} (e e' : Exp Γ τ) (s : Sub Γ Γ') :
     ExpR e e' → SubR s → SubR (Push e s).
 
 Derive Signature for SubR.
+*)
 
 End Log.

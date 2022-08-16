@@ -108,85 +108,83 @@ type family SemTy (t :: Ty) :: Type where
   SemTy ('TyList l)    = [SemTy l]
   SemTy ('TyPair x y)  = (SemTy x, SemTy y)
   SemTy ('TySum x y)   = Either (SemTy x) (SemTy y)
-  SemTy ('TyArrow _ _) = Void
+  SemTy ('TyArrow d c) = SemTy d -> SemTy c
   SemTy ('TyCap _ _)   = Void
 
-data Var :: Env -> Ty -> Type where
-  ZV :: Var (t : ts) t
-  SV :: Var ts t -> Var (t' : ts) t
-
-data Exp :: Env -> Ty -> Type where
-  VAR :: Var ts t -> Exp ts t
+data Exp :: Ty -> Type where
+  VAR :: SemTy t -> Exp t
   LAM :: (ReifyTy dom, ReifyTy cod)
-    => Exp (dom : ts) cod -> Exp ts ('TyArrow dom cod)
+    => (SemTy dom -> Exp cod) -> Exp ('TyArrow dom cod)
   APP :: (ReifyTy dom, ReifyTy cod)
-    => Exp ts ('TyArrow dom cod) -> Exp ts dom -> Exp ts cod
+    => Exp ('TyArrow dom cod) -> Exp dom -> Exp cod
+  Let :: (ReifyTy t', ReifyTy t)
+    => Exp t' -> (SemTy t' -> Exp t) -> Exp t
   Error :: ReifyTy t
-    => Exp ts t
+    => Exp t
   Catch :: ReifyTy t
-    => Exp ts t -> Exp ts ('TySum 'TyError t)
+    => Exp t -> Exp ('TySum 'TyError t)
   Lit :: ReifyPrim ty
-    => Literal ty -> Exp ts ('TyPrim ty)
+    => Literal ty -> Exp ('TyPrim ty)
   Bltn :: ReifyTy t
-    => Builtin t -> Exp ts t
-  Symbol :: Prelude.String -> Exp ts 'TySym
+    => Builtin t -> Exp t
+  Symbol :: Prelude.String -> Exp 'TySym
   If :: ReifyTy t
-    => Exp ts ('TyPrim 'PrimBool) -> Exp ts t -> Exp ts t -> Exp ts t
+    => Exp ('TyPrim 'PrimBool) -> Exp t -> Exp t -> Exp t
   Pair :: (ReifyTy t1, ReifyTy t2)
-    => Exp ts t1 -> Exp ts t2 -> Exp ts ('TyPair t1 t2)
+    => Exp t1 -> Exp t2 -> Exp ('TyPair t1 t2)
   Fst :: (ReifyTy t1, ReifyTy t2)
-    => Exp ts ('TyPair t1 t2) -> Exp ts t1
+    => Exp ('TyPair t1 t2) -> Exp t1
   Snd :: (ReifyTy t1, ReifyTy t2)
-    => Exp ts ('TyPair t1 t2) -> Exp ts t2
+    => Exp ('TyPair t1 t2) -> Exp t2
   Inl :: (ReifyTy t1, ReifyTy t2)
-    => Exp ts t1 -> Exp ts ('TySum t1 t2)
+    => Exp t1 -> Exp ('TySum t1 t2)
   Inr :: (ReifyTy t1, ReifyTy t2)
-    => Exp ts t2 -> Exp ts ('TySum t1 t2)
+    => Exp t2 -> Exp ('TySum t1 t2)
   Case :: (ReifyTy t1, ReifyTy t2)
-    => Exp ts ('TySum t1 t2) ->
-      Exp ts ('TyArrow t1 t) -> Exp ts ('TyArrow t2 t) ->
-      Exp ts ('TyPair t1 t2)
+    => Exp ('TySum t1 t2) ->
+      Exp ('TyArrow t1 t) -> Exp ('TyArrow t2 t) ->
+      Exp ('TyPair t1 t2)
   Nil :: ReifyTy t
-    => Exp ts ('TyList t)
+    => Exp ('TyList t)
   Cons :: ReifyTy t
-    => Exp ts t -> Exp ts ('TyList t) -> Exp ts ('TyList t)
+    => Exp t -> Exp ('TyList t) -> Exp ('TyList t)
   Car :: ReifyTy t
-    => Exp ts ('TyList t) -> Exp ts t
+    => Exp ('TyList t) -> Exp t
   Cdr :: ReifyTy t
-    => Exp ts ('TyList t) -> Exp ts ('TyList t)
+    => Exp ('TyList t) -> Exp ('TyList t)
   IsNil :: ReifyTy t
-    => Exp ts ('TyList t) -> Exp ts ('TyPrim 'PrimBool)
+    => Exp ('TyList t) -> Exp ('TyPrim 'PrimBool)
   Seq :: (ReifyTy t', ReifyTy t)
-    => Exp ts t' -> Exp ts t -> Exp ts t
+    => Exp t' -> Exp t -> Exp t
   Capability :: (ReifyTy p, ReifyTy v)
-    => Exp ts 'TySym -> Exp ts p -> Exp ts v -> Exp ts ('TyCap p v)
+    => Exp 'TySym -> Exp p -> Exp v -> Exp ('TyCap p v)
   WithCapability
     :: (ReifyTy p, ReifyTy v)
-    => Exp ts 'TySym
-    -> Exp ts ('TyArrow ('TyCap p v) ('TyPrim 'PrimUnit))
-    -> Exp ts ('TyArrow ('TyPair v v) v)
-    -> Exp ts ('TyCap p v)
-    -> Exp ts t
-    -> Exp ts t
+    => Exp 'TySym
+    -> Exp ('TyArrow ('TyCap p v) ('TyPrim 'PrimUnit))
+    -> Exp ('TyArrow ('TyPair v v) v)
+    -> Exp ('TyCap p v)
+    -> Exp t
+    -> Exp t
   ComposeCapability
     :: (ReifyTy p, ReifyTy v)
-    => Exp ts 'TySym
-    -> Exp ts ('TyArrow ('TyCap p v) ('TyPrim 'PrimUnit))
-    -> Exp ts ('TyArrow ('TyPair v v) v)
-    -> Exp ts ('TyCap p v)
-    -> Exp ts t
+    => Exp 'TySym
+    -> Exp ('TyArrow ('TyCap p v) ('TyPrim 'PrimUnit))
+    -> Exp ('TyArrow ('TyPair v v) v)
+    -> Exp ('TyCap p v)
+    -> Exp t
   InstallCapability :: (ReifyTy p, ReifyTy v)
-    => Exp ts ('TyCap p v) -> Exp ts ('TyPrim 'PrimUnit)
+    => Exp ('TyCap p v) -> Exp ('TyPrim 'PrimUnit)
   RequireCapability :: (ReifyTy p, ReifyTy v)
-    => Exp ts ('TyCap p v) -> Exp ts ('TyPrim 'PrimUnit)
+    => Exp ('TyCap p v) -> Exp ('TyPrim 'PrimUnit)
 
-reifyExpTy :: forall t ts. ReifyTy t => Exp ts t -> Ty
+reifyExpTy :: forall t. ReifyTy t => Exp t -> Ty
 reifyExpTy _ = reifyTy @t
 
-reifyCapPTy :: forall p v ts. ReifyTy p => Exp ts ('TyCap p v) -> Ty
+reifyCapPTy :: forall p v. ReifyTy p => Exp ('TyCap p v) -> Ty
 reifyCapPTy _ = reifyTy @p
 
-reifyCapVTy :: forall p v ts. ReifyTy v => Exp ts ('TyCap p v) -> Ty
+reifyCapVTy :: forall p v. ReifyTy v => Exp ('TyCap p v) -> Ty
 reifyCapVTy _ = reifyTy @v
 
 forgetLiteral :: Literal ty -> E.Literal
@@ -201,14 +199,15 @@ forgetBultin :: Builtin t -> B.Builtin
 forgetBultin AddInt = B.AddInt
 forgetBultin SubInt = B.SubInt
 
-forgetVar :: Var ts t -> E.Var
-forgetVar ZV = E.ZV undefined undefined
-forgetVar (SV v) = E.SV undefined undefined undefined (forgetVar v)
-
-forgetExp :: Exp ts t -> E.Exp
-forgetExp (VAR v) = E.VAR undefined (forgetVar v)
-forgetExp (LAM e) = E.LAM undefined undefined (forgetExp e)
-forgetExp (APP e1 e2) = E.APP undefined undefined (forgetExp e1) (forgetExp e2)
+forgetExp :: Exp t -> E.Exp v
+forgetExp (VAR v) = E.VAR undefined (L.unsafeCoerce v)
+forgetExp (LAM e) =
+  E.LAM undefined undefined (\x -> forgetExp (e (L.unsafeCoerce x)))
+forgetExp (APP e1 e2) =
+  E.APP undefined undefined (forgetExp e1) (forgetExp e2)
+forgetExp (Let x body) =
+  E.Let undefined undefined (forgetExp x)
+    (\x' -> forgetExp (body (L.unsafeCoerce x')))
 forgetExp Error = E.Error undefined
 forgetExp (Catch e) = E.Catch undefined (forgetExp e)
 forgetExp (Lit lit) = E.Lit undefined (forgetLiteral lit)

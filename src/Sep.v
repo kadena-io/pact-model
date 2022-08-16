@@ -1251,21 +1251,21 @@ Implicit Type P : Prop.
 
 Import ListNotations.
 
-Definition hoare `(e : Exp [] τ) H Q Z : Prop :=
+Definition hoare `(e : Exp SemTy τ) H Q Z : Prop :=
   ∀ h : heap, H h →
     match ⟦e⟧ h : Err + ⟦τ⟧ * heap with
     | inr (v, h') => Q v h'
     | inl err => Z err
     end.
 
-Lemma hoare_conseq {τ} {t : Exp [] τ} {H' Q' H Q Z} :
+Lemma hoare_conseq {τ} {t : Exp SemTy τ} {H' Q' H Q Z} :
   hoare t H' Q' Z ->
   H ==> H' ->
   Q' ===> Q ->
   hoare t H Q Z.
 Proof. Admitted.
 
-Lemma hoare_named_heap {τ} {t : Exp [] τ} {H Q Z} :
+Lemma hoare_named_heap {τ} {t : Exp SemTy τ} {H Q Z} :
   (∀ h, H h -> hoare t (λ h', h' = h) Q Z) ->
   hoare t H Q Z.
 Proof. Admitted.
@@ -1305,79 +1305,79 @@ Lemma hoare_apps_funs : ∀ xs F vs t1 H Q,
   hoare (trm_apps F vs) H Q.
 *)
 
-Definition quadruple {τ} (t : Exp [] τ) (H : hprop) (Q : val τ → hprop) Z :=
+Definition quadruple {τ} (t : Exp SemTy τ) (H : hprop) (Q : val τ → hprop) Z :=
   ∀ H', hoare t (H \* H') (Q \*+ H') Z.
 
 (* jww (2022-08-10): TODO *)
-(* Lemma local_quadruple {τ} (t : Exp [] τ) : *)
+(* Lemma local_quadruple {τ} (t : Exp SemTy τ) : *)
 (*   local (quadruple t). *)
 
-Lemma triple_of_hoare {τ} {t : Exp [] τ} {H Q Z} :
+Lemma triple_of_hoare {τ} {t : Exp SemTy τ} {H Q Z} :
   (∀ H', exists Q', hoare t (H \* H') Q' Z ∧ Q' ===> Q \*+ H') →
   quadruple t H Q Z.
 Proof. Admitted.
 
-Lemma hoare_of_quadruple {τ} {t : Exp [] τ} {H Q Z HF} :
+Lemma hoare_of_quadruple {τ} {t : Exp SemTy τ} {H Q Z HF} :
   quadruple t H Q Z →
   hoare t (H \* HF) (fun r => Q r \* HF) Z.
 Proof. Admitted.
 
-Lemma quadruple_conseq {τ} {t : Exp [] τ} {H' Q' H Q Z} :
+Lemma quadruple_conseq {τ} {t : Exp SemTy τ} {H' Q' H Q Z} :
   quadruple t H' Q' Z →
   H ==> H' →
   Q' ===> Q →
   quadruple t H Q Z.
 Proof. Admitted.
 
-Lemma quadruple_frame {τ} {t : Exp [] τ} {H Q Z H'} :
+Lemma quadruple_frame {τ} {t : Exp SemTy τ} {H Q Z H'} :
   quadruple t H Q Z →
   quadruple t (H \* H') (Q \*+ H') Z.
 Proof. Admitted.
 
-Lemma quadruple_ramified_frame {τ} {t : Exp [] τ} {H1 Q1 H Q Z} :
+Lemma quadruple_ramified_frame {τ} {t : Exp SemTy τ} {H1 Q1 H Q Z} :
   quadruple t H1 Q1 Z →
   H ==> H1 \* (Q1 \--* Q) →
   quadruple t H Q Z.
 Proof. Admitted.
 
-Lemma quadruple_hexists {τ} {t : Exp [] τ} {A : Type} {J : A → hprop} {Q Z} :
+Lemma quadruple_hexists {τ} {t : Exp SemTy τ} {A : Type} {J : A → hprop} {Q Z} :
   (∀ x, quadruple t (J x) Q Z) →
   quadruple t (hexists J) Q Z.
 Proof. Admitted.
 
-Lemma quadruple_hforall {A} {x : A} {τ} {t : Exp [] τ} {J : A → hprop} {Q Z} :
+Lemma quadruple_hforall {A} {x : A} {τ} {t : Exp SemTy τ} {J : A → hprop} {Q Z} :
   quadruple t (J x) Q Z →
   quadruple t (hforall J) Q Z.
 Proof. Admitted.
 
-Lemma quadruple_hpure {τ} {t : Exp [] τ} {P : Prop} {H Q Z} :
+Lemma quadruple_hpure {τ} {t : Exp SemTy τ} {P : Prop} {H Q Z} :
   (P → quadruple t H Q Z) →
   quadruple t (\[P] \* H) Q Z.
 Proof. Admitted.
 
-Lemma quadruple_hwand_hpure_l {τ} {t : Exp [] τ} {P : Prop} {H Q Z} :
+Lemma quadruple_hwand_hpure_l {τ} {t : Exp SemTy τ} {P : Prop} {H Q Z} :
   P →
   quadruple t H Q Z →
   quadruple t (\[P] \-* H) Q Z.
 Proof. Admitted.
 
-Lemma quadruple_hor {τ} {t : Exp [] τ} {H1 H2 Q Z} :
+Lemma quadruple_hor {τ} {t : Exp SemTy τ} {H1 H2 Q Z} :
   quadruple t H1 Q Z →
   quadruple t H2 Q Z →
   quadruple t (hor H1 H2) Q Z.
 Proof. Admitted.
 
-Lemma quadruple_hand_l {τ} {t : Exp [] τ} {H1 H2 Q Z} :
+Lemma quadruple_hand_l {τ} {t : Exp SemTy τ} {H1 H2 Q Z} :
   quadruple t H1 Q Z →
   quadruple t (hand H1 H2) Q Z.
 Proof. Admitted.
 
-Lemma quadruple_hand_r {τ} {t : Exp [] τ} {H1 H2 Q Z} :
+Lemma quadruple_hand_r {τ} {t : Exp SemTy τ} {H1 H2 Q Z} :
   quadruple t H2 Q Z →
   quadruple t (hand H1 H2) Q Z.
 Proof. Admitted.
 
-Lemma quadruple_conseq_frame {τ} {t : Exp [] τ} {H2 H1 Q1 H Q Z} :
+Lemma quadruple_conseq_frame {τ} {t : Exp SemTy τ} {H2 H1 Q1 H Q Z} :
   quadruple t H1 Q1 Z →
   H ==> H1 \* H2 →
   Q1 \*+ H2 ===> Q →
@@ -1456,10 +1456,10 @@ Proof. introv E N M. intros HF. applys* hoare_apps_funs. Qed.
 
 Definition formula τ := (val τ → hprop) → eprop → hprop.
 
-Definition wp `(t : Exp [] τ) : formula τ :=
+Definition wp `(t : Exp SemTy τ) : formula τ :=
   weakestpre (quadruple t).
 
-Definition WP : Type := ∀ τ (t : Exp [] τ), formula τ.
+Definition WP : Type := ∀ τ (t : Exp (SemTy (m:=PactM)) τ), formula τ.
 
 Definition formula' (B E : Type) := (B → hprop) → (E → Prop) → hprop.
 
@@ -1495,7 +1495,7 @@ Ltac heaps :=
     | [ H : \[ _ ] _ |- _ ] => inversion H; subst; clear H
     end; reduce.
 
-Theorem wp_equiv {H} `{e : Exp [] τ} {Q : vprop τ} {Z} :
+Theorem wp_equiv {H} `{e : Exp SemTy τ} {Q : vprop τ} {Z} :
   (H ==> wp e Q Z) ↔ (quadruple e H Q Z).
 Proof.
   unfold himpl, wp, weakestpre, quadruple.
@@ -1517,9 +1517,9 @@ Proof.
 Qed.
 
 Theorem wp_unique {wp1 wp2 : WP} :
-  (∀ H τ (e : Exp [] τ) (Q : vprop τ) Z,
+  (∀ H τ (e : Exp SemTy τ) (Q : vprop τ) Z,
      quadruple e H Q Z ↔ H ==> wp1 _ e Q Z) →
-  (∀ H τ (e : Exp [] τ) (Q : vprop τ) Z,
+  (∀ H τ (e : Exp SemTy τ) (Q : vprop τ) Z,
      quadruple e H Q Z ↔ H ==> wp2 _ e Q Z) →
   wp1 = wp2.
 Proof.
@@ -1540,11 +1540,11 @@ Proof.
 Qed.
 
 Theorem wp_from_weakest_pre (wp' : WP) :
-  (∀ H τ (e : Exp [] τ) (Q : vprop τ) Z,
+  (∀ H τ (e : Exp SemTy τ) (Q : vprop τ) Z,
      quadruple e (wp' _ e Q Z) Q Z) →          (* wp_pre *)
-  (∀ H τ (e : Exp [] τ) (Q : vprop τ) Z,
+  (∀ H τ (e : Exp SemTy τ) (Q : vprop τ) Z,
      quadruple e H Q Z → H ==> wp' _ e Q Z) → (* wp_weakest *)
-  (∀ H τ (e : Exp [] τ) (Q : vprop τ) Z,
+  (∀ H τ (e : Exp SemTy τ) (Q : vprop τ) Z,
      H ==> wp' _ e Q Z ↔ quadruple e H Q Z).  (* wp_equiv *)
 Proof.
   intros M1 M2.
@@ -1557,7 +1557,7 @@ Qed.
 Notation "e =====> e'" :=
   (∀ Q Z, wp e Q Z ==> wp e' Q Z) (at level 100, e' at next level) : pred_scope.
 
-Lemma eval_if_trm (t0 : Exp [] 𝔹) v0 {τ} (t1 t2 : Exp [] τ)
+Lemma eval_if_trm (t0 : Exp SemTy 𝔹) v0 {τ} (t1 t2 : Exp SemTy τ)
   (v : SemTy τ) s s' s'' :
   t0 ~[s => s']~> v0 →
   If (Lit (LitBool v0)) t1 t2 ~[s' => s'']~> v →
@@ -1569,7 +1569,7 @@ Proof.
   now rewrite H.
 Qed.
 
-Lemma hoare_if H (b : Exp [] 𝔹) τ (t1 t2 : Exp [] τ)
+Lemma hoare_if H (b : Exp SemTy 𝔹) τ (t1 t2 : Exp SemTy τ)
   (Q' : vprop 𝔹) (Q : vprop τ) Z :
   hoare b H Q' Z →
   (∀ v, hoare (If (Lit (LitBool v)) t1 t2) (Q' v) Q Z) →
@@ -1586,7 +1586,7 @@ Proof.
   exact H1.
 Qed.
 
-Lemma quadruple_if H (b : Exp [] 𝔹) τ (t1 t2 : Exp [] τ)
+Lemma quadruple_if H (b : Exp SemTy 𝔹) τ (t1 t2 : Exp SemTy τ)
   (Q' : vprop 𝔹) (Q : vprop τ) Z :
   quadruple b H Q' Z →
   (∀ v, quadruple (If (Lit (LitBool v)) t1 t2) (Q' v) Q Z) →
@@ -1607,7 +1607,7 @@ Ltac wp r H :=
   subst; reflexivity.
 
 (* An if statement simply propagates the environment. *)
-Corollary wp_if (b : Exp [] 𝔹) τ (t1 t2 : Exp [] τ) (Q : vprop τ) Z :
+Corollary wp_if (b : Exp SemTy 𝔹) τ (t1 t2 : Exp SemTy τ) (Q : vprop τ) Z :
   wp b (λ v, wp (If (Lit (LitBool v)) t1 t2) Q Z) Z
     ==> wp (If b t1 t2) Q Z.
 Proof.
@@ -1634,7 +1634,7 @@ Qed.
 *)
 
 (*
-Lemma quadruple_app_fun H `(v : Exp [] dom) x `(e : Exp [dom] cod)
+Lemma quadruple_app_fun H `(v : Exp SemTy dom) x `(e : Exp [dom] cod)
   (Q : vprop cod) Z :
   (∀ s, v ~[ s => s ]~> x) →
   quadruple ⟦ (x, tt) ⊨ e ⟧ H Q Z →
@@ -1647,7 +1647,7 @@ Proof.
   erewrite sem_app_lam; eauto.
 Qed.
 
-Lemma wp_app_fun `(v : Exp [] dom) x `(e : Exp [dom] cod) :
+Lemma wp_app_fun `(v : Exp SemTy dom) x `(e : Exp [dom] cod) :
   (∀ s, v ~[ s => s ]~> x) →
   ⟦ (x, tt) ⊨ e ⟧ =====> ⟦APP (LAM e) v⟧.
 Proof. wp r quadruple_app_fun. Qed.
@@ -1664,7 +1664,7 @@ Inductive Pred : Ty → Set :=
 #[local] Hint Constructors Pred : core.
 
 (*
-Equations wpc `(e : Exp [] τ) {τ'}
+Equations wpc `(e : Exp SemTy τ) {τ'}
   (Q : val τ → state → Pred τ') Z :
   state → Pred τ' :=
   wpc (Lit l) Q Z := Q (SemLit l);
@@ -1676,7 +1676,7 @@ Equations wpc `(e : Exp [] τ) {τ'}
 *)
 
 (*
-Equations wpc `(e : Exp [] τ) (Q : vprop τ) Z : hprop :=
+Equations wpc `(e : Exp SemTy τ) (Q : vprop τ) Z : hprop :=
   wpc (Lit l) Q Z := Q (SemLit l);
   wpc (APP f v) Q Z := wp ⟦APP f v⟧ Q Z;
   wpc (Seq e1 e2) Q Z := wpc e1 (λ _, wpc e2 Q Z) Z;

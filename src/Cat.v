@@ -8,12 +8,9 @@ Require Import
   Pact.Ty
   Pact.Value
   Pact.Exp
-  Pact.Ren
-  Pact.Sub
   Pact.SemTy
   Pact.SemBltn
   Pact.SemExp
-  Pact.SemRen
   Pact.Lang.
 
 Require Import Category.Lib.
@@ -29,56 +26,29 @@ Set Equations With UIP.
 Generalizable All Variables.
 Set Primitive Projections.
 
-(* (* Renamings form a category. *) *)
-Definition RenCat : Category := {|
-  obj              := Env;
-  hom              := Ren;
-  homset           := λ _ _, {| Setoid.equiv := eq |};
-  Category.id      := @idRen;
-  Category.compose := @RcR;
-  id_left          := @RcR_idRen_left;
-  id_right         := @RcR_idRen_right;
-  comp_assoc       := λ _ _ _ _ f g h, eq_sym (RcR_assoc f g h);
-  comp_assoc_sym   := @RcR_assoc
-|}.
-
-(* Substitutions form a category. *)
-Definition SubCat : Category := {|
-  obj              := Env;
-  hom              := Sub;
-  homset           := λ _ _, {| Setoid.equiv := eq |};
-  Category.id      := @idSub;
-  Category.compose := @ScS;
-  id_left          := @ScS_idSub_left;
-  id_right         := @ScS_idSub_right;
-  comp_assoc       := λ _ _ _ _ f g h, eq_sym (ScS_assoc f g h);
-  comp_assoc_sym   := @ScS_assoc
-|}.
-
 Section Cat.
 
-Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (VAR ZV).
+Definition identity Γ τ : Exp Γ (τ ⟶ τ) := LAM (λ x, VAR x).
 
 Definition composition {Γ τ τ' τ''}
            (f : Exp Γ (τ' ⟶ τ''))
            (g : Exp Γ (τ ⟶ τ')) : Exp Γ (τ ⟶ τ'') :=
-  LAM (APP (wk f) (APP (wk g) (VAR ZV))).
+  LAM (λ x, APP f (APP g (VAR x))).
 
 Definition curry {Γ a b c} (f : Exp Γ (a × b ⟶ c)) : Exp Γ (a ⟶ b ⟶ c) :=
-  LAM (LAM (APP (wk (wk f)) (Pair (VAR (SV ZV)) (VAR ZV)))).
+  LAM (λ a, LAM (λ b, APP f (Pair (VAR a) (VAR b)))).
 
 Definition uncurry {Γ a b c} (f : Exp Γ (a ⟶ b ⟶ c)) : Exp Γ (a × b ⟶ c) :=
-  LAM (APP (APP (wk f) (Fst (VAR ZV))) (Snd (VAR ZV))).
+  LAM (λ p, APP (APP f (Fst (VAR p))) (Snd (VAR p))).
 
-Lemma SemExp_identity {Γ τ} (E : SemEnv Γ) :
-  ⟦ E ⊨ identity Γ τ ⟧ = pure pure.
+Lemma SemExp_identity {τ} : ⟦ identity SemTy τ ⟧ = pure pure.
 Proof. now f_equal. Qed.
 
-Lemma SemExp_composition `(E : SemEnv Γ)
-      {τ τ' τ''} (f : Exp Γ (τ' ⟶ τ'')) (g : Exp Γ (τ ⟶ τ')) :
-  ⟦ E ⊨ composition f g ⟧ =
-    pure (λ x, f' <- SemExp f E ;
-               g' <- SemExp g E ;
+Lemma SemExp_composition {τ τ' τ''}
+  (f : Exp SemTy (τ' ⟶ τ'')) (g : Exp SemTy (τ ⟶ τ')) :
+  ⟦ composition f g ⟧ =
+    pure (λ x, f' <- SemExp f ;
+               g' <- SemExp g ;
                f' =<< g' x).
 Proof.
   fold (SemTy (m:=PactM)).
@@ -91,22 +61,19 @@ Proof.
   simp SemExp; simpl.
   unravel.
   extensionality st0.
-  rewrite SemExp_wk.
-  destruct (⟦ E ⊨ f ⟧ _); auto.
+  destruct (⟦ f ⟧ _); auto.
   destruct p, p; simpl.
-  rewrite SemExp_wk.
-  destruct (⟦ E ⊨ g ⟧ _); auto.
+  destruct (⟦ g ⟧ _); auto.
   destruct p, p; simpl.
   sauto.
 Qed.
 
-Lemma SemExp_composition_identity_right `(E : SemEnv Γ)
-      {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
+Lemma SemExp_composition_identity_right {τ τ'} (f : Exp SemTy (τ ⟶ τ')) :
   ValueP f →
-  ⟦ E ⊨ composition f (identity Γ τ) ⟧ = ⟦ E ⊨ f ⟧.
+  ⟦ composition f (identity SemTy τ) ⟧ = ⟦ f ⟧.
 Proof.
   intros.
-  destruct (SemExp_ValueP E H).
+  destruct (SemExp_ValueP H).
   rewrite H0 SemExp_composition.
   fold (SemTy (m:=PactM)).
   f_equal.
@@ -119,13 +86,12 @@ Proof.
   now destruct (x _ _).
 Qed.
 
-Lemma SemExp_composition_identity_left `(E : SemEnv Γ)
-      {τ τ'} (f : Exp Γ (τ ⟶ τ')) :
+Lemma SemExp_composition_identity_left {τ τ'} (f : Exp SemTy (τ ⟶ τ')) :
   ValueP f →
-  ⟦ E ⊨ composition (identity Γ τ') f ⟧ = ⟦ E ⊨ f ⟧.
+  ⟦ composition (identity SemTy τ') f ⟧ = ⟦ f ⟧.
 Proof.
   intros.
-  destruct (SemExp_ValueP E H).
+  destruct (SemExp_ValueP H).
   rewrite H0 SemExp_composition.
   fold (SemTy (m:=PactM)).
   f_equal.
@@ -140,21 +106,20 @@ Proof.
   now simp SemExp; simpl.
 Qed.
 
-Lemma SemExp_composition_assoc `(E : SemEnv Γ)
-      {τ τ' τ'' τ'''}
-      (f : Exp Γ (τ'' ⟶ τ'''))
-      (g : Exp Γ (τ' ⟶ τ''))
-      (h : Exp Γ (τ ⟶ τ')) :
+Lemma SemExp_composition_assoc {τ τ' τ'' τ'''}
+      (f : Exp SemTy (τ'' ⟶ τ'''))
+      (g : Exp SemTy (τ' ⟶ τ''))
+      (h : Exp SemTy (τ ⟶ τ')) :
   ValueP f →
   ValueP g →
   ValueP h →
-  ⟦ E ⊨ composition f (composition g h) ⟧ =
-  ⟦ E ⊨ composition (composition f g) h ⟧.
+  ⟦ composition f (composition g h) ⟧ =
+  ⟦ composition (composition f g) h ⟧.
 Proof.
   intros.
-  destruct (SemExp_ValueP E H).
-  destruct (SemExp_ValueP E H0).
-  destruct (SemExp_ValueP E H1).
+  destruct (SemExp_ValueP H).
+  destruct (SemExp_ValueP H0).
+  destruct (SemExp_ValueP H1).
   rewrite !SemExp_composition.
   fold (SemTy (m:=PactM)).
   f_equal.
@@ -172,76 +137,73 @@ Proof.
   now rewrite H.
 Qed.
 
-Program Instance Exp_Setoid {Γ dom cod} : Setoid (Exp Γ (dom ⟶ cod)) := {
-  equiv := λ f g, ∀ se, SemExp f se = SemExp g se
+Program Instance Exp_Setoid {dom cod} : Setoid (Exp SemTy (dom ⟶ cod)) := {
+  equiv := λ f g, SemExp f = SemExp g
 }.
-Next Obligation. equivalence; congruence. Qed.
 
-Program Instance Value_Setoid {Γ dom cod} :
-  Setoid { e : Exp Γ (dom ⟶ cod) | ValueP e } := {
-  equiv := λ f g, ∀ se, SemExp f se = SemExp g se
+Program Instance Value_Setoid {dom cod} :
+  Setoid { e : Exp SemTy (dom ⟶ cod) | ValueP e } := {
+  equiv := λ f g, SemExp f = SemExp g
 }.
-Next Obligation. equivalence; congruence. Qed.
 
-Program Instance composition_respects {Γ τ τ' τ''} :
-  Proper (equiv ==> equiv ==> equiv) (@composition Γ τ τ' τ'').
+Program Instance composition_respects {τ τ' τ''} :
+  Proper (equiv ==> equiv ==> equiv) (@composition SemTy τ τ' τ'').
 Next Obligation.
   repeat intro.
   unfold composition.
   simp SemExp; f_equal.
   extensionality x1.
   simp SemExp.
-  f_equal; [|rewrite !SemExp_wk H //].
+  f_equal; [|rewrite H //].
   extensionality f.
   fold (SemTy (m:=PactM)) in f.
   extensionality st.
   simpl; unravel.
-  rewrite !SemExp_wk H0 //.
+  rewrite H0 //.
 Qed.
 
-Definition actual_f {Γ A B} :
-  { e : Exp Γ (A ⟶ B) | ValueP e }
-    → SemEnv Γ
+Definition actual_f {A B} :
+  { e : Exp (SemTy (m:=PactM)) (A ⟶ B) | ValueP e }
     → SemTy (m:=PactM) A → PactM (SemTy (m:=PactM) B).
 Proof.
-  intros [e v] se x.
+  intros [e v] x.
   dependent elimination e;
   try solve [ exfalso; inv v ].
-  - exact (SemExp e (x, se)).
+  - exact (SemExp (e x)).
   - exact (SemBltn b x).
 Defined.
 
 Notation " `2  t " := (proj2_sig t) (at level 0, t at next level) : program_scope.
 
-Program Definition Pact Γ : Category := {|
+Program Definition Pact : Category := {|
   obj     := Ty;
 
-  hom     := λ dom cod : Ty, { e : Exp Γ (dom ⟶ cod) | ValueP e };
+  hom     := λ dom cod : Ty, { e : Exp SemTy (dom ⟶ cod) | ValueP e };
   homset  := λ _ _, Value_Setoid;
 
-  id      := λ x, exist _ (@identity Γ x) (LambdaP _);
+  id      := λ x, exist _ (@identity SemTy x) (LambdaP _);
   compose := λ _ _ _ f g, exist _ (composition f g) (LambdaP _);
 
-  compose_respects := @composition_respects Γ;
+  compose_respects := @composition_respects;
 
-  id_left := λ _ _ f se,
-    SemExp_composition_identity_left se (`2 f);
-  id_right := λ _ _ f se,
-    SemExp_composition_identity_right se (`2 f);
-  comp_assoc := λ _ _ _ _ f g h se,
-    SemExp_composition_assoc se (`2 f) (`2 g) (`2 h);
-  comp_assoc_sym := λ _ _ _ _ f g h se,
-    symmetry (SemExp_composition_assoc se (`2 f) (`2 g) (`2 h))
+  id_left := λ _ _ f,
+    SemExp_composition_identity_left (`2 f);
+  id_right := λ _ _ f,
+    SemExp_composition_identity_right (`2 f);
+  comp_assoc := λ _ _ _ _ f g h,
+    SemExp_composition_assoc (`2 f) (`2 g) (`2 h);
+  comp_assoc_sym := λ _ _ _ _ f g h,
+    symmetry (SemExp_composition_assoc (`2 f) (`2 g) (`2 h))
 |}.
 
 #[export]
-Program Instance Pact_Terminal Γ : @Terminal (Pact Γ) := {
+Program Instance Pact_Terminal : @Terminal Pact := {
   terminal_obj := TyPrim PrimVoid;
-  one := λ _, exist _ (LAM Error) (LambdaP _)
+  one := λ _, exist _ (LAM (λ _, Error)) (LambdaP _)
 }.
 Next Obligation.
-  destruct (SemExp_ValueP se H0) as [f' H3].
-  destruct (SemExp_ValueP se H)  as [g' H4].
+  destruct (SemExp_ValueP H0) as [f' H3].
+  destruct (SemExp_ValueP H)  as [g' H4].
   rewrite {}H3 {}H4.
   extensionality st.
   simpl.

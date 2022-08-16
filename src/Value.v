@@ -84,7 +84,7 @@ Unset Elimination Schemes.
 (* [ValueP] is an inductive proposition that indicates whether an expression
    represents a value, i.e., that it does reduce any further. *)
 Inductive ValueP Γ : ∀ {τ}, Exp Γ τ → Prop :=
-  | LambdaP {dom cod} (e : Exp (dom :: Γ) cod) : ValueP (LAM e)
+  | LambdaP {dom cod} (e : Γ dom → Exp Γ cod) : ValueP (LAM e)
   | LiteralP {ty l} : ValueP (Lit (ty:=ty) l)
   | BuiltinP {τ b} : ValueP (Bltn (τ:=τ) b)
   | SymbolP {n} : ValueP (Symbol n)

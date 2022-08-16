@@ -50,14 +50,14 @@ instance Eq CapabilityType.Cap where
 
 eval
   :: forall t. ReifyTy t
-  => Types.Exp '[] t
+  => Types.Exp t
   -> Either Lang.Err (SemTy t, Eval.PactLog)
 eval e = unsafeCoerce $ Eval.eval (reifyTy @t) (forgetExp e)
 
 evalInModule
   :: forall t. ReifyTy t
   => String
-  -> Types.Exp '[] t
+  -> Types.Exp t
   -> Either Lang.Err (SemTy t, Eval.PactLog)
 evalInModule name e =
   unsafeCoerce $ Eval.evalInModule name (reifyTy @t) (forgetExp e)

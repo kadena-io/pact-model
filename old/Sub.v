@@ -337,3 +337,18 @@ Lemma SubExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Sub Γ' Γ) :
 Proof.
   induction 1; sauto lq: on.
 Qed.
+
+(* Substitutions form a category. *)
+(*
+Definition SubCat : Category := {|
+  obj              := Env;
+  hom              := Sub;
+  homset           := λ _ _, {| Setoid.equiv := eq |};
+  Category.id      := @idSub;
+  Category.compose := @ScS;
+  id_left          := @ScS_idSub_left;
+  id_right         := @ScS_idSub_right;
+  comp_assoc       := λ _ _ _ _ f g h, eq_sym (ScS_assoc f g h);
+  comp_assoc_sym   := @ScS_assoc
+|}.
+*)

@@ -37,105 +37,102 @@ Definition SemLit {ty : PrimType} (l : Literal ty) : SemPrimTy ty :=
   | LitTime t      => t
   end.
 
-Fixpoint SemVar `(v : Var Γ τ) : SemEnv Γ → SemTy τ :=
-  match v with
-  | ZV   => λ se, fst se
-  | SV v => λ se, SemVar v (snd se)
-  end.
-
 Notation "f =<< x" := (x >>= f) (at level 42, right associativity).
 
 Import EqNotations.
 
-Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ) :=
-  SemExp (VAR v)     se := pure (SemVar v se);
-  SemExp (LAM e)     se := pure (λ x, SemExp e (x, se));
-  SemExp (APP e1 e2) se :=
-    f <- SemExp e1 se ;
-    x <- SemExp e2 se ;
+Equations SemExp `(e : Exp (SemTy (m:=PactM)) τ) : PactM (SemTy (m:=PactM) τ) :=
+  SemExp (VAR v) := pure v;
+  SemExp (LAM e) := pure (λ x, SemExp (e x));
+
+  SemExp (APP e1 e2) :=
+    f <- SemExp e1 ;
+    x <- SemExp e2 ;
     f x;
 
-  SemExp (Let x body) se :=
-    x' <- SemExp x se ;
-    SemExp body (x', se);
+  SemExp (Let x body) :=
+    x' <- SemExp x ;
+    SemExp (body x');
 
-  SemExp Error     _ := throw Err_Expr;
-  SemExp (Catch e) _ :=
-    λ s,
-      match SemExp e se s with
-      | inl err     => pure (inl tt) s
-      | inr (v, s') => inr (inr v, s')
-      end;
+  SemExp Error     := throw Err_Expr;
+  SemExp (Catch e) :=
+    λ s, match SemExp e s with
+         | inl err     => pure (inl tt) s
+         | inr (v, s') => inr (inr v, s')
+         end;
 
-  SemExp (Symbol n) _ := pure n;
-  SemExp (Lit l)    _ := pure (SemLit l);
-  SemExp (Bltn b)   _ := pure (SemBltn b);
+  SemExp (Symbol n) := pure n;
+  SemExp (Lit l)    := pure (SemLit l);
+  SemExp (Bltn b)   := pure (SemBltn b);
 
-  SemExp (If b t e) se :=
-    b' <- SemExp b se ;
+  SemExp (If b t e) :=
+    b' <- SemExp b ;
     if b' : bool
-    then SemExp t se
-    else SemExp e se;
+    then SemExp t
+    else SemExp e;
 
-  SemExp (Pair x y) se :=
-    x' <- SemExp x se ;
-    y' <- SemExp y se ;
+  SemExp (Pair x y) :=
+    x' <- SemExp x ;
+    y' <- SemExp y ;
     pure (x', y');
-  SemExp (Fst p) se := fst <$> SemExp p se;
-  SemExp (Snd p) se := snd <$> SemExp p se;
 
-  SemExp (Inl p) se := inl <$> SemExp p se;
-  SemExp (Inr p) se := inr <$> SemExp p se;
-  SemExp (Case e f g) se :=
-    e' <- SemExp e se ;
+  SemExp (Fst p) := fst <$> SemExp p;
+  SemExp (Snd p) := snd <$> SemExp p;
+
+  SemExp (Inl p) := inl <$> SemExp p;
+  SemExp (Inr p) := inr <$> SemExp p;
+
+  SemExp (Case e f g) :=
+    e' <- SemExp e ;
     match e' with
-    | inl l => SemExp f se >>= λ f', f' l
-    | inr r => SemExp g se >>= λ g', g' r
+    | inl l => SemExp f >>= λ f', f' l
+    | inr r => SemExp g >>= λ g', g' r
     end;
 
-  SemExp Nil se := pure [];
-  SemExp (Cons x xs) se :=
-    x'  <- SemExp x se ;
-    xs' <- SemExp xs se ;
+  SemExp Nil := pure [];
+
+  SemExp (Cons x xs) :=
+    x'  <- SemExp x ;
+    xs' <- SemExp xs ;
     pure (x' :: xs');
 
-  SemExp (Car xs) se :=
-    xs' <- SemExp xs se ;
+  SemExp (Car xs) :=
+    xs' <- SemExp xs ;
     match xs' with
     | []     => throw Err_CarOfNil
     | x :: _ => pure x
     end;
-  SemExp (Cdr xs) se :=
-    xs' <- SemExp xs se ;
+  SemExp (Cdr xs) :=
+    xs' <- SemExp xs ;
     match xs' with
     | []      => throw Err_CdrOfNil
     | _ :: xs => pure xs
     end;
 
-  SemExp (IsNil (τ:=ty) xs) se :=
-    xs' <- SemExp xs se ;
+  SemExp (IsNil (τ:=ty) xs) :=
+    xs' <- SemExp xs ;
     match xs' with
     | []        => pure true
     | (_ :: xs) => pure false
     end;
 
-  SemExp (Seq exp1 exp2) se := SemExp exp1 se >> SemExp exp2 se;
+  SemExp (Seq exp1 exp2) := SemExp exp1 >> SemExp exp2;
 
-  SemExp (Capability (p:=tp) (v:=tv) Hp Hv nm arg val) se :=
-    nm'  <- SemExp nm se ;
-    arg' <- SemExp arg se ;
-    val' <- SemExp val se ;
+  SemExp (Capability (p:=tp) (v:=tv) Hp Hv nm arg val) :=
+    nm'  <- SemExp nm ;
+    arg' <- SemExp arg ;
+    val' <- SemExp val ;
     pure (Token (s:={| paramTy := reifyTy tp
                      ; valueTy := reifyTy tv |})
                 nm'
                 (rew <- [λ x, x] (reflectTy_reifyTy (m:=PactM) Hp) in arg')
                 (rew <- [λ x, x] (reflectTy_reifyTy (m:=PactM) Hv) in val'));
 
-  SemExp (WithCapability (p:=tp) (v:=tv) Hv modname prd mng c e) se :=
-    mn'  <- SemExp modname se ;
-    c'   <- SemExp c se ;
-    prd' <- SemExp prd se ;
-    mng' <- SemExp mng se ;
+  SemExp (WithCapability (p:=tp) (v:=tv) Hv modname prd mng c e) :=
+    mn'  <- SemExp modname ;
+    c'   <- SemExp c ;
+    prd' <- SemExp prd ;
+    mng' <- SemExp mng ;
     with_capability
       mn'
       (s:={| paramTy := reifyTy tp
@@ -144,13 +141,13 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
       prd'
       (rew <- [λ x, x → PactM _] (reflectTy_reifyTy (m:=PactM) (PairDecP Hv Hv)) in
        rew <- [λ x, _ → PactM x] (reflectTy_reifyTy (m:=PactM) Hv) in mng')
-      (SemExp e se);
+      (SemExp e);
 
-  SemExp (ComposeCapability (p:=tp) (v:=tv) Hv modname prd mng c) se :=
-    mn'  <- SemExp modname se ;
-    c'   <- SemExp c se ;
-    prd' <- SemExp prd se ;
-    mng' <- SemExp mng se ;
+  SemExp (ComposeCapability (p:=tp) (v:=tv) Hv modname prd mng c) :=
+    mn'  <- SemExp modname ;
+    c'   <- SemExp c ;
+    prd' <- SemExp prd ;
+    mng' <- SemExp mng ;
     compose_capability
       mn'
       (s:={| paramTy := reifyTy tp
@@ -160,18 +157,13 @@ Equations SemExp `(e : Exp Γ τ) (se : SemEnv Γ) : PactM (SemTy (m:=PactM) τ)
       (rew <- [λ x, x → PactM _] (reflectTy_reifyTy (m:=PactM) (PairDecP Hv Hv)) in
        rew <- [λ x, _ → PactM x] (reflectTy_reifyTy (m:=PactM) Hv) in mng');
 
-  SemExp (InstallCapability c) se := install_capability =<< SemExp c se;
-  SemExp (RequireCapability c) se := require_capability =<< SemExp c se.
+  SemExp (InstallCapability c) := install_capability =<< SemExp c;
+  SemExp (RequireCapability c) := require_capability =<< SemExp c.
 
-Notation "⟦ se ⊨ e ⟧" := (SemExp e se)  (at level 9).
-Notation "⟦ e ⟧"      := (SemExp e tt) (at level 9).
+Notation "⟦ e ⟧" := (SemExp e)  (at level 9).
 
-Corollary SemExp_VAR_ZV `(se : SemEnv Γ) `(x : ⟦τ⟧) :
-  ⟦ (x, se) ⊨ VAR ZV ⟧ = pure x.
-Proof. reflexivity. Qed.
-
-Lemma SemExp_ValueP {Γ τ} (e : Exp Γ τ) (se : SemEnv Γ) :
-  ValueP e -> ∃ x, ⟦ se ⊨ e ⟧ = pure x.
+Lemma SemExp_ValueP {τ} (e : Exp SemTy τ) :
+  ValueP e -> ∃ x, ⟦ e ⟧ = pure x.
 Proof.
   induction 1; reduce; simp SemExp;
   eexists; extensionality st; sauto lq: on.
@@ -181,29 +173,27 @@ Definition expM τ := PactM (SemTy (m:=PactM) τ).
 
 (* An expression is considered "pure" if its denotation has no impact
    whatsoever on the state. *)
-Definition pureP `(se : SemEnv Γ)
-  `(v : Exp Γ τ) (x : SemTy (m:=PactM) τ) : Prop :=
-  ⟦ se ⊨ v ⟧ = pure x.
+Definition pureP `(v : Exp SemTy τ) (x : SemTy (m:=PactM) τ) : Prop :=
+  ⟦ v ⟧ = pure x.
 
-Arguments pureP {_} _ {_} _ _ /.
+Arguments pureP {_} _ _ /.
 
 (* An expression is considered "safe" if its denotation can never result in an
    error. *)
-Definition safeP `(se : SemEnv Γ)
-  `(v : Exp Γ τ) (x : SemTy (m:=PactM) τ) : Prop :=
-  ∀ s, ∃ s', ⟦ se ⊨ v ⟧ s = inr (x, s').
+Definition safeP `(v : Exp SemTy τ) (x : SemTy (m:=PactM) τ) : Prop :=
+  ∀ s, ∃ s', ⟦ v ⟧ s = inr (x, s').
 
-Arguments safeP {_} _ {_} _ _ /.
+Arguments safeP {_} _ _ /.
 
-Definition eval `(e : Exp [] τ) s (v : ⟦τ⟧) s' :=
+Definition eval `(e : Exp SemTy τ) s (v : ⟦τ⟧) s' :=
   ⟦ e ⟧ s = inr (v, s').
 
 Notation "e ~[ s => u ]~> t" :=
   (eval e s t u) (at level 40, u at next level, t at next level).
 
-Lemma sem_app_lam `(e : Exp [dom] cod) (v : Exp [] dom) x s s' :
+Lemma sem_app_lam `(e : SemTy dom → Exp SemTy cod) (v : Exp SemTy dom) x s s' :
   v ~[ s => s' ]~> x →
-  ⟦ APP (LAM e) v ⟧ s = ⟦ (x, tt) ⊨ e ⟧ s'.
+  ⟦ APP (LAM e) v ⟧ s = ⟦ e x ⟧ s'.
 Proof.
   unfold eval.
   intros.
@@ -213,5 +203,5 @@ Proof.
   simpl.
   unfold Either_map, Either_join, Tuple.first.
   rewrite H.
-  destruct (⟦ (x, tt) ⊨ e ⟧ s'); auto.
+  destruct (⟦ e x ⟧ s'); auto.
 Qed.

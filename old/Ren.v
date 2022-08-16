@@ -157,3 +157,18 @@ Lemma RenExp_ValueP {Γ Γ' τ} {v : Exp Γ τ} (σ : Ren Γ' Γ) :
 Proof. induction 1; sauto lq: on. Qed.
 
 Definition wk {Γ τ τ'} : Exp Γ τ → Exp (τ' :: Γ) τ := RenExp skip1.
+
+(* (* Renamings form a category. *) *)
+(*
+Definition RenCat : Category := {|
+  obj              := Env;
+  hom              := Ren;
+  homset           := λ _ _, {| Setoid.equiv := eq |};
+  Category.id      := @idRen;
+  Category.compose := @RcR;
+  id_left          := @RcR_idRen_left;
+  id_right         := @RcR_idRen_right;
+  comp_assoc       := λ _ _ _ _ f g h, eq_sym (RcR_assoc f g h);
+  comp_assoc_sym   := @RcR_assoc
+|}.
+*)

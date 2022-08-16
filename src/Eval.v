@@ -30,14 +30,14 @@ Record PactLog : Set := MkLog {
 Definition newPactLog : PactLog :=
   MkLog tt.
 
-Definition eval `(e : [] ⊢ τ) : Err + (⟦τ⟧ * PactLog) :=
-  match SemExp e tt newPactState with
+Definition eval `(e : Exp SemTy τ) : Err + (⟦τ⟧ * PactLog) :=
+  match SemExp e newPactState with
   | inl err => inl err
   | inr (result, _finalState) => inr (result, newPactLog)
   end.
 
-Definition evalInModule (nm : string) `(e : [] ⊢ τ) : Err + (⟦τ⟧ * PactLog) :=
-  match SemExp e tt (newPactState &+ context %~ cons (InModule nm)) with
+Definition evalInModule (nm : string) `(e : Exp SemTy τ) : Err + (⟦τ⟧ * PactLog) :=
+  match SemExp e (newPactState &+ context %~ cons (InModule nm)) with
   | inl err => inl err
   | inr (result, _finalState) => inr (result, newPactLog)
   end.

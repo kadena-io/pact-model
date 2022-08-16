@@ -25,87 +25,85 @@ Inductive Literal : PrimType → Set :=
 
 Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Literal.
 
+Section Exp.
+
 Open Scope Ty_scope.
 
-Definition Env : Set := list Ty.
+Variable Γ : Ty → Type.
 
-Inductive Var : Env → Ty → Set :=
-  | ZV {Γ τ}    : Var (τ :: Γ) τ
-  | SV {Γ τ τ'} : Var Γ τ → Var (τ' :: Γ) τ.
+Inductive Exp : Ty → Type :=
+  | VAR {τ}        : Γ τ → Exp τ
+  | LAM {dom cod}  : (Γ dom → Exp cod) → Exp (dom ⟶ cod)
+  | APP {dom cod}  : Exp (dom ⟶ cod) → Exp dom → Exp cod
 
-Derive Signature NoConfusion NoConfusionHom Subterm EqDec for Var.
-
-Inductive Exp Γ : Ty → Set :=
-  | VAR {τ}        : Var Γ τ → Exp Γ τ
-  | LAM {dom cod}  : Exp (dom :: Γ) cod → Exp Γ (dom ⟶ cod)
-  | APP {dom cod}  : Exp Γ (dom ⟶ cod) → Exp Γ dom → Exp Γ cod
-
-  | Let {τ' τ}     : Exp Γ τ' → Exp (τ' :: Γ) τ → Exp Γ τ
+  | Let {τ' τ}     : Exp τ' → (Γ τ' → Exp τ) → Exp τ
 
   (* The following terms represent Pact beyond lambda calculus. *)
-  | Error {τ}      : Exp Γ τ
-  | Catch {τ}      : Exp Γ τ → Exp Γ (TySum 𝕌 τ)
+  | Error {τ}      : Exp τ
+  | Catch {τ}      : Exp τ → Exp (TySum 𝕌 τ)
 
-  | Lit {ty}       : Literal ty → Exp Γ (TyPrim ty)
-  | Bltn {τ}       : Builtin τ → Exp Γ τ
+  | Lit {ty}       : Literal ty → Exp (TyPrim ty)
+  | Bltn {τ}       : Builtin τ → Exp τ
 
-  | Symbol         : string → Exp Γ TySym
+  | Symbol         : string → Exp TySym
 
-  | If {τ}         : Exp Γ 𝔹 → Exp Γ τ → Exp Γ τ → Exp Γ τ
+  | If {τ}         : Exp 𝔹 → Exp τ → Exp τ → Exp τ
 
-  | Pair {τ1 τ2}   : Exp Γ τ1 → Exp Γ τ2 → Exp Γ (TyPair τ1 τ2)
-  | Fst {τ1 τ2}    : Exp Γ (TyPair τ1 τ2) → Exp Γ τ1
-  | Snd {τ1 τ2}    : Exp Γ (TyPair τ1 τ2) → Exp Γ τ2
+  | Pair {τ1 τ2}   : Exp τ1 → Exp τ2 → Exp (TyPair τ1 τ2)
+  | Fst {τ1 τ2}    : Exp (TyPair τ1 τ2) → Exp τ1
+  | Snd {τ1 τ2}    : Exp (TyPair τ1 τ2) → Exp τ2
 
-  | Inl {τ1 τ2}    : Exp Γ τ1 → Exp Γ (TySum τ1 τ2)
-  | Inr {τ1 τ2}    : Exp Γ τ2 → Exp Γ (TySum τ1 τ2)
-  | Case {τ1 τ2 τ} : Exp Γ (TySum τ1 τ2) →
-                     Exp Γ (τ1 ⟶ τ) → Exp Γ (τ2 ⟶ τ) → Exp Γ τ
+  | Inl {τ1 τ2}    : Exp τ1 → Exp (TySum τ1 τ2)
+  | Inr {τ1 τ2}    : Exp τ2 → Exp (TySum τ1 τ2)
+  | Case {τ1 τ2 τ} : Exp (TySum τ1 τ2) →
+                     Exp (τ1 ⟶ τ) → Exp (τ2 ⟶ τ) → Exp τ
 
-  | Nil {τ}        : Exp Γ (TyList τ)
-  | Cons {τ}       : Exp Γ τ → Exp Γ (TyList τ) → Exp Γ (TyList τ)
-  | Car {τ}        : Exp Γ (TyList τ) → Exp Γ τ
-  | Cdr {τ}        : Exp Γ (TyList τ) → Exp Γ (TyList τ)
-  | IsNil {τ}      : Exp Γ (TyList τ) → Exp Γ 𝔹
+  | Nil {τ}        : Exp (TyList τ)
+  | Cons {τ}       : Exp τ → Exp (TyList τ) → Exp (TyList τ)
+  | Car {τ}        : Exp (TyList τ) → Exp τ
+  | Cdr {τ}        : Exp (TyList τ) → Exp (TyList τ)
+  | IsNil {τ}      : Exp (TyList τ) → Exp 𝔹
 
-  | Seq {τ τ'}     : Exp Γ τ' → Exp Γ τ → Exp Γ τ
+  | Seq {τ τ'}     : Exp τ' → Exp τ → Exp τ
 
   (** Capabilities *)
 
   | Capability {p v} :
     ConcreteP p →
     ConcreteP v →
-    Exp Γ TySym →
-    Exp Γ p →
-    Exp Γ v →
-    Exp Γ (TyCap p v)
+    Exp TySym →
+    Exp p →
+    Exp v →
+    Exp (TyCap p v)
 
   | WithCapability {p v τ} :
     ConcreteP v →
-    Exp Γ TySym →                (* name of the defining module *)
-    Exp Γ (TyCap p v ⟶ 𝕌) →     (* throws exception on failure *)
-    Exp Γ (v × v ⟶ v) →         (* throws exception on failure *)
-    Exp Γ (TyCap p v) → Exp Γ τ → Exp Γ τ
+    Exp TySym →                (* name of the defining module *)
+    Exp (TyCap p v ⟶ 𝕌) →     (* throws exception on failure *)
+    Exp (v × v ⟶ v) →         (* throws exception on failure *)
+    Exp (TyCap p v) → Exp τ → Exp τ
 
   | ComposeCapability {p v} :
     ConcreteP v →
-    Exp Γ TySym →                (* name of the defining module *)
-    Exp Γ (TyCap p v ⟶ 𝕌) →     (* throws exception on failure *)
-    Exp Γ (v × v ⟶ v) →         (* throws exception on failure *)
-    Exp Γ (TyCap p v) → Exp Γ 𝕌
+    Exp TySym →                (* name of the defining module *)
+    Exp (TyCap p v ⟶ 𝕌) →     (* throws exception on failure *)
+    Exp (v × v ⟶ v) →         (* throws exception on failure *)
+    Exp (TyCap p v) → Exp 𝕌
 
-  | InstallCapability {p v} : Exp Γ (TyCap p v) → Exp Γ 𝕌
-  | RequireCapability {p v} : Exp Γ (TyCap p v) → Exp Γ 𝕌.
+  | InstallCapability {p v} : Exp (TyCap p v) → Exp 𝕌
+  | RequireCapability {p v} : Exp (TyCap p v) → Exp 𝕌.
 
 Derive Signature NoConfusionHom Subterm for Exp.
 
-Fixpoint Exp_size `(e : Exp Γ τ) : nat :=
+End Exp.
+
+Fixpoint Exp_size `(e : Exp (λ _, unit) τ) : nat :=
   match e with
   | VAR v      => 1
-  | LAM e      => 1 + Exp_size e
+  | LAM e      => 1 + Exp_size (e tt)
   | APP e1 e2  => 1 + Exp_size e1 + Exp_size e2
 
-  | Let x body => 1 + Exp_size x + Exp_size body
+  | Let x body => 1 + Exp_size x + Exp_size (body tt)
 
   | Error _    => 1
   | Catch e    => 1 + Exp_size e
@@ -139,7 +137,7 @@ Fixpoint Exp_size `(e : Exp Γ τ) : nat :=
   | RequireCapability c => 1 + Exp_size c
   end.
 
-Corollary Exp_size_preserved {Γ τ} (e1 e2 : Exp Γ τ) :
+Corollary Exp_size_preserved {τ} (e1 e2 : Exp (λ _, unit) τ) :
   Exp_size e1 ≠ Exp_size e2 → e1 ≠ e2.
 Proof. repeat intro; subst; contradiction. Qed.
 
@@ -149,15 +147,6 @@ Arguments Error {Γ τ}.
 Arguments Symbol {Γ} _.
 Arguments Nil {Γ τ}.
 
-Declare Scope Var_scope.
-Bind Scope Var_scope with Var.
-Delimit Scope Var_scope with var.
-
 Declare Scope Exp_scope.
 Bind Scope Exp_scope with Exp.
 Delimit Scope Exp_scope with exp.
-
-Notation "Γ ∋ τ" :=
-  (Var Γ τ%ty) (at level 10, τ at next level) : type_scope.
-Notation "Γ ⊢ τ" :=
-  (Exp Γ τ%ty) (at level 10, τ at next level) : type_scope.

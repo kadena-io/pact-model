@@ -18,9 +18,6 @@ src/Exp.v
 src/Pat.v
 src/Log.v
 src/Value.v
-src/Walk.v
-src/Ren.v
-src/Sub.v
 src/Lang/CapabilityType.v
 src/SemTy.v
 src/Lang.v
@@ -28,7 +25,6 @@ src/Lang/Capability.v
 src/Lang/CapabilityFacts.v
 src/SemBltn.v
 src/SemExp.v
-src/SemRen.v
 src/Eval.v
 src/Cat.v
 src/Sep.v

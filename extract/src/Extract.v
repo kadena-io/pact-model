@@ -205,7 +205,6 @@ Extraction Blacklist Prelude.
 
 Separate Extraction
   Pact.Ty.Ty
-  Pact.Exp.Var
   Pact.Exp.Exp
   Pact.Eval.eval
   Pact.Eval.evalInModule.

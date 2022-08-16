@@ -1,3 +1,6 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Main where
 
 import Pact
@@ -32,8 +35,8 @@ main = hspec $ do
       evalInModule "module"
         (WithCapability
           (Symbol "module")
-          (LAM (Lit LitUnit))
-          (LAM (Lit LitUnit))
+          (LAM (\_ -> Lit LitUnit))
+          (LAM (\_ -> Lit LitUnit))
           cap
           (RequireCapability cap))
         `shouldBe`
@@ -50,10 +53,10 @@ main = hspec $ do
           (InstallCapability (cap 100))
           (WithCapability
             (Symbol "module")
-            (LAM (Lit LitUnit))
-            (LAM (APP (APP (Bltn SubInt)
-                           (Fst (VAR ZV)))
-                      (Snd (VAR ZV))))
+            (LAM (\_ -> Lit LitUnit))
+            (LAM (\x -> APP (APP (Bltn SubInt)
+                           (Fst @_ @('TyPrim 'PrimInteger) (VAR x)))
+                      (Snd @('TyPrim 'PrimInteger) @_ (VAR x))))
             (cap 50)
             (RequireCapability (cap 50))))
         `shouldBe`

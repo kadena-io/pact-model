@@ -8,7 +8,6 @@ Require Import
   Pact.Ty
   Pact.Exp
   Pact.Value
-  Pact.Ren
   Pact.Lang
   Pact.Lang.CapabilityType.
 

@@ -55,7 +55,6 @@ library
       Monoid
       Nat
       Prelude0
-      Ren
       RWSE
       SemBltn
       SemExp

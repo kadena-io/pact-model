@@ -146,7 +146,7 @@ pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec
     dpdgraph
     QuickChick
     Boogie
-    # dafny
+    dafny
     pkgs.z3
     pkgs.perl
   ];
@@ -165,7 +165,7 @@ pact-model = coqPackages: with pkgs.${coqPackages}; pkgs.stdenv.mkDerivation rec
 };
 
 in {
-  inherit pact-model Boogie; # dafny;
+  inherit pact-model Boogie dafny;
   pact-model_8_14 = pact-model "coqPackages_8_14";
   pact-model_8_15 = pact-model "coqPackages_8_15";
 }

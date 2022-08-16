@@ -9,12 +9,6 @@ src/Data/Ord.v
 src/Data/Map.v
 src/Data/MapSet.v
 src/Data/Dijkstra.v
-src/Effects/Comp.v
-src/Effects/Eff.v
-src/Effects/Freer.v
-src/Effects/Member.v
-src/Effects/RWS.v
-src/Effects/Union.v
 src/Boogie/AST.v
 src/Lib.v
 src/Ltac.v

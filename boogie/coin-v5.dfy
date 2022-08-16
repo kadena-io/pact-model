@@ -200,6 +200,14 @@ constructor(pre_coin_table_balance:map<string, real>)
   coin_table_balance := pre_coin_table_balance;
 }
 
+predicate Valid()
+  reads this
+{
+  forall k :: k in coin_table_balance ==>
+    && valid_account(k)
+    && coin_table_balance[k] >= 0.0
+}
+
 //   ; --------------------------------------------------------------------------
 //   ; Capabilities
 
@@ -558,7 +566,7 @@ method buy_gas(sender:string, total:real) returns (r: Status)
   modifies this
 
   requires sender in coin_table_balance
-  requires forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+  requires Valid()
 {
   :- validate_account(sender);
   :- enforce_unit(total);
@@ -734,16 +742,15 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
   modifies this;
 
   // no accounts with negative balance before or after
-  requires forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
-  ensures r == Success ==>
-    forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
+  requires Valid()
+  ensures Valid()
 
-  // // sender and receiver are present before and after
+  // sender and receiver are present before and after
   requires sender in coin_table_balance
   requires receiver in coin_table_balance
   ensures forall k :: k in old(coin_table_balance) <==> k in coin_table_balance
 
-  // // a simple implication of the transfer
+  // a simple implication of the transfer
   requires coin_table_balance[sender] >= amount
   ensures r == Success ==> coin_table_balance[receiver] >= amount
 
@@ -757,13 +764,15 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 
   account_balances_n(coin_table_balance);
 
+  var caps := capabilities;
+
+  capabilities := capabilities + { DEBIT(sender) };
+
   var balance := coin_table_balance[sender];
   coin_table_balance := coin_table_balance[sender := balance - amount];
-
-  // var caps := capabilities;
-
-  // capabilities := capabilities + { DEBIT(sender) };
+  var res1 := Success;
   // var res1 := debit(sender, amount);
+
   // if res1.IsFailure() {
   //   capabilities := caps;
   //   return res1;
@@ -771,11 +780,12 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
   //   capabilities := caps;
   // }
 
+  capabilities := capabilities + { CREDIT(receiver) };
+  var g : guard := "";
+
   coin_table_balance :=
     coin_table_balance[receiver := coin_table_balance[receiver] + amount];
-
-  // capabilities := capabilities + { CREDIT(receiver) };
-  // var g : guard := "";
+  var res2 := Success;
   // var res2 := credit(receiver, g, amount);
   // if res2.IsFailure() {
   //   capabilities := caps;
@@ -924,11 +934,11 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
 method debit(account:string, amount:real) returns (r: Status)
   modifies this
 
+  requires Valid()
+  ensures Valid()
+
   requires account in coin_table_balance
   ensures forall k :: k in old(coin_table_balance) <==> k in coin_table_balance
-
-  requires forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
-  ensures forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
 
   ensures r == Success ==>
     coin_table_balance[account] == old(coin_table_balance[account]) - amount
@@ -979,11 +989,11 @@ method debit(account:string, amount:real) returns (r: Status)
 method credit(account:string, guard:guard, amount:real) returns (r: Status)
   modifies this
 
+  requires Valid()
+  ensures Valid()
+
   requires account in coin_table_balance
   ensures forall k :: k in old(coin_table_balance) <==> k in coin_table_balance
-
-  requires forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
-  ensures forall k :: k in coin_table_balance ==> coin_table_balance[k] >= 0.0
 
   ensures r == Success ==> coin_table_balance[account] >= amount
   ensures r == Success ==>

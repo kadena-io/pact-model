@@ -114,8 +114,6 @@ dafny = pkgs.buildDotnetModule rec {
     # We generate our own executable scripts
     rm -f $out/lib/dotnet/${pname}/dafny{,-server}
 
-    mv "$out/bin/Dafny" "$out/bin/dafny"
-
     rm -f $out/bin/{coverlet,Microsoft,NUnit3,System}.*
     rm -f $out/bin/{ThirdPartyNotices.txt,XUnitExtensions}
   '';

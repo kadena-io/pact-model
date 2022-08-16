@@ -189,17 +189,16 @@ Definition RenANF {Γ Γ' Δ Δ' τ} (r1 : Ren Γ Γ') (r2 : Ren Δ Δ')
   (e : ANF Γ' Δ' τ) : ANF Γ Δ τ :=
   WalkANF r1 r2 (@Keep) (@RenEVar) (@RenSVar) e.
 
-Equations anf `(e : Exp Γ τ) : { Γ'' & ANF Γ Γ'' τ } := {
-  anf (VAR v) := ([] ;T AReturn (EVAR v));
+Equations anf `(e : Exp Γ τ) : ANF Γ [] τ := {
+  anf (VAR v) := AReturn (EVAR v);
   anf (LAM e) :=
-    let '(Γ' ;T e') := anf e in
-    (Γ' ;T AReturn (SLAM e'));
+    let e' := anf e in
+    AReturn (SLAM e');
   anf (APP f x) :=
     anfk f (λ e f',
       anfk x (λ e0 x',
-        (e0 ++ e ;T
-         ATailApp (RenSimp idRen liftedL f')
-                  (RenSimp idRen liftedR x'))));
+        (_ ;T ATailApp (RenSimp idRen liftedL f')
+                       (RenSimp idRen liftedR x'))));
 
   anf _ := _
 }
@@ -216,7 +215,7 @@ with anfk `(e : Exp Γ τ)
         (e0 ++ e ;T
          ALetApp (RenSimp idRen liftedL f')
                  (RenSimp idRen liftedR x')
-                 (k (_ :: e0 ++ e) (SVAR ZV)))));
+                 (_ (k (_ :: e0 ++ e) (SVAR ZV))))));
 
   anfk _ k := (_ ;T AError _ _)
 }.

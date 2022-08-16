@@ -1229,8 +1229,8 @@ Require Import
 
 Section Sep.
 
-Definition heap    : Type := PactState.
-Definition val     : Ty → Type := SemTy (m:=PactM).
+Definition heap : Type := PactState.
+Definition val  : Ty → Type := Φ.
 
 Context `{HL : HoareLogic heap}.
 
@@ -1459,7 +1459,7 @@ Definition formula τ := (val τ → hprop) → eprop → hprop.
 Definition wp `(t : Exp SemTy τ) : formula τ :=
   weakestpre (quadruple t).
 
-Definition WP : Type := ∀ τ (t : Exp (SemTy (m:=PactM)) τ), formula τ.
+Definition WP : Type := ∀ τ (t : Exp (Φ) τ), formula τ.
 
 Definition formula' (B E : Type) := (B → hprop) → (E → Prop) → hprop.
 

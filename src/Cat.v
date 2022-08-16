@@ -51,7 +51,7 @@ Lemma SemExp_composition {τ τ' τ''}
                g' <- SemExp g ;
                f' =<< g' x).
 Proof.
-  fold (SemTy (m:=PactM)).
+  fold Φ.
   unfold composition.
   simp SemExp; simpl.
   unravel.
@@ -75,7 +75,7 @@ Proof.
   intros.
   destruct (SemExp_ValueP H).
   rewrite H0 SemExp_composition.
-  fold (SemTy (m:=PactM)).
+  fold Φ.
   f_equal.
   extensionality y.
   extensionality st; simpl; unravel.
@@ -93,7 +93,7 @@ Proof.
   intros.
   destruct (SemExp_ValueP H).
   rewrite H0 SemExp_composition.
-  fold (SemTy (m:=PactM)).
+  fold Φ.
   f_equal.
   extensionality y.
   extensionality st; simpl; unravel.
@@ -121,7 +121,7 @@ Proof.
   destruct (SemExp_ValueP H0).
   destruct (SemExp_ValueP H1).
   rewrite !SemExp_composition.
-  fold (SemTy (m:=PactM)).
+  fold Φ.
   f_equal.
   extensionality y.
   extensionality st; simpl; unravel.
@@ -156,15 +156,15 @@ Next Obligation.
   simp SemExp.
   f_equal; [|rewrite H //].
   extensionality f.
-  fold (SemTy (m:=PactM)) in f.
+  fold Φ in f.
   extensionality st.
   simpl; unravel.
   rewrite H0 //.
 Qed.
 
 Definition actual_f {A B} :
-  { e : Exp (SemTy (m:=PactM)) (A ⟶ B) | ValueP e }
-    → SemTy (m:=PactM) A → PactM (SemTy (m:=PactM) B).
+  { e : Exp Φ (A ⟶ B) | ValueP e }
+    → Φ A → PactM (Φ B).
 Proof.
   intros [e v] x.
   dependent elimination e;
@@ -209,7 +209,7 @@ Next Obligation.
   simpl.
   repeat f_equal.
   extensionality arg.
-  fold (SemTy (m:=PactM)) in arg.
+  fold Φ in arg.
   simpl in *.
   extensionality st0.
   destruct (f' arg), (g' arg); try tauto.

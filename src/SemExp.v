@@ -25,7 +25,7 @@ Set Primitive Projections.
 
 Import ListNotations.
 
-Definition SemEnv Γ : Type := ilist (SemTy (m:=PactM)) Γ.
+Definition Φ : Ty → Type := SemTy (m:=PactM).
 
 Definition SemLit {ty : PrimType} (l : Literal ty) : SemPrimTy ty :=
   match l with
@@ -41,7 +41,7 @@ Notation "f =<< x" := (x >>= f) (at level 42, right associativity).
 
 Import EqNotations.
 
-Equations SemExp `(e : Exp (SemTy (m:=PactM)) τ) : PactM (SemTy (m:=PactM) τ) :=
+Equations SemExp `(e : Exp Φ τ) : PactM (Φ τ) :=
   SemExp (VAR v) := pure v;
   SemExp (LAM e) := pure (λ x, SemExp (e x));
 
@@ -169,18 +169,18 @@ Proof.
   eexists; extensionality st; sauto lq: on.
 Qed.
 
-Definition expM τ := PactM (SemTy (m:=PactM) τ).
+Definition expM τ := PactM (Φ τ).
 
 (* An expression is considered "pure" if its denotation has no impact
    whatsoever on the state. *)
-Definition pureP `(v : Exp SemTy τ) (x : SemTy (m:=PactM) τ) : Prop :=
+Definition pureP `(v : Exp SemTy τ) (x : Φ τ) : Prop :=
   ⟦ v ⟧ = pure x.
 
 Arguments pureP {_} _ _ /.
 
 (* An expression is considered "safe" if its denotation can never result in an
    error. *)
-Definition safeP `(v : Exp SemTy τ) (x : SemTy (m:=PactM) τ) : Prop :=
+Definition safeP `(v : Exp SemTy τ) (x : Φ τ) : Prop :=
   ∀ s, ∃ s', ⟦ v ⟧ s = inr (x, s').
 
 Arguments safeP {_} _ _ /.

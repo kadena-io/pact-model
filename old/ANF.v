@@ -3,7 +3,6 @@ Require Import
   Pact.Lib
   Pact.Ty
   Pact.Bltn
-  Pact.Ren
   Pact.Exp
   Pact.Value.
 
@@ -20,91 +19,127 @@ Import ListNotations.
 
 Open Scope Ty_scope.
 
-Inductive Simp Γ Γ' : Ty → Set :=
-  | EVAR {τ}        : Var Γ τ → Simp Γ Γ' τ
-  | SVAR {τ}        : Var Γ' τ → Simp Γ Γ' τ
-  | SLAM {dom cod}  : ANF (dom :: Γ) Γ' cod → Simp Γ Γ' (dom ⟶ cod)
+Section Exp.
 
-  | SLit {ty}       : Literal ty → Simp Γ Γ' (TyPrim ty)
-  | SBltn {τ}       : Builtin τ → Simp Γ Γ' τ
+Open Scope Ty_scope.
 
-  | SSymbol         : string → Simp Γ Γ' TySym
+Variable Γ : Ty → Type.
 
-  | SPair {τ1 τ2}   : Simp Γ Γ' τ1 → Simp Γ Γ' τ2 → Simp Γ Γ' (TyPair τ1 τ2)
-  | SFst {τ1 τ2}    : Simp Γ Γ' (TyPair τ1 τ2) → Simp Γ Γ' τ1
-  | SSnd {τ1 τ2}    : Simp Γ Γ' (TyPair τ1 τ2) → Simp Γ Γ' τ2
+Inductive Exp : Ty → Type :=
+  | VAR {τ}        : Γ τ → Exp τ
+  | LAM {dom cod}  : (Γ dom → Exp cod) → Exp (dom ⟶ cod)
+  | APP {dom cod}  : Exp (dom ⟶ cod) → Exp dom → Exp cod
 
-  | SInl {τ1 τ2}    : Simp Γ Γ' τ1 → Simp Γ Γ' (TySum τ1 τ2)
-  | SInr {τ1 τ2}    : Simp Γ Γ' τ2 → Simp Γ Γ' (TySum τ1 τ2)
-  | SCase {τ1 τ2 τ} : Simp Γ Γ' (TySum τ1 τ2) →
-                      Simp Γ Γ' (τ1 ⟶ τ) → Simp Γ Γ' (τ2 ⟶ τ) → Simp Γ Γ' τ
+  | Lit {ty}       : Literal ty → Exp (TyPrim ty)
 
-  | SNil {τ}        : Simp Γ Γ' (TyList τ)
-  | SCons {τ}       : Simp Γ Γ' τ → Simp Γ Γ' (TyList τ) → Simp Γ Γ' (TyList τ)
-  | SCar {τ}        : Simp Γ Γ' (TyList τ) → Simp Γ Γ' τ
-  | SCdr {τ}        : Simp Γ Γ' (TyList τ) → Simp Γ Γ' (TyList τ)
-  | SIsNil {τ}      : Simp Γ Γ' (TyList τ) → Simp Γ Γ' 𝔹
+  | If {τ}         : Exp 𝔹 → Exp τ → Exp τ → Exp τ
 
-with ANF Γ Γ' : Ty → Set :=
-  | AReturn {τ} : Simp Γ Γ' τ → ANF Γ Γ' τ
+  | Pair {τ1 τ2}   : Exp τ1 → Exp τ2 → Exp (TyPair τ1 τ2)
+  | Fst {τ1 τ2}    : Exp (TyPair τ1 τ2) → Exp τ1
+  | Snd {τ1 τ2}    : Exp (TyPair τ1 τ2) → Exp τ2
+
+  | Seq {τ τ'}     : Exp τ' → Exp τ → Exp τ.
+
+Derive Signature NoConfusionHom Subterm for Exp.
+
+End Exp.
+
+Inductive Simp (Γ : Ty → Type) : Ty → Type :=
+  | SVAR {τ}        : Γ τ → Simp Γ τ
+  | SLAM {dom cod}  : (Γ dom → ANF Γ cod) → Simp Γ (dom ⟶ cod)
+
+  | SLit {ty}       : Literal ty → Simp Γ (TyPrim ty)
+  (* | SBltn {τ}       : Builtin τ → Simp Γ τ *)
+
+  (* | SSymbol         : string → Simp Γ TySym *)
+
+  | SPair {τ1 τ2}   : Simp Γ τ1 → Simp Γ τ2 → Simp Γ (TyPair τ1 τ2)
+  | SFst {τ1 τ2}    : Simp Γ (TyPair τ1 τ2) → Simp Γ τ1
+  | SSnd {τ1 τ2}    : Simp Γ (TyPair τ1 τ2) → Simp Γ τ2
+
+  (* | SInl {τ1 τ2}    : Simp Γ τ1 → Simp Γ (TySum τ1 τ2) *)
+  (* | SInr {τ1 τ2}    : Simp Γ τ2 → Simp Γ (TySum τ1 τ2) *)
+  (* | SCase {τ1 τ2 τ} : Simp Γ (TySum τ1 τ2) → *)
+  (*                     Simp Γ (τ1 ⟶ τ) → Simp Γ (τ2 ⟶ τ) → Simp Γ τ *)
+
+  (* | SNil {τ}        : Simp Γ (TyList τ) *)
+  (* | SCons {τ}       : Simp Γ τ → Simp Γ (TyList τ) → Simp Γ (TyList τ) *)
+  (* | SCar {τ}        : Simp Γ (TyList τ) → Simp Γ τ *)
+  (* | SCdr {τ}        : Simp Γ (TyList τ) → Simp Γ (TyList τ) *)
+  (* | SIsNil {τ}      : Simp Γ (TyList τ) → Simp Γ 𝔹 *)
+
+  (* | SCapability {p v} : *)
+  (*     ConcreteP p → *)
+  (*     ConcreteP v → *)
+  (*     Simp Γ TySym → *)
+  (*     Simp Γ p → *)
+  (*     Simp Γ v → *)
+  (*     Simp Γ (TyCap p v) *)
+
+with ANF (Γ : Ty → Type) : Ty → Type :=
+  | AReturn {τ} : Simp Γ τ → ANF Γ τ
   | ALetApp {τ dom cod} :
-      Simp Γ Γ' (dom ⟶ cod) →
-      Simp Γ Γ' dom →
-      ANF Γ (cod :: Γ') τ →
-      ANF Γ Γ' τ
+      Simp Γ (dom ⟶ cod) →
+      Simp Γ dom →
+      (Γ cod → ANF Γ τ) →
+      ANF Γ τ
   | ATailApp {dom cod} :
-      Simp Γ Γ' (dom ⟶ cod) →
-      Simp Γ Γ' dom →
-      ANF Γ Γ' cod
+      Simp Γ (dom ⟶ cod) →
+      Simp Γ dom →
+      ANF Γ cod
+  | AThunk {τ τ'} :
+      (Γ 𝕌 → ANF Γ τ') →
+      (Γ (𝕌 ⟶ τ') → ANF Γ τ) →
+      ANF Γ τ
   | ALet {τ τ'} :
-      ANF Γ (𝕌 :: Γ') τ' →
-      ANF Γ (𝕌 ⟶ τ' :: Γ') τ →
-      ANF Γ Γ' τ
+      ANF Γ τ' →
+      (Γ τ' → ANF Γ τ) →
+      ANF Γ τ
+  | ALetCont {τ τ' τ''} :
+      ANF Γ τ' →
+      (Γ τ' → ANF Γ τ) →
+      (Γ τ → ANF Γ τ'') →
+      ANF Γ τ''
 
-  | AError {τ} : ANF Γ Γ' τ
-(*
-  | ACatch {τ} : ANF Γ Γ' τ → ANF Γ Γ' (TySum 𝕌 τ)
+  (* | AError {τ} : ANF Γ τ *)
+  (* | ACatch {τ} : ANF Γ τ → ANF Γ (TySum 𝕌 τ) *)
 
   | AIf {τ} :
-      Simp Γ Γ' 𝔹 →
-      ANF Γ Γ' τ →
-      ANF Γ Γ' τ →
-      ANF Γ Γ' τ.
+      Simp Γ 𝔹 →
+      ANF Γ τ →
+      ANF Γ τ →
+      ANF Γ τ
+
+  (* | ACase {τ1 τ2 τ} : *)
+  (*     Simp Γ (TySum τ1 τ2) → *)
+  (*     ANF Γ (τ1 ⟶ τ) → *)
+  (*     ANF Γ (τ2 ⟶ τ) → *)
+  (*     ANF Γ τ *)
 
   (** Capabilities *)
 
-  | AWithCapability {Γ p v τ}
-      {Hv : ConcreteP v}
-      {n : Exp Γ TySym}
-      {prd : Exp Γ (TyCap p v ⟶ 𝕌)}
-      {mng : Exp Γ (v × v ⟶ v)}
-      {cap : Exp Γ (TyCap p v)}
-      {e : Exp Γ τ} :
-    ANF n →
-    ANF prd →
-    ANF mng →
-    ANF cap →
-    ANF e →
-    ANF (WithCapability Hv n prd mng cap e)
-  | AComposeCapability {Γ p v}
-      {Hv : ConcreteP v}
-      {n : Exp Γ TySym}
-      {prd : Exp Γ (TyCap p v ⟶ 𝕌)}
-      {mng : Exp Γ (v × v ⟶ v)}
-      {cap : Exp Γ (TyCap p v)} :
-    ANF n →
-    ANF prd →
-    ANF mng →
-    ANF cap →
-    ANF (ComposeCapability Hv n prd mng cap)
-  | AInstallCapability {Γ p v} {cap : Exp Γ (TyCap p v)} :
-    ANF cap →
-    ANF (InstallCapability cap)
-  | ARequireCapability {Γ p v} {cap : Exp Γ (TyCap p v)} :
-    ANF cap →
-    ANF (RequireCapability cap).
-*).
-
+  (* | AWithCapability {p v τ} : *)
+  (*     ConcreteP v → *)
+  (*     Simp Γ TySym → *)
+  (*     Simp Γ (TyCap p v ⟶ 𝕌) → *)
+  (*     Simp Γ (v × v ⟶ v) → *)
+  (*     Simp Γ (TyCap p v) → *)
+  (*     ANF Γ τ → *)
+  (*     ANF Γ τ *)
+  (* | AComposeCapability {p v} : *)
+  (*     ConcreteP v → *)
+  (*     Simp Γ TySym → *)
+  (*     Simp Γ (TyCap p v ⟶ 𝕌) → *)
+  (*     Simp Γ (v × v ⟶ v) → *)
+  (*     Simp Γ (TyCap p v) → *)
+  (*   ANF Γ 𝕌 *)
+  (* | AInstallCapability {p v} : *)
+  (*     Simp Γ (TyCap p v) → *)
+  (*     ANF Γ 𝕌 *)
+  (* | ARequireCapability {p v} : *)
+  (*     Simp Γ (TyCap p v) → *)
+  (*     ANF Γ 𝕌 *)
+.
 
 Derive Signature NoConfusionHom Subterm for Simp ANF.
 
@@ -113,185 +148,134 @@ Notation "( x ';T' y ';T' z )" := (@existT _ _ x (@existT _ _ y z)).
 Notation "( x ; y )" := (@exist _ _ x y).
 Notation "( x ; y ; z )" := (@exist _ _ x (@exist _ _ y z)).
 
-Arguments EVAR {Γ Γ' τ} _.
-Arguments SVAR {Γ Γ' τ} _.
-Arguments SLit {Γ Γ' ty} _.
-Arguments SBltn {Γ Γ' τ} _.
-Arguments SSymbol {Γ Γ'} _.
-Arguments SNil {Γ Γ' τ}.
+Arguments SVAR {Γ τ} _.
+Arguments Lit {Γ ty} _.
+Arguments SLit {Γ ty} _.
+(* Arguments SBltn {Γ τ} _. *)
+(* Arguments SSymbol {Γ} _. *)
+(* Arguments SNil {Γ τ}. *)
 
-Definition WalkSimp
-  (R : Env → Env → Set)
-  `(r1 : R Γ Γ') `(r2 : R Δ Δ')
-  (l : ∀ {Γ Γ' τ}, R Γ Γ' → R (τ :: Γ) (τ :: Γ'))
-  (f : ∀ {Γ Γ' Δ : Env} {τ : Ty}, R Γ Γ' → Var Γ' τ → Simp Γ Δ τ)
-  (g : ∀ {Γ Δ Δ' : Env} {τ : Ty}, R Δ Δ' → Var Δ' τ → Simp Γ Δ τ)
-  (k : ∀ {Γ Γ' Δ Δ' : Env} {τ : Ty}, R Γ Γ' → R Δ Δ' → ANF Γ' Δ' τ → ANF Γ Δ τ)
-  {τ} : Simp Γ' Δ' τ → Simp Γ Δ τ :=
-  let fix go {Γ Γ' Δ Δ' τ} (r1 : R Γ Γ') (r2 : R Δ Δ')
-        (e : Simp Γ' Δ' τ) : Simp Γ Δ τ :=
-    match e with
-    | EVAR v      => f r1 v
-    | SVAR v      => g r2 v
-    | SLAM e      => SLAM (k (l r1) r2 e)
+#[local] Obligation Tactic := auto.
 
-    | SLit v      => SLit v
-    | SBltn b     => SBltn b
-    | SSymbol s   => SSymbol s
+Equations anf `(e : Exp Γ τ) : ANF Γ τ := {
+  anf (VAR v)      := AReturn (SVAR v);
+  anf (LAM e)      := AReturn (SLAM (λ x, anf (e x)));
+  anf (APP f x)    := anfk f (λ f', anfk x (λ x', ATailApp f' x'));
 
-    | SPair x y   => SPair (go r1 r2 x) (go r1 r2 y)
-    | SFst p      => SFst (go r1 r2 p)
-    | SSnd p      => SSnd (go r1 r2 p)
+  (* anf (Let x body) := ALet (anf x) (λ x, anf (body x)); *)
 
-    | SInl x      => SInl (go r1 r2 x)
-    | SInr y      => SInr (go r1 r2 y)
-    | SCase e x y => SCase (go r1 r2 e) (go r1 r2 x) (go r1 r2 y)
+  anf (Lit l)      := AReturn (SLit l);
+  (* anf (Bltn b)     := AReturn (SBltn b); *)
 
-    | SNil        => SNil
-    | SCons x xs  => SCons (go r1 r2 x) (go r1 r2 xs)
-    | SCar xs     => SCar (go r1 r2 xs)
-    | SCdr xs     => SCdr (go r1 r2 xs)
-    | SIsNil xs   => SIsNil (go r1 r2 xs)
-    end in go r1 r2.
+  (* anf Error        := AError _; *)
+  (* anf (Catch e)    := ACatch (anf e); *)
 
-Definition WalkANF
-  (R : Env → Env → Set)
-  `(r1 : R Γ Γ') `(r2 : R Δ Δ')
-  (l : ∀ {Γ Γ' τ}, R Γ Γ' → R (τ :: Γ) (τ :: Γ'))
-  (f : ∀ {Γ Γ' Δ : Env} {τ : Ty}, R Γ Γ' → Var Γ' τ → Simp Γ Δ τ)
-  (g : ∀ {Γ Δ Δ' : Env} {τ : Ty}, R Δ Δ' → Var Δ' τ → Simp Γ Δ τ)
-  {τ} : ANF Γ' Δ' τ → ANF Γ Δ τ :=
-  let fix go {Γ Γ' Δ Δ' τ} (r1 : R Γ Γ') (r2 : R Δ Δ')
-        (e : ANF Γ' Δ' τ) : ANF Γ Δ τ :=
-    let go' {Γ Γ' Δ Δ' τ} (r1 : R Γ Γ') (r2 : R Δ Δ') :=
-      WalkSimp r1 r2 (@l) (@f) (@g) (@go) in
-    match e with
-    | AReturn s       => AReturn (go' r1 r2 s)
-    | ALetApp f' x' e => ALetApp (go' r1 r2 f') (go' r1 r2 x') (go r1 (l r2) e)
-    | ATailApp f' x'  => ATailApp (go' r1 r2 f') (go' r1 r2 x')
-    | ALet x' e       => ALet (go r1 (l r2) x') (go r1 (l r2) e)
-    | AError _ _      => AError _ _
-    end in go r1 r2.
+  (* anf (Symbol s)   := AReturn (SSymbol s); *)
 
-Definition RenEVar {Γ Γ' Δ : Env} {τ : Ty} (r : Ren Γ Γ') (v : Var Γ' τ) :
-  Simp Γ Δ τ := EVAR (RenVar r v).
+  anf (If b t e)   := anfk b (λ b', AIf b' (anf t) (anf e));
 
-Definition RenSVar {Γ Δ Δ' : Env} {τ : Ty} (r : Ren Δ Δ') (v : Var Δ' τ) :
-  Simp Γ Δ τ := SVAR (RenVar r v).
+  anf (Pair x y)   := anfk x (λ x', anfk y (λ y', AReturn (SPair x' y')));
+  anf (Fst p)      := anfk p (λ p', AReturn (SFst p'));
+  anf (Snd p)      := anfk p (λ p', AReturn (SSnd p'));
 
-Definition RenSimp {Γ Γ' Δ Δ' τ} (r1 : Ren Γ Γ') (r2 : Ren Δ Δ')
-  (e : Simp Γ' Δ' τ) : Simp Γ Δ τ :=
-  WalkSimp r1 r2 (@Keep) (@RenEVar) (@RenSVar)
-    (λ _ _ _ _ _ r1 r2,
-      WalkANF r1 r2 (@Keep) (@RenEVar) (@RenSVar)) e.
+  (* anf (Inl x)      := anfk x (λ x', AReturn (SInl x')); *)
+  (* anf (Inr y)      := anfk y (λ y', AReturn (SInr y')); *)
+  (* anf (Case p g h) := anfk p (λ p', ACase p' (anf g) (anf h)); *)
 
-Definition RenANF {Γ Γ' Δ Δ' τ} (r1 : Ren Γ Γ') (r2 : Ren Δ Δ')
-  (e : ANF Γ' Δ' τ) : ANF Γ Δ τ :=
-  WalkANF r1 r2 (@Keep) (@RenEVar) (@RenSVar) e.
+  (* anf Nil          := AReturn SNil; *)
 
-Equations anf `(e : Exp Γ τ) : ANF Γ [] τ := {
-  anf (VAR v) := AReturn (EVAR v);
-  anf (LAM e) :=
-    let e' := anf e in
-    AReturn (SLAM e');
-  anf (APP f x) :=
-    anfk f (λ e f',
-      anfk x (λ e0 x',
-        (_ ;T ATailApp (RenSimp idRen liftedL f')
-                       (RenSimp idRen liftedR x'))));
+  (* anf (Cons x xs)  := anfk x (λ x', anfk xs (λ xs', AReturn (SCons x' xs'))); *)
+  (* anf (Car xs)     := anfk xs (λ xs', AReturn (SCar xs')); *)
+  (* anf (Cdr xs)     := anfk xs (λ xs', AReturn (SCdr xs')); *)
+  (* anf (IsNil xs)   := anfk xs (λ xs', AReturn (SIsNil xs')); *)
 
-  anf _ := _
-}
-with anfk `(e : Exp Γ τ)
-     {τ'} (k : ∀ Γ', Simp Γ Γ' τ → { Γ'' & ANF Γ Γ'' τ' }) :
-  { Γ'' & ANF Γ Γ'' τ' } := {
-  anfk (VAR v) k := k [] (EVAR v);
-  anfk (LAM e) k :=
-    let '(Γ' ;T e') := anf e in
-    k Γ' (SLAM e');
-  anfk (APP f x) k :=
-    anfk f (λ e f',
-      anfk x (λ e0 x',
-        (e0 ++ e ;T
-         ALetApp (RenSimp idRen liftedL f')
-                 (RenSimp idRen liftedR x')
-                 (_ (k (_ :: e0 ++ e) (SVAR ZV))))));
+  anf (Seq e1 e2)  := ALet (anf e1) (λ _, anf e2);
 
-  anfk _ k := (_ ;T AError _ _)
-}.
-Next Obligation.
+  (* anf (Capability (p:=tp) (v:=tv) Hp Hv nm arg val) := *)
+  (*   anfk nm (λ nm', *)
+  (*     anfk arg (λ arg', *)
+  (*       anfk val (λ val', *)
+  (*         AReturn (SCapability Hp Hv nm' arg' val')))); *)
 
-Equations anf `(e : Exp Γ τ) : { e' : Exp Γ τ | ANF e' } := {
-  anf (VAR v) := (VAR v; AReturn (AVAR v));
-  anf (LAM e) :=
-    let '(e'; He') := anf e in
-    (LAM e'; AReturn (ALAM He'));
-  anf (APP f x) :=
-    _ (projT2 (projT2 (anfk f (λ f' Hf',
-      (anfk x (λ x' Hx',
-        (_ ;T (_ ;T (APP f' x'; AAPP Hf' Hx')))))))));
-
-  anf _ := _
-}
-with anfk `(e : Exp Γ τ)
-  (k : ∀ (e' : Exp Γ τ), Simp e' → { Γ' & { τ' & { e'' : Exp Γ' τ' | ANF e'' }}}) :
-  { Γ' & { τ' & { e'' : Exp Γ' τ' | ANF e'' }}} := {
-  anfk (VAR v) k := k _ (AVAR v);
-  anfk (LAM e) k :=
-    let '(e'; He') := anf e in
-    k _ (ALAM He');
-  anfk (APP f x) k :=
-    let '(f'; Hf') := anf f in
-    let '(x'; Hx') := anf x in
-    (_ ;T
-    (_ ;T
-    (Let f' (Let (RenExp skip1 x') (APP (VAR (SV ZV)) (VAR ZV)));
-     _)));
-
-  anfk _ _ := _
-}.
-Next Obligation.
-  simpl in *.
-
-  anf (Let x body) := _;
-
-  anf Error       := (Error; AError);
-  anf (Catch e)   :=
-    let '(e'; _) := anf e in
-    (Catch e'; _);
-
-  anf (Lit l)     := (Lit l;    AValue (LiteralP _));
-  anf (Bltn b)    := (Bltn b;   AValue (BuiltinP _));
-  anf (Symbol s)  := (Symbol s; AValue (SymbolP _));
-
-  anf (If b t e)  :=
-    let '(b'; _) := anf b in
-    let '(t'; _) := anf t in
-    let '(e'; _) := anf e in
-    (If b' t' e'; _);
+  (* anf (WithCapability (p:=tp) (v:=tv) Hv modname prd mng c e) := *)
+  (*   anfk modname (λ modname', *)
+  (*     anfk prd (λ prd', *)
+  (*       anfk mng (λ mng', *)
+  (*         anfk c (λ c', *)
+  (*           AWithCapability Hv modname' prd' mng' c' (anf e))))); *)
     
-  anf (Pair x y)  :=
-    let '(x'; _) := anf x in
-    let '(y'; _) := anf y in
-    (Pair x' y'; AValue (PairP _ _));
-  anf (Fst p)     := _;
-  anf (Snd p)     := _;
+  (* anf (ComposeCapability (p:=tp) (v:=tv) Hv modname prd mng c) := *)
+  (*   anfk modname (λ modname', *)
+  (*     anfk prd (λ prd', *)
+  (*       anfk mng (λ mng', *)
+  (*         anfk c (λ c', *)
+  (*           AComposeCapability Hv modname' prd' mng' c')))); *)
 
-  anf (Inl p)      := _;
-  anf (Inr p)      := _;
-  anf (Case p l r) := _;
+  (* anf (InstallCapability c) := anfk c (λ c', AInstallCapability c'); *)
+  (* anf (RequireCapability c) := anfk c (λ c', ARequireCapability c'); *)
+}
+with anfk `(e : Exp Γ τ) {τ'} (k : Simp Γ τ → ANF Γ τ') : ANF Γ τ' := {
+  anfk (VAR v)      k := k (SVAR v);
+  anfk (LAM e)      k := k (SLAM (λ x, anf (e x)));
+  anfk (APP f x)    k :=
+    anfk f (λ f', anfk x (λ x', ALetApp f' x' (λ x, k (SVAR x))));
 
-  anf Nil         := _;
-  anf (Cons x xs) := _;
-  anf (Car xs)    := _;
-  anf (Cdr xs)    := _;
-  anf (IsNil xs)  := _;
-  anf (Seq x y)   := _;
+  (* anfk (Let x body) k := *)
+  (*   ALetCont (anf x) (λ x, anf (body x)) (λ x, k (SVAR x)); *)
 
-  anf (Capability _ _ n p v)         := _;
-  anf (WithCapability _ nm p m c e)  := _;
-  anf (ComposeCapability _ nm p m c) := _;
-  anf (InstallCapability c)          := _;
-  anf (RequireCapability c)          := _.
+  anfk (Lit l)      k := k (SLit l);
+  (* anfk (Bltn b)     k := k (SBltn b); *)
 
-Print anf.
+  (* anfk Error        k := AError _; *)
+  (* anfk (Catch e)    k := ACatch (anf e); *)
+
+  (* anfk (Symbol s)   k := k (SSymbol s); *)
+
+  (* anfk (If (Lit (LitBool true)) t e) k := anfk t k; *)
+
+  anfk (If b t e)   k :=
+    anfk b (λ b',
+      AThunk (λ _, anf t) (λ t', 
+        AThunk (λ _, anf e) (λ e', 
+          AIf b'
+            (ALetApp (SVAR t') (SLit LitUnit) (λ x, k (SVAR x)))
+            (ALetApp (SVAR e') (SLit LitUnit) (λ x, k (SVAR x))))));
+
+  anfk (Pair x y)   k := anfk x (λ x', anfk y (λ y', k (SPair x' y')));
+  anfk (Fst p)      k := anfk p (λ p', k (SFst p'));
+  anfk (Snd p)      k := anfk p (λ p', k (SSnd p'));
+
+  (* anfk (Inl x)      k := anfk x (λ x', k (SInl x')); *)
+  (* anfk (Inr y)      k := anfk y (λ y', k (SInr y')); *)
+  (* anfk (Case p g h) k := _; *)
+
+  (* anfk Nil          k := k SNil; *)
+
+  (* anfk (Cons x xs)  k := anfk x (λ x', anfk xs (λ xs', k (SCons x' xs'))); *)
+  (* anfk (Car xs)     k := anfk xs (λ xs', k (SCar xs')); *)
+  (* anfk (Cdr xs)     k := anfk xs (λ xs', k (SCdr xs')); *)
+  (* anfk (IsNil xs)   k := anfk xs (λ xs', k (SIsNil xs')); *)
+
+  anfk (Seq e1 e2)  k := ALetCont (anf e1) (λ _, anf e2) (λ x, k (SVAR x));
+
+  (* anfk (Capability (p:=tp) (v:=tv) Hp Hv nm arg val) k := *)
+  (*   anfk nm (λ nm', *)
+  (*     anfk arg (λ arg', *)
+  (*       anfk val (λ val', *)
+  (*         k (SCapability Hp Hv nm' arg' val')))); *)
+
+  (* anfk (WithCapability (p:=tp) (v:=tv) Hv modname prd mng c e) k := _; *)
+  (* anfk (ComposeCapability (p:=tp) (v:=tv) Hv modname prd mng c) k := _; *)
+  (* anfk (InstallCapability c) k := _; *)
+  (* anfk (RequireCapability c) k := _; *)
+}.
+
+Definition sample Γ (add : Exp Γ (ℤ ⟶ ℤ ⟶ ℤ)) : Exp Γ (ℤ × ℤ) :=
+  Pair (APP (APP add (Lit (LitInteger 2))) (Lit (LitInteger 3)))
+       (APP (APP add (Lit (LitInteger 7))) (Lit (LitInteger 8))).
+
+Compute sample.
+Goal True.
+  enough (Exp (λ _, nat) (ℤ ⟶ ℤ ⟶ ℤ)) as add.
+    pose (f := anf (sample add)).
+    cbv [ anf anfk sample anf_functional anfk_functional ] in f.

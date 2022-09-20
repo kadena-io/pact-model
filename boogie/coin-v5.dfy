@@ -125,36 +125,31 @@ method install_capability(cap: Capability) returns (r: Status)
 //         (= (column-delta coin-table 'balance) 0.0))
 
 function account_balances(m: map<string, real>, keys: seq<string>): real
+  requires forall k | k in keys :: k in m
   decreases keys
 {
   if keys == []
-  then
-    0.0
-  else
-    var k := keys[0];
-    var bal := if k in m then m[k] else 0.0;
-    bal + account_balances(m, keys[1..])
+  then 0.0
+  else m[keys[0]] + account_balances(m, keys[1..])
 }
 
 // An induction principal about account_balances that is needed whenever
 // conserves_mass is used, both before and after any modifications.
-lemma {:induction m} account_balances_n(m: map<string, real>)
-  ensures forall keys: seq<string> :: |keys| > 0 ==>
-    (forall k :: k in keys ==> k in m) ==>
-      account_balances(m, keys) == m[keys[0]] + account_balances(m, keys[1..])
+lemma {:induction m} account_balances_n(m: map<string, real>, keys: seq<string>)
+  requires |keys| > 0
+  requires forall k | k in keys :: k in m
+  ensures account_balances(m, keys) == m[keys[0]] + account_balances(m, keys[1..])
 {
 }
 
 // conserves-mass says that given a set of account keys, the net balance of
 // those accounts before and after must be zero. All other accounts must
 // remain unchanged.
-twostate predicate conserves_mass(keys: seq<string>)
-  reads this
+predicate conserves_mass(before: map<string, real>, after: map<string, real>, keys: seq<string>)
+  requires forall k | k in keys :: k in before && k in after
 {
-  && (forall k :: k !in keys && k in old(coin_table_balance) && k in coin_table_balance ==>
-       old(coin_table_balance[k]) == coin_table_balance[k])
-  && account_balances(old(coin_table_balance), keys)
-      == account_balances(coin_table_balance, keys)
+  && (forall k | k !in keys && k in before && k in after :: before[k] == after[k])
+  && account_balances(before, keys) == account_balances(after, keys)
 }
 
 //       (defproperty valid-account (account:string)
@@ -194,7 +189,7 @@ predicate method valid_account(account:string) {
 var coin_table_balance : map<string, real>;
 
 constructor(pre_coin_table_balance:map<string, real>)
-  requires forall k :: k in pre_coin_table_balance ==> pre_coin_table_balance[k] >= 0.0
+  requires forall k | k in pre_coin_table_balance :: pre_coin_table_balance[k] >= 0.0
   ensures coin_table_balance == pre_coin_table_balance
 {
   coin_table_balance := pre_coin_table_balance;
@@ -203,9 +198,8 @@ constructor(pre_coin_table_balance:map<string, real>)
 predicate Valid()
   reads this
 {
-  forall k :: k in coin_table_balance ==>
-    && valid_account(k)
-    && coin_table_balance[k] >= 0.0
+  forall k | k in coin_table_balance ::
+    valid_account(k) && coin_table_balance[k] >= 0.0
 }
 
 //   ; --------------------------------------------------------------------------
@@ -748,13 +742,14 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
   // sender and receiver are present before and after
   requires sender in coin_table_balance
   requires receiver in coin_table_balance
-  ensures forall k :: k in old(coin_table_balance) <==> k in coin_table_balance
+  ensures coin_table_balance.Keys == old(coin_table_balance.Keys)
 
   // a simple implication of the transfer
   requires coin_table_balance[sender] >= amount
   ensures r == Success ==> coin_table_balance[receiver] >= amount
 
-  ensures r == Success ==> conserves_mass([sender, receiver])
+  ensures r == Success ==>
+    conserves_mass(old(coin_table_balance), coin_table_balance, [sender, receiver])
 {
   :- enforce(sender != receiver, "sender cannot be the receiver of a transfer");
   :- validate_account(sender);
@@ -762,39 +757,36 @@ method transfer(sender:string, receiver:string, amount:real) returns (r:Status)
   :- enforce(amount > 0.0, "transfer amount must be positive");
   :- enforce_unit(amount);
 
-  account_balances_n(coin_table_balance);
+  account_balances_n(coin_table_balance, [sender, receiver]);
 
   var caps := capabilities;
 
+  // This is the logic of "with-capability", but since Dafny is not
+  // higher-order we cannot use such a special form here.
   capabilities := capabilities + { DEBIT(sender) };
-
-  var balance := coin_table_balance[sender];
-  coin_table_balance := coin_table_balance[sender := balance - amount];
-  var res1 := Success;
-  // var res1 := debit(sender, amount);
-
-  // if res1.IsFailure() {
-  //   capabilities := caps;
-  //   return res1;
-  // } else {
-  //   capabilities := caps;
-  // }
+  {
+    var res := debit(sender, amount);
+    if res.IsFailure() {
+      capabilities := caps;
+      return res;
+    } else {
+      capabilities := caps;
+    }
+  }
 
   capabilities := capabilities + { CREDIT(receiver) };
-  var g : guard := "";
+  {
+    var g : guard := "";
+    var res := credit(receiver, g, amount);
+    if res.IsFailure() {
+      capabilities := caps;
+      return res;
+    } else {
+      capabilities := caps;
+    }
+  }
 
-  coin_table_balance :=
-    coin_table_balance[receiver := coin_table_balance[receiver] + amount];
-  var res2 := Success;
-  // var res2 := credit(receiver, g, amount);
-  // if res2.IsFailure() {
-  //   capabilities := caps;
-  //   return res2;
-  // } else {
-  //   capabilities := caps;
-  // }
-
-  account_balances_n(coin_table_balance);
+  account_balances_n(coin_table_balance, [sender, receiver]);
 
   return Success;
 }
@@ -938,10 +930,11 @@ method debit(account:string, amount:real) returns (r: Status)
   ensures Valid()
 
   requires account in coin_table_balance
-  ensures forall k :: k in old(coin_table_balance) <==> k in coin_table_balance
+  ensures coin_table_balance.Keys == old(coin_table_balance.Keys)
 
   ensures r == Success ==>
-    coin_table_balance[account] == old(coin_table_balance[account]) - amount
+    coin_table_balance ==
+      old(coin_table_balance[account := coin_table_balance[account] - amount])
 {
   :- validate_account(account);
   :- enforce(amount > 0.0, "debit amount must be positive");
@@ -993,19 +986,20 @@ method credit(account:string, guard:guard, amount:real) returns (r: Status)
   ensures Valid()
 
   requires account in coin_table_balance
-  ensures forall k :: k in old(coin_table_balance) <==> k in coin_table_balance
+  ensures coin_table_balance.Keys == old(coin_table_balance.Keys)
 
   ensures r == Success ==> coin_table_balance[account] >= amount
   ensures r == Success ==>
-    coin_table_balance[account] == old(coin_table_balance[account]) + amount
+    coin_table_balance ==
+      old(coin_table_balance[account := coin_table_balance[account] + amount])
 {
   :- validate_account(account);
   :- enforce(amount > 0.0, "credit amount must be positive");
   :- enforce_unit(amount);
   :- require_capability(CREDIT(account));
 
-  coin_table_balance :=
-    coin_table_balance[account := coin_table_balance[account] + amount];
+  var balance := coin_table_balance[account];
+  coin_table_balance := coin_table_balance[account := balance + amount];
 
   return Success;
 }

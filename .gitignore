@@ -45,4 +45,5 @@
 /extract/src/Tuple.hs
 /extract/src/Ty.hs
 /extract/src/Value.hs
+/tla/states/
 flycheck_*.*

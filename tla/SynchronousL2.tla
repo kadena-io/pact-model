@@ -8,8 +8,7 @@ CONSTANT Supply
 
 variables
     Accounts    = [ Alice |-> Supply \div 2
-                  , Bob   |-> Supply \div 2
-                  ],
+                  , Bob   |-> Supply \div 2 ],
     Locked      = Empty,
     L2Accounts  = Empty,
     KadenaState = "Normal",
@@ -30,6 +29,7 @@ define {
   }
 
   Empty == [ Alice |-> 0, Bob |-> 0 ]
+
   Total(accounts) == accounts.Alice + accounts.Bob
 
   \* It is always the case that no matter what state the system is in,
@@ -40,6 +40,9 @@ define {
 macro conserves_mass() {
     assert Total(Accounts) + Total(Locked) = Supply;
 }
+
+\* This is a fair process because it is guaranteed, for the purposes of this
+\* formal model, to never get "stuck".
 
 fair+ process ( Kadena = 1 )
 {

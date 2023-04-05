@@ -1,0 +1,42 @@
+name:       defpact
+version:    0.0.1
+synopsis:   Various Haskell notes
+github:     jwiegley/notes
+author:     John Wiegley
+maintainer: johnw@newartisans.com
+category:   System, Data, Nix
+license:    BSD3
+
+description:
+  Various Haskell notes.
+
+library:
+  source-dirs: .
+  ghc-options:
+    - -Wall
+  dependencies:
+    - base                        >= 4.9 && < 5
+    - HUnit
+    - QuickCheck
+    - arrows
+    - bytestring
+    - constraints
+    - containers
+    - deepseq
+    - fastsum
+    - free
+    - freer-simple
+    - hedgehog
+    - lens
+    - monad-par
+    - mtl
+    - multiset
+    - pcre-heavy
+    - row-types
+    - tasty
+    - tasty-hedgehog
+    - tasty-hunit
+    - time
+    - transformers
+    - unordered-containers
+    - CC-delcont

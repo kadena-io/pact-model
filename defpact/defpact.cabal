@@ -1,0 +1,59 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 181c1e622c84317306f15cc635e72afccb7525485944cf2b2fcf31d7a3f9e808
+
+name:           defpact
+version:        0.0.1
+synopsis:       Various Haskell notes
+description:    Various Haskell notes.
+category:       System, Data, Nix
+homepage:       https://github.com/jwiegley/notes#readme
+bug-reports:    https://github.com/jwiegley/notes/issues
+author:         John Wiegley
+maintainer:     johnw@newartisans.com
+license:        BSD3
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/jwiegley/notes
+
+library
+  exposed-modules:
+      DefPact
+  other-modules:
+      Paths_defpact
+  hs-source-dirs:
+      ./
+  ghc-options: -Wall
+  build-depends:
+      CC-delcont
+    , HUnit
+    , QuickCheck
+    , arrows
+    , base >=4.9 && <5
+    , bytestring
+    , constraints
+    , containers
+    , deepseq
+    , fastsum
+    , free
+    , freer-simple
+    , hedgehog
+    , lens
+    , monad-par
+    , mtl
+    , multiset
+    , pcre-heavy
+    , row-types
+    , tasty
+    , tasty-hedgehog
+    , tasty-hunit
+    , time
+    , transformers
+    , unordered-containers
+  default-language: Haskell2010

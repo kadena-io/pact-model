@@ -46,8 +46,8 @@ Import ListNotations.
    need the witness 'zk_circuit f x y' to know that '∃ w, f x w = y'.
 *)
 Theorem zk_theorem :
-  ∃ (zk_proof : ∀ (a b c : Type) (f : a → b → c), Type)
-    (zk_circuit : ∀ {a b c : Type} (f : a → b → c), a → c → zk_proof a b c f)
+  ∃ (zk_proof : ∀ {a b c : Type} (f : a → b → c), Type)
+    (zk_circuit : ∀ {a b c : Type} (f : a → b → c), a → c → zk_proof f)
     (zk_public_constraint : Type → Prop)
     (zk_private_constraint : Type → Prop)
     (zk_result_constraint : Type → Prop)
@@ -60,7 +60,7 @@ Theorem zk_theorem :
     zk_private_constraint b →
     zk_result_constraint c →
     zk_function_constraint f →
-    zk_proof a b c f → ∃ w : b, f x w = y.
+    zk_proof f → ∃ w : b, f x w = y.
 
 (* Rephrased as a type class *)
 

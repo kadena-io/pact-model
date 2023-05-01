@@ -64,21 +64,12 @@ Theorem zk_theorem :
 
 (* Rephrased as a type class *)
 
-Class ZK := {
-  zk_proof : ∀ (a b c : Type) (f : a → b → c), Type;
-  zk_circuit : ∀ {a b c : Type} (f : a → b → c), a → c → zk_proof f;
-  zk_public_constraint : Type → Prop;
-  zk_private_constraint : Type → Prop;
-  zk_result_constraint : Type → Prop;
-  zk_function_constraint : ∀ {a b c : Type}, (a → b → c) → Prop;
-  zk_theorem :
-    ∀ {a b c : Type}
-      (f : a → b → c)
-      (x : a)
-      (y : c),
-      zk_public_constraint a →
-      zk_private_constraint b →
-      zk_result_constraint c →
-      zk_function_constraint f →
-      zk_proof f → ∃ w : b, f x w = y
+Class ZK {a : Type} (P : a → Prop) := {
+  zk_proof : Type;
+  zk_circuit : ∀ x : a, P x → zk_proof;
+  zk_theorem : zk_proof → ∃ x : a, P x
 }.
+
+(* This is the type needed for the '∃ w, f x w = y' form of the problem. *)
+Definition ZK_function {a b c : Type} (f : a → b → c) :=
+  ∀ (x : a) (y : c), ZK (λ w, f x w = y).
